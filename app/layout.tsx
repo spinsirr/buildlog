@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "buildlog",
+  title: "BuildLog",
   description: "Turn your commits into content. Build in public, effortlessly.",
 };
 

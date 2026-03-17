@@ -11,7 +11,7 @@ export default async function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-6 p-8">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-3xl font-bold">buildlog</h1>
+          <h1 className="text-3xl font-bold">Build<span className="text-purple-400">Log</span></h1>
           <p className="text-muted-foreground text-sm">Turn your commits into content. Build in public, effortlessly.</p>
         </div>
         <form action="/api/auth/github" method="POST">

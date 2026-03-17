@@ -45,8 +45,8 @@ export default async function DashboardLayout({
             href="/dashboard"
             className="font-semibold text-lg tracking-tight text-zinc-50"
           >
-            buildlog
-          </Link>
+            Build<span className="text-purple-400">Log</span>
+</Link>
         </div>
 
         {/* Navigation */}

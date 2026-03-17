@@ -4,7 +4,7 @@ import Link from "next/link";
 
 function TerminalDemo() {
   return (
-    <div className="w-full max-w-2xl mx-auto rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-2xl shadow-indigo-500/5">
+    <div className="w-full max-w-2xl mx-auto rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden shadow-2xl shadow-purple-500/5">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
         <div className="flex gap-1.5">
           <div className="w-3 h-3 rounded-full bg-zinc-700" />
@@ -23,11 +23,11 @@ function TerminalDemo() {
         </div>
         <div className="flex items-center gap-2 text-zinc-500">
           <div className="animate-pulse">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+            <Sparkles className="h-3.5 w-3.5 text-purple-400" />
           </div>
-          <span className="text-zinc-400">buildlog generating post...</span>
+          <span className="text-zinc-400">BuildLog generating post...</span>
         </div>
-        <div className="border-l-2 border-indigo-500/40 pl-4 py-1 space-y-2">
+        <div className="border-l-2 border-purple-500/40 pl-4 py-1 space-y-2">
           <p className="text-zinc-300">
             Just shipped dark mode for the app! Building features users actually
             ask for &gt; chasing trends.
@@ -75,7 +75,7 @@ export default function LandingPage() {
       <header className="border-b border-zinc-800/50">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <span className="font-semibold text-lg tracking-tight">
-            buildlog
+            Build<span className="text-purple-400">Log</span>
           </span>
           <Link
             href="/login"
@@ -96,7 +96,7 @@ export default function LandingPage() {
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
             Turn your commits
             <br />
-            <span className="text-indigo-400">into content</span>
+            <span className="text-purple-400">into content</span>
           </h1>
           <p className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed">
             Connect GitHub, ship code, and let AI generate social posts from
@@ -105,7 +105,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-center gap-3 pt-2">
             <Link
               href="/login"
-              className="inline-flex items-center justify-center h-10 px-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+              className="inline-flex items-center justify-center h-10 px-8 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
             >
               Start building in public
             </Link>
@@ -138,8 +138,8 @@ export default function LandingPage() {
                 className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors"
               >
                 <CardContent className="pt-6 space-y-3">
-                  <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                    <feature.icon className="h-5 w-5 text-indigo-400" />
+                  <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <feature.icon className="h-5 w-5 text-purple-400" />
                   </div>
                   <div className="text-sm text-zinc-500 font-mono">
                     0{i + 1}
@@ -167,7 +167,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center justify-center h-10 px-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+            className="inline-flex items-center justify-center h-10 px-8 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
           >
             Get started free
           </Link>
@@ -177,8 +177,8 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-zinc-800/50 py-8 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between text-xs text-zinc-500">
-          <span>buildlog</span>
-          <span>&copy; {new Date().getFullYear()} buildlog. Open source.</span>
+          <span>BuildLog</span>
+          <span>&copy; {new Date().getFullYear()} BuildLog. Open source.</span>
         </div>
       </footer>
     </div>
