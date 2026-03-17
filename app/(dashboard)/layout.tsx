@@ -1,33 +1,99 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import {
+  LayoutDashboard,
+  FileText,
+  GitFork,
+  Settings,
+  Flame,
+} from "lucide-react";
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/posts", label: "Posts", icon: FileText },
+  { href: "/repos", label: "Repos", icon: GitFork },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-semibold text-lg">buildlog</Link>
-            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-              <Link href="/repos" className="hover:text-foreground transition-colors">Repos</Link>
-              <Link href="/posts" className="hover:text-foreground transition-colors">Posts</Link>
-            </nav>
-          </div>
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={profile?.github_avatar_url ?? undefined} />
-            <AvatarFallback>{profile?.github_username?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
-          </Avatar>
+    <div className="min-h-screen bg-zinc-950 flex">
+      {/* Sidebar */}
+      <aside className="w-60 border-r border-zinc-800/50 flex flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30">
+        {/* Logo */}
+        <div className="h-14 flex items-center px-5 border-b border-zinc-800/50">
+          <Link
+            href="/dashboard"
+            className="font-semibold text-lg tracking-tight text-zinc-50"
+          >
+            buildlog
+          </Link>
         </div>
-      </header>
-      <main className="max-w-5xl mx-auto px-4 py-8">{children}</main>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50 transition-colors"
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Streak counter */}
+        <div className="px-3 pb-3">
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800">
+            <Flame className="h-4 w-4 text-orange-400" />
+            <span className="text-sm font-medium text-zinc-300">0</span>
+            <span className="text-xs text-zinc-500">day streak</span>
+          </div>
+        </div>
+
+        <Separator className="bg-zinc-800/50" />
+
+        {/* User */}
+        <div className="px-3 py-3">
+          <div className="flex items-center gap-3 px-3 py-2">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={profile?.github_avatar_url ?? undefined} />
+              <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
+                {profile?.github_username?.[0]?.toUpperCase() ?? "U"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-zinc-400 truncate">
+              {profile?.github_username ?? "User"}
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 ml-60">
+        <main className="max-w-5xl mx-auto px-8 py-8">{children}</main>
+      </div>
     </div>
-  )
+  );
 }
