@@ -1,12 +1,26 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getLogger } from '@logtape/logtape'
+
+const log = getLogger(['buildlog', 'proxy'])
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Skip auth when Supabase is not configured (local dev without env vars)
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    log.debug`Supabase env vars missing — skipping auth for ${pathname}`
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
@@ -22,10 +36,22 @@ export async function proxy(request: NextRequest) {
   )
 
   // Refresh session — required for Server Components to read auth state
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (error) {
+    log.warn`Auth error on ${pathname}: ${error.message}`
+  }
+
+  log.debug`${pathname} — user: ${user?.id ?? 'anonymous'}`
+
+  if (!user && pathname.startsWith('/dashboard')) {
+    log.info`Unauthenticated request to ${pathname} — redirecting to /login`
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  if (user && (pathname === '/login' || pathname === '/')) {
+    log.info`Authenticated user on ${pathname} — redirecting to /dashboard`
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse
