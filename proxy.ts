@@ -49,7 +49,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && (pathname === '/login' || pathname === '/')) {
+  if (user && pathname === '/login') {
     log.info`Authenticated user on ${pathname} — redirecting to /dashboard`
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
