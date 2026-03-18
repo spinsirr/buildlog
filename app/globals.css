@@ -152,6 +152,9 @@
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
+.animate-marquee {
+  will-change: transform;
+}
 
 /* Neo-brutalism interaction utilities */
 @layer utilities {

@@ -35,18 +35,17 @@ const MARQUEE_ITEMS = [
 ];
 
 function MarqueeStrip() {
-  const items = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
   return (
     <div
       className="border-y-4 border-black py-4 overflow-hidden"
       style={{ background: "#000000" }}
       aria-hidden
     >
-      <div className="flex animate-marquee whitespace-nowrap">
-        {items.map((item, i) => (
+      <div className="flex w-max animate-marquee">
+        {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
           <span
             key={i}
-            className="font-mono-ui text-sm font-bold uppercase tracking-[0.2em] px-6"
+            className="font-mono-ui text-sm font-bold uppercase tracking-[0.2em] px-6 whitespace-nowrap"
             style={{ color: i % 2 === 0 ? "#BFFF00" : "#FFD93D" }}
           >
             {item}
