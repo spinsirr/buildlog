@@ -23,7 +23,7 @@ function LogoMark({ size = 32 }: { size?: number }) {
   );
 }
 
-export function LandingNav() {
+export function LandingNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -44,18 +44,29 @@ export function LandingNav() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-5" aria-label="Main navigation">
-          <Link
-            href="/login"
-            className="font-mono-ui text-sm font-bold uppercase tracking-widest px-2 py-1 border-2 border-transparent hover:border-black hover:bg-[#FFD93D] hover:px-3 hover:shadow-[4px_4px_0_0_#000] transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 border-4 border-black px-5 py-2 bg-[#FF6B6B] font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-          >
-            Get started <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 border-4 border-black px-5 py-2 bg-[#BFFF00] font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+            >
+              Dashboard <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="font-mono-ui text-sm font-bold uppercase tracking-widest px-2 py-1 border-2 border-transparent hover:border-black hover:bg-[#FFD93D] hover:px-3 hover:shadow-[4px_4px_0_0_#000] transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 border-4 border-black px-5 py-2 bg-[#FF6B6B] font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+              >
+                Get started <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Mobile hamburger */}
@@ -82,21 +93,33 @@ export function LandingNav() {
           className="md:hidden border-t-4 border-black px-6 py-6 flex flex-col gap-4"
           style={{ background: "#FFFDF5" }}
         >
-          <Link
-            href="/login"
-            onClick={() => setOpen(false)}
-            className="block border-4 border-black px-5 py-4 font-mono-ui text-sm font-bold uppercase tracking-wider text-center neo-btn"
-            style={{ background: "#FFFDF5" }}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/login"
-            onClick={() => setOpen(false)}
-            className="block border-4 border-black px-5 py-4 bg-[#FF6B6B] font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
-          >
-            Get started →
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="block border-4 border-black px-5 py-4 bg-[#BFFF00] font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
+            >
+              Dashboard →
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="block border-4 border-black px-5 py-4 font-mono-ui text-sm font-bold uppercase tracking-wider text-center neo-btn"
+                style={{ background: "#FFFDF5" }}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="block border-4 border-black px-5 py-4 bg-[#FF6B6B] font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
+              >
+                Get started →
+              </Link>
+            </>
+          )}
         </div>
       )}
     </header>

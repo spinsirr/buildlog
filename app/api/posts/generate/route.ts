@@ -1,26 +1,24 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { generatePost } from '@/lib/ai/generate-post'
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
-
 export async function POST(request: NextRequest) {
-  const { sourceType, repoName, data, userId, repoId } = await request.json()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!sourceType || !repoName || !data || !userId) {
+  const { sourceType, repoName, data, repoId } = await request.json()
+
+  if (!sourceType || !repoName || !data) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
   const content = await generatePost({ sourceType, repoName, data })
 
-  const supabase = getSupabase()
-  const { data: post, error } = await supabase.from('posts').insert({
-    user_id: userId,
+  const serviceClient = createServiceClient()
+  const { data: post, error } = await serviceClient.from('posts').insert({
+    user_id: user.id,
     repo_id: repoId ?? null,
     source_type: sourceType,
     source_data: data,

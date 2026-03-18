@@ -1,21 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkLimit } from '@/lib/subscription'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { allowed, plan, limit } = await checkLimit(user.id, 'repos')
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Free plan is limited to ${limit} repo. Upgrade to Pro for unlimited repos.`, plan },
+      { status: 403 }
+    )
+  }
+
   const { repo_id, full_name } = await request.json()
   if (!repo_id || !full_name) {
     return NextResponse.json({ error: 'Missing repo_id or full_name' }, { status: 400 })
   }
 
-  const serviceClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const serviceClient = createServiceClient()
 
   const { error } = await serviceClient.from('connected_repos').upsert({
     user_id: user.id,
@@ -35,10 +41,7 @@ export async function DELETE(request: NextRequest) {
 
   const { repo_id } = await request.json()
 
-  const serviceClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const serviceClient = createServiceClient()
 
   await serviceClient.from('connected_repos')
     .delete()

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Github, ArrowRight, Star, GitCommit, Zap, Globe } from "lucide-react";
 import { LandingNav } from "@/components/landing-nav";
+import { createClient } from "@/lib/supabase/server";
 
 // ─── Logo (used in footer) ────────────────────────────────────────────────────
 function LogoMark({ size = 32 }: { size?: number }) {
@@ -217,13 +218,16 @@ function GridOverlay({ opacity = "08" }: { opacity?: string }) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default function LandingPage() {
+export default async function LandingPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div
       className="min-h-screen antialiased"
       style={{ background: "#FFFDF5", color: "#000000" }}
     >
-      <LandingNav />
+      <LandingNav isLoggedIn={!!user} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative py-24 md:py-32 px-6 overflow-hidden">

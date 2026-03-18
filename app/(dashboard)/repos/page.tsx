@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-const INSTALL_URL = 'https://github.com/apps/buildlog/installations/new'
+const INSTALL_URL = `https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME}/installations/new`
 
 interface Repo {
   id: number

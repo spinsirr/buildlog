@@ -1,17 +1,11 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { generatePost } from '@/lib/ai/generate-post'
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
+import { checkLimit } from '@/lib/subscription'
 
 function verifySignature(body: string, signature: string): boolean {
-  const secret = process.env.GITHUB_APP_WEBHOOK_SECRET!
+  const secret = process.env.GITHUB_WEBHOOK_SECRET!
   const hmac = createHmac('sha256', secret)
   const digest = Buffer.from('sha256=' + hmac.update(body).digest('hex'))
   const sig = Buffer.from(signature)
@@ -35,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   if (!installationId || !repoId) return NextResponse.json({ ok: true })
 
-  const supabase = getSupabase()
+  const supabase = createServiceClient()
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -79,6 +73,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (!sourceType) return NextResponse.json({ ok: true })
+
+  // Enforce free tier post limit
+  const { allowed } = await checkLimit(profile.id, 'posts')
+  if (!allowed) return NextResponse.json({ ok: true, skipped: 'post_limit_reached' })
 
   const content = await generatePost({
     sourceType,
