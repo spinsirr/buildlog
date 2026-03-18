@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getStripe } from '@/lib/stripe'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const origin = new URL(request.url).origin
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,8 +29,8 @@ export async function POST() {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: process.env.STRIPE_PRO_PRICE_ID!, quantity: 1 }],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?upgraded=1`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing`,
+    success_url: `${origin}/dashboard?upgraded=1`,
+    cancel_url: `${origin}/dashboard/billing`,
     subscription_data: { metadata: { user_id: user.id } },
   })
 
