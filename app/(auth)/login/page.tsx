@@ -79,7 +79,7 @@ export default async function LoginPage() {
               </span>
             </h1>
             <p
-              className="font-mono text-sm text-black/60 font-bold uppercase tracking-wide"
+              className="font-mono text-sm text-black font-bold uppercase tracking-wide"
               style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
             >
               Turn commits into content.
@@ -87,7 +87,7 @@ export default async function LoginPage() {
           </div>
 
           {/* Divider */}
-          <div className="border-t-2 border-black/10" />
+          <div className="border-t-2 border-black" />
 
           <form action="/api/auth/github" method="POST">
             <button
@@ -101,7 +101,7 @@ export default async function LoginPage() {
           </form>
 
           <p
-            className="text-center font-mono text-xs text-black/40 font-bold uppercase tracking-wider"
+            className="text-center font-mono text-xs text-black font-bold uppercase tracking-wider"
             style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
           >
             No password required
@@ -111,7 +111,7 @@ export default async function LoginPage() {
         {/* Card footer */}
         <div className="border-t-4 border-black px-6 py-3 bg-neo-muted/20 flex items-center justify-between">
           <span
-            className="font-mono text-xs font-bold uppercase tracking-widest text-black/50"
+            className="font-mono text-xs font-bold uppercase tracking-widest text-black"
             style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
           >
             Powered by Supabase
