@@ -27,6 +27,9 @@ const MARQUEE_ITEMS = [
   "Twitter · X",
   "LinkedIn",
   "Bluesky",
+  "Dev.to",
+  "Hashnode",
+  "Threads",
   "GitHub",
   "Build in Public",
   "Auto-Post",
@@ -173,7 +176,7 @@ const STEPS = [
     num: "03",
     Icon: Globe,
     title: "Publish everywhere",
-    desc: "Review drafts and ship to Twitter/X, LinkedIn, and Bluesky from one dashboard.",
+    desc: "Review drafts and ship to Twitter/X, LinkedIn, Bluesky, Dev.to, Hashnode, and Threads from one dashboard.",
     accent: "#FF6B6B",
   },
 ];
@@ -187,9 +190,9 @@ const STATS = [
     accent: "#FF6B6B",
   },
   {
-    num: "3",
+    num: "6",
     label: "platforms supported",
-    sub: "Twitter · LinkedIn · Bluesky",
+    sub: "Twitter · LinkedIn · Bluesky · More",
     accent: "#FFD93D",
   },
   {
