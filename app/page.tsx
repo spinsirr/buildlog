@@ -188,7 +188,7 @@ const STATS = [
     accent: "#FF6B6B",
   },
   {
-    num: "3+",
+    num: "3",
     label: "platforms supported",
     sub: "Twitter · LinkedIn · Bluesky",
     accent: "#FFD93D",
