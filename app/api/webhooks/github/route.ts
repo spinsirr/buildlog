@@ -20,7 +20,13 @@ export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = request.headers.get('x-hub-signature-256') ?? ''
   const event = request.headers.get('x-github-event') ?? ''
-  const repoId = request.headers.get('x-github-hook-installation-target-id')
+
+  const payload = JSON.parse(body)
+
+  // FIX: use payload.repository.id (not the wrong x-github-hook-installation-target-id header)
+  const repoId = payload.repository?.id
+
+  if (!repoId) return NextResponse.json({ ok: true })
 
   const supabase = getSupabase()
   const { data: repo } = await supabase
@@ -33,7 +39,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const payload = JSON.parse(body)
   let sourceType: 'commit' | 'pr' | 'release' | null = null
   let postData: Record<string, string | string[] | undefined> = {}
 
