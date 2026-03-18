@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { generatePost } from '@/lib/ai/generate-post'
 
 function getSupabase() {
@@ -10,10 +10,13 @@ function getSupabase() {
   )
 }
 
-function verifySignature(body: string, signature: string, secret: string): boolean {
+function verifySignature(body: string, signature: string): boolean {
+  const secret = process.env.GITHUB_APP_WEBHOOK_SECRET!
   const hmac = createHmac('sha256', secret)
-  const digest = 'sha256=' + hmac.update(body).digest('hex')
-  return digest === signature
+  const digest = Buffer.from('sha256=' + hmac.update(body).digest('hex'))
+  const sig = Buffer.from(signature)
+  if (digest.length !== sig.length) return false
+  return timingSafeEqual(digest, sig)
 }
 
 export async function POST(request: NextRequest) {
@@ -21,23 +24,36 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get('x-hub-signature-256') ?? ''
   const event = request.headers.get('x-github-event') ?? ''
 
+  if (!verifySignature(body, signature)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
   const payload = JSON.parse(body)
-
-  // FIX: use payload.repository.id (not the wrong x-github-hook-installation-target-id header)
+  const installationId = payload.installation?.id
   const repoId = payload.repository?.id
+  const repoFullName = payload.repository?.full_name
 
-  if (!repoId) return NextResponse.json({ ok: true })
+  if (!installationId || !repoId) return NextResponse.json({ ok: true })
 
   const supabase = getSupabase()
-  const { data: repo } = await supabase
-    .from('connected_repos')
-    .select('*')
-    .eq('github_repo_id', repoId)
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('github_installation_id', installationId)
     .single()
 
-  if (!repo || !verifySignature(body, signature, repo.webhook_secret ?? '')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!profile) return NextResponse.json({ ok: true })
+
+  const { data: repo } = await supabase
+    .from('connected_repos')
+    .select('id')
+    .eq('user_id', profile.id)
+    .eq('github_repo_id', repoId)
+    .eq('is_active', true)
+    .single()
+
+  if (!repo) return NextResponse.json({ ok: true })
 
   let sourceType: 'commit' | 'pr' | 'release' | null = null
   let postData: Record<string, string | string[] | undefined> = {}
@@ -66,12 +82,12 @@ export async function POST(request: NextRequest) {
 
   const content = await generatePost({
     sourceType,
-    repoName: repo.full_name,
+    repoName: repoFullName,
     data: postData,
   })
 
   await supabase.from('posts').insert({
-    user_id: repo.user_id,
+    user_id: profile.id,
     repo_id: repo.id,
     source_type: sourceType,
     source_data: payload,
