@@ -1,0 +1,18 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+
+export async function POST() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${process.env.NEXTAUTH_URL}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  })
+  if (error || !data.url) redirect('/login?error=oauth')
+  redirect(data.url)
+}
