@@ -32,7 +32,7 @@ export default async function DashboardLayout({
       <MobileSidebar profile={profile} />
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 border-r border-zinc-800/50 flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30">
+      <aside className="hidden md:flex w-60 border-r border-zinc-800/50 flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30 [view-transition-name:sidebar]">
         {/* Logo + Notifications */}
         <div className="h-14 flex items-center justify-between px-5 border-b border-zinc-800/50">
           <Link

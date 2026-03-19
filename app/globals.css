@@ -139,6 +139,12 @@
   }
 }
 
+/* Exclude sidebar from view transition crossfade — instant swap, no ghosting */
+::view-transition-old(sidebar),
+::view-transition-new(sidebar) {
+  animation: none;
+}
+
 /* Shimmer animation for AI elements */
 @keyframes shimmer {
   from { background-position: 100% center; }
