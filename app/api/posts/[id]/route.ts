@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { publishToTwitter } from "@/lib/twitter";
+import { publishToLinkedIn } from "@/lib/linkedin";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
@@ -28,7 +29,7 @@ export async function PATCH(
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
-    // If publishing, actually post to Twitter
+    // If publishing, post to connected platforms
     if (body.status === "published") {
       // Get the post content (use updated content if provided, otherwise fetch current)
       let content = body.content;
@@ -46,15 +47,58 @@ export async function PATCH(
         return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }
 
-      try {
-        const { tweetId, tweetUrl } = await publishToTwitter(user.id, content);
-        updates.published_at = new Date().toISOString();
-        updates.platform_post_id = tweetId;
-        updates.platform_post_url = tweetUrl;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to publish";
-        return NextResponse.json({ error: message }, { status: 502 });
+      // Check which platforms are connected
+      const { data: connections } = await supabase
+        .from("platform_connections")
+        .select("platform")
+        .eq("user_id", user.id);
+
+      const connectedPlatforms = new Set(connections?.map((c) => c.platform) ?? []);
+      const publishedPlatforms: string[] = [];
+      const errors: string[] = [];
+
+      // Publish to Twitter if connected
+      if (connectedPlatforms.has("twitter")) {
+        try {
+          const { tweetId, tweetUrl } = await publishToTwitter(user.id, content);
+          updates.platform_post_id = tweetId;
+          updates.platform_post_url = tweetUrl;
+          publishedPlatforms.push("twitter");
+        } catch (err) {
+          errors.push(`Twitter: ${err instanceof Error ? err.message : "Failed"}`);
+        }
       }
+
+      // Publish to LinkedIn if connected
+      if (connectedPlatforms.has("linkedin")) {
+        try {
+          const { postUrl } = await publishToLinkedIn(user.id, content);
+          // If no Twitter URL, use LinkedIn URL as the primary
+          if (!updates.platform_post_url) {
+            updates.platform_post_url = postUrl;
+          }
+          publishedPlatforms.push("linkedin");
+        } catch (err) {
+          errors.push(`LinkedIn: ${err instanceof Error ? err.message : "Failed"}`);
+        }
+      }
+
+      if (publishedPlatforms.length === 0 && connectedPlatforms.size > 0) {
+        return NextResponse.json(
+          { error: `Publishing failed: ${errors.join("; ")}` },
+          { status: 502 }
+        );
+      }
+
+      if (publishedPlatforms.length === 0) {
+        return NextResponse.json(
+          { error: "No platforms connected. Connect Twitter or LinkedIn in Settings." },
+          { status: 400 }
+        );
+      }
+
+      updates.published_at = new Date().toISOString();
+      updates.platforms = publishedPlatforms;
     }
 
     const { data: post, error } = await supabase

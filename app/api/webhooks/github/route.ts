@@ -4,6 +4,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { generatePost } from '@/lib/ai/generate-post'
 import { checkLimit } from '@/lib/subscription'
 import { publishToTwitter } from '@/lib/twitter'
+import { publishToLinkedIn } from '@/lib/linkedin'
 
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.GITHUB_WEBHOOK_SECRET!
@@ -123,25 +124,57 @@ export async function POST(request: NextRequest) {
   }).select('id').single()
 
   if (shouldPublish && post) {
-    try {
-      const { tweetId, tweetUrl } = await publishToTwitter(profile.id, content)
+    // Check which platforms are connected
+    const { data: connections } = await supabase
+      .from('platform_connections')
+      .select('platform')
+      .eq('user_id', profile.id)
+
+    const connectedPlatforms = new Set(connections?.map((c) => c.platform) ?? [])
+    const publishedPlatforms: string[] = []
+    let primaryPostUrl: string | null = null
+    let primaryPostId: string | null = null
+
+    // Publish to Twitter if connected
+    if (connectedPlatforms.has('twitter')) {
+      try {
+        const { tweetId, tweetUrl } = await publishToTwitter(profile.id, content)
+        primaryPostId = tweetId
+        primaryPostUrl = tweetUrl
+        publishedPlatforms.push('twitter')
+      } catch {
+        // Continue to try other platforms
+      }
+    }
+
+    // Publish to LinkedIn if connected
+    if (connectedPlatforms.has('linkedin')) {
+      try {
+        const { postId, postUrl } = await publishToLinkedIn(profile.id, content)
+        if (!primaryPostId) primaryPostId = postId
+        if (!primaryPostUrl) primaryPostUrl = postUrl
+        publishedPlatforms.push('linkedin')
+      } catch {
+        // Continue
+      }
+    }
+
+    if (publishedPlatforms.length > 0) {
       await supabase.from('posts').update({
-        platform_post_id: tweetId,
-        platform_post_url: tweetUrl,
-        platforms: ['twitter'],
+        platform_post_id: primaryPostId,
+        platform_post_url: primaryPostUrl,
+        platforms: publishedPlatforms,
       }).eq('id', post.id)
 
-      // Notify user about auto-published post
       await supabase.from('notifications').insert({
         user_id: profile.id,
-        message: `Post auto-published from ${sourceType} in ${repoFullName}`,
+        message: `Post auto-published to ${publishedPlatforms.join(', ')} from ${sourceType} in ${repoFullName}`,
         link: '/posts',
       })
-    } catch {
-      // If publishing fails, revert to draft so user can retry manually
+    } else {
+      // If all platforms failed, revert to draft
       await supabase.from('posts').update({ status: 'draft', published_at: null }).eq('id', post.id)
 
-      // Notify user about the failure
       await supabase.from('notifications').insert({
         user_id: profile.id,
         message: `Auto-publish failed for ${sourceType} in ${repoFullName}. Saved as draft.`,

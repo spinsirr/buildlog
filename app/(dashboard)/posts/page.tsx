@@ -337,17 +337,34 @@ function PostCard({
           </p>
         )}
 
-        {/* Published link */}
-        {post.status === "published" && post.platform_post_url && (
-          <a
-            href={post.platform_post_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-          >
-            <ExternalLink className="h-3 w-3" />
-            View on X
-          </a>
+        {/* Published link + platform badges */}
+        {post.status === "published" && (
+          <div className="flex items-center gap-3">
+            {post.platform_post_url && (
+              <a
+                href={post.platform_post_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" />
+                View post
+              </a>
+            )}
+            {post.platforms && post.platforms.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {post.platforms.map((p) => (
+                  <Badge
+                    key={p}
+                    variant="secondary"
+                    className={cn("text-[10px] border-0", platformConfig[p]?.color ?? "bg-zinc-800 text-zinc-500")}
+                  >
+                    {platformConfig[p]?.label ?? p}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <Separator className="bg-zinc-800" />
