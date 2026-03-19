@@ -54,8 +54,17 @@ export async function POST(request: NextRequest) {
 
   if (event === 'push' && payload.commits?.length > 0) {
     sourceType = 'commit'
-    const commit = payload.commits[0]
-    postData = { message: commit.message, url: commit.url }
+    const commits = payload.commits as { message: string; url: string }[]
+    if (commits.length === 1) {
+      postData = { message: commits[0].message, url: commits[0].url }
+    } else {
+      // Summarize multiple commits
+      const messages = commits.map((c) => c.message.split('\n')[0]).join('\n• ')
+      postData = {
+        message: `${commits.length} commits:\n• ${messages}`,
+        url: payload.compare ?? commits[0].url,
+      }
+    }
   } else if (event === 'pull_request' && payload.action === 'closed' && payload.pull_request?.merged) {
     sourceType = 'pr'
     postData = {

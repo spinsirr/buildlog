@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import useSWR from 'swr'
+import { useState, useTransition } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Circle, Loader2, XCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 type Connection = {
   platform: string
@@ -25,28 +26,25 @@ const PLATFORMS = [
   },
 ]
 
+const fetcher = (url: string) => fetch(url).then(r => r.json())
+
 export default function SettingsPage() {
-  const [connections, setConnections] = useState<Connection[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading, mutate } = useSWR<{ connections: Connection[] }>(
+    '/api/settings/connections',
+    fetcher
+  )
   const [isPending, startTransition] = useTransition()
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('/api/settings/connections')
-      .then((r) => r.json())
-      .then((data) => {
-        setConnections(data.connections ?? [])
-        setLoading(false)
-      })
-  }, [])
+  const connections = data?.connections ?? []
 
   function handleConnect(platform: string) {
     setActionPlatform(platform)
     startTransition(async () => {
-      const res = await fetch(`/api/auth/${platform}`, { method: 'POST', redirect: 'follow' })
-      // The API redirects to Twitter — follow it
-      if (res.redirected) {
-        window.location.href = res.url
+      const res = await fetch(`/api/auth/${platform}`, { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
       }
       setActionPlatform(null)
     })
@@ -56,14 +54,16 @@ export default function SettingsPage() {
     setActionPlatform(platform)
     startTransition(async () => {
       await fetch(`/api/auth/${platform}/disconnect`, { method: 'POST' })
-      setConnections((prev) =>
-        prev.map((c) => (c.platform === platform ? { ...c, connected: false, platform_username: null } : c))
-      )
+      mutate({
+        connections: connections.map(c =>
+          c.platform === platform ? { ...c, connected: false, platform_username: null } : c
+        ),
+      }, { revalidate: true })
       setActionPlatform(null)
     })
   }
 
-  const getConnection = (id: string) => connections.find((c) => c.platform === id)
+  const getConnection = (id: string) => connections.find(c => c.platform === id)
 
   return (
     <div className="flex flex-col gap-8">
@@ -77,7 +77,7 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading...

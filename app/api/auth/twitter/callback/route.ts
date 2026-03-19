@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(`${origin}/dashboard?error=twitter_denied`)
+    return NextResponse.redirect(`${origin}/settings?error=twitter_denied`)
   }
 
   const cookieStore = await cookies()
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   cookieStore.delete('twitter_code_verifier')
 
   if (!code || !state || !storedState || state !== storedState || !codeVerifier) {
-    return NextResponse.redirect(`${origin}/dashboard?error=twitter_invalid_state`)
+    return NextResponse.redirect(`${origin}/settings?error=twitter_invalid_state`)
   }
 
   const clientId = process.env.TWITTER_CLIENT_ID!
@@ -37,14 +37,14 @@ export async function GET(request: NextRequest) {
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      redirect_uri: `${origin}/auth/twitter/callback`,
+      redirect_uri: `${origin}/api/auth/twitter/callback`,
       code_verifier: codeVerifier,
     }),
   })
 
   if (!tokenRes.ok) {
     console.error('Twitter token exchange failed:', await tokenRes.text())
-    return NextResponse.redirect(`${origin}/dashboard?error=twitter_token_failed`)
+    return NextResponse.redirect(`${origin}/settings?error=twitter_token_failed`)
   }
 
   const tokens = await tokenRes.json()
@@ -76,5 +76,5 @@ export async function GET(request: NextRequest) {
     expires_at: expiresAt,
   }, { onConflict: 'user_id,platform' })
 
-  return NextResponse.redirect(`${origin}/dashboard?connected=twitter`)
+  return NextResponse.redirect(`${origin}/settings?connected=twitter`)
 }

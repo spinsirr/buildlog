@@ -1,11 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+'use client'
+
+import useSWR from 'swr'
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -17,15 +12,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import {
-  GitFork,
-  FileText,
-  Send,
-  Flame,
-  GitBranch,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { GitBranch, Pencil, Trash2 } from "lucide-react";
 
 const platformLabels: Record<string, string> = {
   twitter: "X",
@@ -33,47 +20,34 @@ const platformLabels: Record<string, string> = {
   bluesky: "Bluesky",
 };
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+interface DashboardData {
+  stats: { label: string; value: number }[]
+  posts: {
+    id: string
+    content: string
+    status: string
+    platforms: string[] | null
+    created_at: string
+    connected_repos: { full_name: string } | null
+  }[]
+}
 
-  const [{ data: repos }, { data: posts }] = await Promise.all([
-    supabase.from("connected_repos").select("*").eq("user_id", user!.id),
-    supabase
-      .from("posts")
-      .select("*, connected_repos(full_name)")
-      .eq("user_id", user!.id)
-      .order("created_at", { ascending: false })
-      .limit(5),
-  ]);
+const fetcher = (url: string) =>
+  fetch(url).then(r => {
+    if (!r.ok) throw new Error('Failed to load')
+    return r.json()
+  })
 
-  const drafts = posts?.filter((p) => p.status === "draft") ?? [];
-  const published = posts?.filter((p) => p.status === "published") ?? [];
+export default function DashboardPage() {
+  const { data, isLoading } = useSWR<DashboardData>('/api/dashboard', fetcher)
 
-  const stats = [
-    {
-      label: "Connected Repos",
-      value: repos?.length ?? 0,
-      icon: GitFork,
-    },
-    {
-      label: "Draft Posts",
-      value: drafts.length,
-      icon: FileText,
-    },
-    {
-      label: "Published",
-      value: published.length,
-      icon: Send,
-    },
-    {
-      label: "Streak Days",
-      value: 0,
-      icon: Flame,
-    },
-  ];
+  const stats = data?.stats ?? [
+    { label: "Connected Repos", value: 0 },
+    { label: "Draft Posts", value: 0 },
+    { label: "Published", value: 0 },
+    { label: "Streak Days", value: 0 },
+  ]
+  const posts = data?.posts ?? []
 
   return (
     <div className="flex flex-col gap-8">
@@ -89,49 +63,42 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((stat) => (
-          <Card
+          <div
             key={stat.label}
-            className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors"
+            className={cn(
+              "rounded-lg bg-zinc-900/50 px-4 py-3",
+              isLoading && "animate-pulse"
+            )}
           >
-            <CardContent className="pt-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs text-zinc-500 uppercase tracking-wider">
-                  {stat.label}
-                </span>
-                <stat.icon className="h-4 w-4 text-zinc-600" />
-              </div>
-              <p className="text-3xl font-bold text-zinc-50 font-mono">
-                {stat.value}
-              </p>
-            </CardContent>
-          </Card>
+            <span className="text-xs text-zinc-500">
+              {stat.label}
+            </span>
+            <p className="text-2xl font-semibold text-zinc-100 mt-1">
+              {isLoading ? "–" : stat.value}
+            </p>
+          </div>
         ))}
       </div>
 
       {/* Recent Posts */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-zinc-50">Recent Posts</CardTitle>
-              <CardDescription className="text-zinc-500">
-                Your latest generated drafts
-              </CardDescription>
-            </div>
-            {(posts?.length ?? 0) > 0 && (
-              <Link
-                href="/posts"
-                className="text-sm text-zinc-400 hover:text-zinc-50 transition-colors"
-              >
-                View all
-              </Link>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!posts || posts.length === 0 ? (
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-zinc-400">Recent Posts</h2>
+          {posts.length > 0 && (
+            <Link
+              href="/posts"
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              View all
+            </Link>
+          )}
+        </div>
+        <div className="rounded-lg bg-zinc-900/50 overflow-x-auto">
+          {isLoading ? (
+            <div className="py-12 text-center text-sm text-zinc-500">Loading…</div>
+          ) : posts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-4">
               <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center">
                 <GitBranch className="h-6 w-6 text-zinc-600" />
@@ -176,17 +143,14 @@ export default async function DashboardPage() {
                       </p>
                       {post.connected_repos && (
                         <span className="text-xs text-zinc-600 font-mono">
-                          {
-                            (post.connected_repos as { full_name: string })
-                              .full_name
-                          }
+                          {post.connected_repos.full_name}
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        {(post.platforms as string[] | null)?.length ? (
-                          (post.platforms as string[]).map((p) => (
+                        {post.platforms?.length ? (
+                          post.platforms.map((p) => (
                             <Badge
                               key={p}
                               variant="secondary"
@@ -239,8 +203,8 @@ export default async function DashboardPage() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { generateText } from 'ai'
-import { google } from '@ai-sdk/google'
 
 interface GeneratePostInput {
   sourceType: 'commit' | 'pr' | 'release'
@@ -21,7 +20,7 @@ export async function generatePost(input: GeneratePostInput): Promise<string> {
     : `Release: "${input.data.title}" in ${input.repoName}\n${input.data.description ?? ''}`
 
   const { text } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: 'google/gemini-2.5-flash',
     system: `You are a build-in-public assistant. Generate engaging, authentic social media posts about developer progress.
 Keep it concise (under 280 chars for Twitter), authentic, and developer-friendly.
 No excessive emojis. Focus on what was built, learned, or shipped. End with relevant hashtags like #buildinpublic #coding.`,

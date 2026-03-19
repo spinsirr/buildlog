@@ -39,12 +39,12 @@ export async function POST(request: NextRequest) {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
-    redirect_uri: `${origin}/auth/twitter/callback`,
+    redirect_uri: `${origin}/api/auth/twitter/callback`,
     scope: 'tweet.read tweet.write users.read offline.access',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   })
 
-  return NextResponse.redirect(`https://twitter.com/i/oauth2/authorize?${params}`)
+  return NextResponse.json({ url: `https://twitter.com/i/oauth2/authorize?${params}` })
 }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import useSWR, { mutate } from 'swr'
+import { useState } from 'react'
 
 const INSTALL_URL = `https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME}/installations/new`
 
@@ -12,21 +13,23 @@ interface Repo {
   connected: boolean
 }
 
+interface ReposData {
+  repos: Repo[]
+  needsInstall: boolean
+}
+
+const fetcher = (url: string) =>
+  fetch(url).then(r => {
+    if (!r.ok) return { repos: [], needsInstall: true }
+    return r.json()
+  })
+
 export default function ReposPage() {
-  const [repos, setRepos] = useState<Repo[]>([])
-  const [needsInstall, setNeedsInstall] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useSWR<ReposData>('/api/repos', fetcher)
   const [pending, setPending] = useState<number | null>(null)
 
-  useEffect(() => {
-    fetch('/api/repos')
-      .then(r => r.json())
-      .then(data => {
-        setRepos(data.repos ?? [])
-        setNeedsInstall(data.needsInstall ?? false)
-      })
-      .finally(() => setLoading(false))
-  }, [])
+  const repos = data?.repos ?? []
+  const needsInstall = data?.needsInstall ?? false
 
   async function toggle(repo: Repo) {
     setPending(repo.id)
@@ -43,50 +46,52 @@ export default function ReposPage() {
         body: JSON.stringify({ repo_id: repo.id, full_name: repo.full_name }),
       })
     }
-    setRepos(prev =>
-      prev.map(r => r.id === repo.id ? { ...r, connected: !r.connected } : r)
-    )
+    // Optimistic update + revalidate
+    mutate('/api/repos', {
+      ...data,
+      repos: repos.map(r => r.id === repo.id ? { ...r, connected: !r.connected } : r),
+    }, { revalidate: true })
     setPending(null)
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDF5] p-8">
-      <div className="max-w-2xl mx-auto flex flex-col gap-6">
+    <div>
+      <div className="flex flex-col gap-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold font-['Space_Grotesk'] text-black">Repos</h1>
-            <p className="font-mono text-sm text-black/60 mt-1">
+            <h1 className="text-2xl font-semibold text-zinc-100">Repos</h1>
+            <p className="text-sm text-zinc-400 mt-1">
               Connect GitHub repos to auto-generate posts from your activity.
             </p>
           </div>
           <a
             href={INSTALL_URL}
-            className="border-4 border-black bg-black text-white font-bold font-['Space_Grotesk'] px-4 py-2 shadow-[8px_8px_0px_0px_#000] hover:bg-white hover:text-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-100"
+            className="bg-zinc-100 text-zinc-900 font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors text-sm text-center shrink-0"
           >
             + Add repos
           </a>
         </div>
 
         {/* Loading */}
-        {loading && (
-          <div className="border-4 border-black bg-white p-8 shadow-[8px_8px_0px_0px_#000] text-center font-mono text-black/60">
+        {isLoading && (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8 text-center text-sm text-zinc-400">
             Loading…
           </div>
         )}
 
         {/* Needs install */}
-        {!loading && (needsInstall || repos.length === 0) && (
-          <div className="border-4 border-black bg-white p-10 shadow-[8px_8px_0px_0px_#000] flex flex-col items-center gap-4">
-            <p className="font-['Space_Grotesk'] font-bold text-xl text-black text-center">
+        {!isLoading && (needsInstall || repos.length === 0) && (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-10 flex flex-col items-center gap-4">
+            <p className="font-semibold text-lg text-zinc-100 text-center">
               Install the BuildLog GitHub App
             </p>
-            <p className="font-mono text-sm text-black/60 text-center">
+            <p className="text-sm text-zinc-400 text-center">
               Grant access to your repos so BuildLog can receive push, PR, and release events.
             </p>
             <a
               href={INSTALL_URL}
-              className="border-4 border-black bg-[#FFE135] text-black font-bold font-['Space_Grotesk'] px-6 py-3 shadow-[8px_8px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-100"
+              className="bg-zinc-100 text-zinc-900 font-medium px-5 py-2.5 rounded-lg hover:bg-white transition-colors text-sm"
             >
               Install GitHub App
             </a>
@@ -94,25 +99,25 @@ export default function ReposPage() {
         )}
 
         {/* Repo list */}
-        {!loading && repos.length > 0 && (
-          <div className="flex flex-col gap-3">
+        {!isLoading && repos.length > 0 && (
+          <div className="flex flex-col gap-2">
             {repos.map(repo => (
               <div
                 key={repo.id}
-                className="border-4 border-black bg-white p-4 shadow-[8px_8px_0px_0px_#000] flex items-center justify-between gap-4"
+                className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {repo.connected && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
                   )}
                   <div className="min-w-0">
-                    <p className="font-mono font-bold text-black truncate">{repo.full_name}</p>
+                    <p className="font-mono text-sm font-medium text-zinc-100 truncate">{repo.full_name}</p>
                     {repo.description && (
-                      <p className="font-mono text-xs text-black/50 truncate mt-0.5">{repo.description}</p>
+                      <p className="text-xs text-zinc-500 truncate mt-0.5">{repo.description}</p>
                     )}
                   </div>
                   {repo.private && (
-                    <span className="border-2 border-black font-mono text-[10px] px-1.5 py-0.5 shrink-0">
+                    <span className="text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 shrink-0">
                       private
                     </span>
                   )}
@@ -120,10 +125,10 @@ export default function ReposPage() {
                 <button
                   onClick={() => toggle(repo)}
                   disabled={pending === repo.id}
-                  className={`border-4 border-black font-bold font-['Space_Grotesk'] px-4 py-1.5 shrink-0 shadow-[4px_4px_0px_0px_#000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-100 disabled:opacity-50 ${
+                  className={`font-medium text-sm px-4 py-1.5 rounded-lg shrink-0 transition-colors disabled:opacity-50 ${
                     repo.connected
-                      ? 'bg-white text-black hover:bg-red-50'
-                      : 'bg-black text-white hover:bg-zinc-800'
+                      ? 'bg-zinc-800 text-zinc-300 hover:bg-red-950 hover:text-red-300'
+                      : 'bg-zinc-100 text-zinc-900 hover:bg-white'
                   }`}
                 >
                   {pending === repo.id ? '…' : repo.connected ? 'Disconnect' : 'Connect'}
