@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react";
 import { MobileSidebar } from "@/components/mobile-sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { StreakCounter } from "@/components/streak-counter";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default async function DashboardLayout({
   children,
@@ -32,14 +33,15 @@ export default async function DashboardLayout({
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-60 border-r border-zinc-800/50 flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30">
-        {/* Logo */}
-        <div className="h-14 flex items-center px-5 border-b border-zinc-800/50">
+        {/* Logo + Notifications */}
+        <div className="h-14 flex items-center justify-between px-5 border-b border-zinc-800/50">
           <Link
             href="/dashboard"
             className="font-semibold text-lg tracking-tight text-zinc-50"
           >
             Build<span className="text-purple-400">Log</span>
-</Link>
+          </Link>
+          <NotificationBell />
         </div>
 
         {/* Navigation */}

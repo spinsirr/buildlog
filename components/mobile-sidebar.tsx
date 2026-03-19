@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
+import { NotificationBell } from "@/components/notification-bell";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -115,10 +116,11 @@ export function MobileSidebar({
       {/* Mobile header logo */}
       <Link
         href="/dashboard"
-        className="font-semibold text-lg tracking-tight text-zinc-50 ml-2"
+        className="font-semibold text-lg tracking-tight text-zinc-50 ml-2 flex-1"
       >
         Build<span className="text-purple-400">Log</span>
       </Link>
+      <NotificationBell />
     </div>
   );
 }

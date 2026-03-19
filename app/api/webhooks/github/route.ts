@@ -130,10 +130,31 @@ export async function POST(request: NextRequest) {
         platform_post_url: tweetUrl,
         platforms: ['twitter'],
       }).eq('id', post.id)
+
+      // Notify user about auto-published post
+      await supabase.from('notifications').insert({
+        user_id: profile.id,
+        message: `Post auto-published from ${sourceType} in ${repoFullName}`,
+        link: '/posts',
+      })
     } catch {
       // If publishing fails, revert to draft so user can retry manually
       await supabase.from('posts').update({ status: 'draft', published_at: null }).eq('id', post.id)
+
+      // Notify user about the failure
+      await supabase.from('notifications').insert({
+        user_id: profile.id,
+        message: `Auto-publish failed for ${sourceType} in ${repoFullName}. Saved as draft.`,
+        link: '/posts',
+      })
     }
+  } else if (post) {
+    // Notify user about new draft created from webhook
+    await supabase.from('notifications').insert({
+      user_id: profile.id,
+      message: `New draft created from ${sourceType} in ${repoFullName}`,
+      link: '/posts',
+    })
   }
 
   return NextResponse.json({ ok: true })
