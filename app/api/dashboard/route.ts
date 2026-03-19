@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [{ data: repos }, { data: posts }] = await Promise.all([
+    const [{ data: repos }, { data: posts }, { count: connectionsCount }] = await Promise.all([
       supabase.from("connected_repos").select("*").eq("user_id", user.id),
       supabase
         .from("posts")
@@ -20,6 +20,10 @@ export async function GET() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase
+        .from("platform_connections")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id),
     ]);
 
     const drafts = posts?.filter((p) => p.status === "draft") ?? [];
@@ -33,6 +37,7 @@ export async function GET() {
         { label: "Streak Days", value: 0 },
       ],
       posts: posts ?? [],
+      connections: connectionsCount ?? 0,
     });
   } catch {
     return NextResponse.json(

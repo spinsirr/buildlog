@@ -3,6 +3,7 @@
 import useSWR from 'swr'
 import { useState } from 'react'
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GitBranch, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Check, Circle, GitBranch, Loader2, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
 
 const platformLabels: Record<string, string> = {
   twitter: "X",
@@ -32,6 +33,7 @@ interface DashboardData {
     created_at: string
     connected_repos: { full_name: string } | null
   }[]
+  connections: number
 }
 
 const fetcher = (url: string) =>
@@ -65,6 +67,12 @@ export default function DashboardPage() {
     { label: "Streak Days", value: 0 },
   ]
   const posts = data?.posts ?? []
+  const connections = data?.connections ?? 0
+
+  const hasRepos = (stats.find(s => s.label === 'Connected Repos')?.value ?? 0) > 0
+  const hasSocial = connections > 0
+  const hasPosts = posts.length > 0
+  const showOnboarding = !isLoading && (!hasRepos || !hasSocial || !hasPosts)
 
   return (
     <div className="flex flex-col gap-8">
@@ -98,6 +106,53 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Onboarding */}
+      {showOnboarding && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-zinc-50 text-base">Get started</CardTitle>
+            <CardDescription className="text-zinc-500">
+              Complete these steps to start building in public.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              { done: hasRepos, label: 'Connect a GitHub repo', href: '/repos', icon: GitBranch },
+              { done: hasSocial, label: 'Connect a social account', href: '/settings', icon: Share2 },
+              { done: hasPosts, label: 'Generate your first post', href: '/posts', icon: Sparkles },
+            ].map((step, i) => (
+              <Link
+                key={i}
+                href={step.href}
+                className={cn(
+                  'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                  step.done
+                    ? 'border-zinc-800 bg-zinc-900/50'
+                    : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
+                )}
+              >
+                <div className={cn(
+                  'h-7 w-7 rounded-full flex items-center justify-center shrink-0',
+                  step.done ? 'bg-emerald-500/10' : 'bg-zinc-800'
+                )}>
+                  {step.done ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  ) : (
+                    <Circle className="h-3.5 w-3.5 text-zinc-600" />
+                  )}
+                </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <step.icon className={cn('h-4 w-4 shrink-0', step.done ? 'text-zinc-600' : 'text-zinc-400')} />
+                  <span className={cn('text-sm', step.done ? 'text-zinc-600 line-through' : 'text-zinc-300')}>
+                    {step.label}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Posts */}
       <div>
@@ -219,6 +274,7 @@ export default function DashboardPage() {
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" />
                           )}
+                        </button>
                       </div>
                     </TableCell>
                   </TableRow>
