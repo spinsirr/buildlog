@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const [isPending, startTransition] = useTransition()
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
+  const [connectError, setConnectError] = useState<string | null>(null)
 
   const connections = data?.connections ?? []
   const tone = profileData?.tone ?? 'casual'
@@ -91,6 +92,11 @@ export default function SettingsPage() {
     startTransition(async () => {
       const res = await fetch(`/api/auth/${platform}`, { method: 'POST' })
       const data = await res.json()
+      if (!res.ok) {
+        setConnectError(data.error ?? 'Failed to connect platform')
+        setActionPlatform(null)
+        return
+      }
       if (data.url) {
         window.location.href = data.url
       }
@@ -125,6 +131,18 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {connectError && (
+            <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+              {connectError}
+              <button
+                type="button"
+                onClick={() => setConnectError(null)}
+                className="ml-2 underline hover:no-underline text-xs"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           {isLoading ? (
             <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
               <Loader2 className="h-4 w-4 animate-spin" />

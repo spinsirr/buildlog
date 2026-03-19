@@ -157,5 +157,21 @@ Output ONLY the post text, nothing else.`,
     prompt: `Generate a build-in-public post for this ${input.sourceType}:\n${context}`,
   })
 
-  return text.trim()
+  let result = text.trim()
+
+  // Hard character limit enforcement
+  // Twitter: 280 chars, LinkedIn: 3000 chars. Default to Twitter limit.
+  const TWITTER_LIMIT = 280
+  const LINKEDIN_LIMIT = 3000
+
+  // For now, enforce Twitter limit since it's the strictest and posts go to
+  // both platforms. If the text exceeds 280 chars, truncate at the last word
+  // boundary and append an ellipsis.
+  if (result.length > TWITTER_LIMIT) {
+    const truncated = result.slice(0, TWITTER_LIMIT - 1)
+    const lastSpace = truncated.lastIndexOf(' ')
+    result = lastSpace > 0 ? truncated.slice(0, lastSpace) + '\u2026' : truncated + '\u2026'
+  }
+
+  return result
 }

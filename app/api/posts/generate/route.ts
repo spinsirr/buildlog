@@ -2,11 +2,21 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { generatePost } from '@/lib/ai/generate-post'
+import { checkLimit } from '@/lib/subscription'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Enforce post limit
+  const { allowed, limit, count } = await checkLimit(user.id, 'posts', supabase)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Monthly post limit reached (${count}/${limit}). Upgrade to Pro for unlimited posts.` },
+      { status: 403 }
+    )
+  }
 
   const { sourceType, repoName, data, repoId } = await request.json()
 

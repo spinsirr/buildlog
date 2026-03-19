@@ -27,10 +27,6 @@ function LogoMark({ size = 32 }: { size?: number }) {
 const MARQUEE_ITEMS = [
   "Twitter · X",
   "LinkedIn",
-  "Bluesky",
-  "Dev.to",
-  "Hashnode",
-  "Threads",
   "GitHub",
   "Build in Public",
   "Auto-Post",
@@ -177,7 +173,7 @@ const STEPS = [
     num: "03",
     Icon: Globe,
     title: "Publish everywhere",
-    desc: "Review drafts and ship to Twitter/X, LinkedIn, Bluesky, Dev.to, Hashnode, and Threads from one dashboard.",
+    desc: "Review drafts and ship to Twitter/X and LinkedIn from one dashboard. More platforms coming soon.",
     accent: "#FF6B6B",
   },
 ];
@@ -191,15 +187,15 @@ const STATS = [
     accent: "#FF6B6B",
   },
   {
-    num: "6",
+    num: "2",
     label: "platforms supported",
-    sub: "Twitter · LinkedIn · Bluesky · More",
+    sub: "Twitter · LinkedIn — more coming soon",
     accent: "#FFD93D",
   },
   {
     num: "∞",
     label: "posts per month",
-    sub: "unlimited on all plans",
+    sub: "unlimited on Pro plan",
     accent: "#C4B5FD",
   },
 ];

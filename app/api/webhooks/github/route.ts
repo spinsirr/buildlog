@@ -5,6 +5,7 @@ import { generatePost } from '@/lib/ai/generate-post'
 import { checkLimit } from '@/lib/subscription'
 import { publishToTwitter } from '@/lib/twitter'
 import { publishToLinkedIn } from '@/lib/linkedin'
+import { logger } from '@/lib/logger'
 
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.GITHUB_WEBHOOK_SECRET!
@@ -100,6 +101,31 @@ export async function POST(request: NextRequest) {
 
   if (!sourceType) return NextResponse.json({ ok: true })
 
+  // Deduplicate: check if we already processed this event
+  const deliveryId = request.headers.get('x-github-delivery')
+  let dedupeKey: string | null = null
+  if (deliveryId) {
+    dedupeKey = `github:${deliveryId}`
+  } else if (sourceType === 'commit' && payload.head_commit?.id) {
+    dedupeKey = `commit:${payload.head_commit.id}`
+  } else if (sourceType === 'pr' && payload.pull_request?.id) {
+    dedupeKey = `pr:${payload.pull_request.id}`
+  } else if (sourceType === 'release' && payload.release?.id) {
+    dedupeKey = `release:${payload.release.id}`
+  }
+
+  if (dedupeKey) {
+    const { count } = await supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', profile.id)
+      .contains('source_data', { _dedupe_key: dedupeKey })
+    if ((count ?? 0) > 0) {
+      logger.webhook.info`Skipping duplicate webhook event: ${dedupeKey}`
+      return NextResponse.json({ ok: true, skipped: 'duplicate' })
+    }
+  }
+
   // Enforce free tier post limit
   const { allowed } = await checkLimit(profile.id, 'posts', supabase)
   if (!allowed) return NextResponse.json({ ok: true, skipped: 'post_limit_reached' })
@@ -113,11 +139,13 @@ export async function POST(request: NextRequest) {
 
   const shouldPublish = profile.auto_publish === true
 
+  const sourceData = dedupeKey ? { ...payload, _dedupe_key: dedupeKey } : payload
+
   const { data: post } = await supabase.from('posts').insert({
     user_id: profile.id,
     repo_id: repo.id,
     source_type: sourceType,
-    source_data: payload,
+    source_data: sourceData,
     content,
     status: shouldPublish ? 'published' : 'draft',
     published_at: shouldPublish ? new Date().toISOString() : null,
@@ -132,6 +160,7 @@ export async function POST(request: NextRequest) {
 
     const connectedPlatforms = new Set(connections?.map((c) => c.platform) ?? [])
     const publishedPlatforms: string[] = []
+    const failedPlatforms: Record<string, string> = {}
     let primaryPostUrl: string | null = null
     let primaryPostId: string | null = null
 
@@ -142,8 +171,10 @@ export async function POST(request: NextRequest) {
         primaryPostId = tweetId
         primaryPostUrl = tweetUrl
         publishedPlatforms.push('twitter')
-      } catch {
-        // Continue to try other platforms
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        logger.webhook.error`Twitter publish failed for post ${post.id}: ${message}`
+        failedPlatforms.twitter = message
       }
     }
 
@@ -154,26 +185,43 @@ export async function POST(request: NextRequest) {
         if (!primaryPostId) primaryPostId = postId
         if (!primaryPostUrl) primaryPostUrl = postUrl
         publishedPlatforms.push('linkedin')
-      } catch {
-        // Continue
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        logger.webhook.error`LinkedIn publish failed for post ${post.id}: ${message}`
+        failedPlatforms.linkedin = message
       }
     }
 
+    const hasFailures = Object.keys(failedPlatforms).length > 0
+
     if (publishedPlatforms.length > 0) {
+      // Partial or full success
+      const status = hasFailures ? 'partial' : 'published'
       await supabase.from('posts').update({
         platform_post_id: primaryPostId,
         platform_post_url: primaryPostUrl,
         platforms: publishedPlatforms,
+        status,
+        ...(hasFailures ? { publish_error: JSON.stringify(failedPlatforms) } : {}),
       }).eq('id', post.id)
+
+      const failedNames = Object.keys(failedPlatforms)
+      const notifMessage = hasFailures
+        ? `Post published to ${publishedPlatforms.join(', ')} but failed on ${failedNames.join(', ')} from ${sourceType} in ${repoFullName}`
+        : `Post auto-published to ${publishedPlatforms.join(', ')} from ${sourceType} in ${repoFullName}`
 
       await supabase.from('notifications').insert({
         user_id: profile.id,
-        message: `Post auto-published to ${publishedPlatforms.join(', ')} from ${sourceType} in ${repoFullName}`,
+        message: notifMessage,
         link: '/posts',
       })
     } else {
-      // If all platforms failed, revert to draft
-      await supabase.from('posts').update({ status: 'draft', published_at: null }).eq('id', post.id)
+      // All platforms failed — revert to draft and record errors
+      await supabase.from('posts').update({
+        status: 'draft',
+        published_at: null,
+        publish_error: JSON.stringify(failedPlatforms),
+      }).eq('id', post.id)
 
       await supabase.from('notifications').insert({
         user_id: profile.id,

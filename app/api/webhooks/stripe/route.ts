@@ -50,9 +50,30 @@ export async function POST(req: NextRequest) {
       // subscription webhook above handles the actual activation,
       // but sync customer_id to profile in case it wasn't set yet
       if (session.customer && session.metadata?.user_id) {
+        const userId = session.metadata.user_id
+        const customerId = session.customer as string
+
+        // Validate: verify the user_id actually exists in our database
+        // and that this customer_id isn't already linked to a different user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, stripe_customer_id')
+          .eq('id', userId)
+          .single()
+
+        if (!profile) {
+          // user_id from metadata doesn't match any profile — skip
+          break
+        }
+
+        // If profile already has a different customer_id, don't overwrite
+        if (profile.stripe_customer_id && profile.stripe_customer_id !== customerId) {
+          break
+        }
+
         await supabase.from('profiles')
-          .update({ stripe_customer_id: session.customer as string })
-          .eq('id', session.metadata.user_id)
+          .update({ stripe_customer_id: customerId })
+          .eq('id', userId)
       }
       break
     }
