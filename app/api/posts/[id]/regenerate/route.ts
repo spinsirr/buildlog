@@ -40,9 +40,16 @@ export async function POST(
     const repoName = Array.isArray(repos) ? repos[0]?.full_name ?? "unknown" : repos?.full_name ?? "unknown";
     const sourceData = (post.source_data ?? {}) as Record<string, string>;
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('tone')
+      .eq('id', user.id)
+      .single()
+
     const content = await generatePost({
       sourceType: post.source_type as "commit" | "pr" | "release",
       repoName,
+      tone: profile?.tone ?? 'casual',
       data: {
         message: sourceData.message,
         title: sourceData.title,

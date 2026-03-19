@@ -14,9 +14,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const content = await generatePost({ sourceType, repoName, data })
-
   const serviceClient = createServiceClient()
+
+  const { data: profile } = await serviceClient
+    .from('profiles')
+    .select('tone')
+    .eq('id', user.id)
+    .single()
+
+  const content = await generatePost({ sourceType, repoName, data, tone: profile?.tone ?? 'casual' })
   const { data: post, error } = await serviceClient.from('posts').insert({
     user_id: user.id,
     repo_id: repoId ?? null,

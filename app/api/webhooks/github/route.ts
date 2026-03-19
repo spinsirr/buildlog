@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, tone')
     .eq('github_installation_id', installationId)
     .single()
 
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
   const content = await generatePost({
     sourceType,
     repoName: repoFullName,
+    tone: profile.tone ?? 'casual',
     data: postData,
   })
 

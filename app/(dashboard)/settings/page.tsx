@@ -5,7 +5,8 @@ import { useState, useTransition } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
+import { Check, Loader2 } from 'lucide-react'
 
 type Connection = {
   platform: string
@@ -28,15 +29,41 @@ const PLATFORMS = [
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
+const TONES = [
+  { value: 'casual', label: 'Casual', description: 'Friendly and conversational' },
+  { value: 'professional', label: 'Professional', description: 'Polished and authoritative' },
+  { value: 'technical', label: 'Technical', description: 'Detailed with terminology' },
+] as const
+
 export default function SettingsPage() {
   const { data, isLoading, mutate } = useSWR<{ connections: Connection[] }>(
     '/api/settings/connections',
     fetcher
   )
+  const { data: profileData, mutate: mutateProfile } = useSWR<{ tone: string; auto_publish: boolean }>(
+    '/api/settings/profile',
+    fetcher
+  )
   const [isPending, startTransition] = useTransition()
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
+  const [savingTone, setSavingTone] = useState(false)
 
   const connections = data?.connections ?? []
+  const tone = profileData?.tone ?? 'casual'
+
+  async function handleToneChange(newTone: string) {
+    setSavingTone(true)
+    try {
+      await fetch('/api/settings/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tone: newTone }),
+      })
+      mutateProfile({ ...profileData!, tone: newTone }, { revalidate: false })
+    } finally {
+      setSavingTone(false)
+    }
+  }
 
   function handleConnect(platform: string) {
     setActionPlatform(platform)
@@ -145,6 +172,37 @@ export default function SettingsPage() {
           <p className="text-xs text-zinc-600 pt-1">
             LinkedIn and Bluesky support coming soon.
           </p>
+        </CardContent>
+      </Card>
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-zinc-50">Post Tone</CardTitle>
+          <CardDescription className="text-zinc-500">
+            Choose the voice for your generated posts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {TONES.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              disabled={savingTone}
+              onClick={() => handleToneChange(t.value)}
+              className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors text-left ${
+                tone === t.value
+                  ? 'border-indigo-500/50 bg-indigo-500/5'
+                  : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50'
+              }`}
+            >
+              <div>
+                <Label className={`text-sm font-medium ${tone === t.value ? 'text-indigo-400' : 'text-zinc-200'}`}>
+                  {t.label}
+                </Label>
+                <p className="text-xs text-zinc-500 mt-0.5">{t.description}</p>
+              </div>
+              {tone === t.value && <Check className="h-4 w-4 text-indigo-400 shrink-0" />}
+            </button>
+          ))}
         </CardContent>
       </Card>
     </div>
