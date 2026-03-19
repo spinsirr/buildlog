@@ -51,27 +51,42 @@ export async function POST(request: NextRequest) {
   if (!repo) return NextResponse.json({ ok: true })
 
   let sourceType: 'commit' | 'pr' | 'release' | null = null
-  let postData: Record<string, string | string[] | undefined> = {}
+  let postData: Record<string, string | string[] | number | undefined> = {}
 
   if (event === 'push' && payload.commits?.length > 0) {
     sourceType = 'commit'
-    const commits = payload.commits as { message: string; url: string }[]
+    const commits = payload.commits as { message: string; url: string; added: string[]; removed: string[]; modified: string[] }[]
     if (commits.length === 1) {
-      postData = { message: commits[0].message, url: commits[0].url }
+      const c = commits[0]
+      const allFiles = [...(c.added ?? []), ...(c.modified ?? []), ...(c.removed ?? [])]
+      postData = {
+        message: c.message,
+        url: c.url,
+        files: allFiles,
+        filesChanged: allFiles.length,
+      }
     } else {
       // Summarize multiple commits
-      const messages = commits.map((c) => c.message.split('\n')[0]).join('\n• ')
+      const messages = commits.map((c) => c.message.split('\n')[0]).join('\n- ')
+      const allFiles = commits.flatMap((c) => [...(c.added ?? []), ...(c.modified ?? []), ...(c.removed ?? [])])
+      const uniqueFiles = [...new Set(allFiles)]
       postData = {
-        message: `${commits.length} commits:\n• ${messages}`,
+        message: `${commits.length} commits:\n- ${messages}`,
         url: payload.compare ?? commits[0].url,
+        files: uniqueFiles,
+        filesChanged: uniqueFiles.length,
       }
     }
   } else if (event === 'pull_request' && payload.action === 'closed' && payload.pull_request?.merged) {
     sourceType = 'pr'
+    const pr = payload.pull_request
     postData = {
-      title: payload.pull_request.title,
-      description: payload.pull_request.body,
-      url: payload.pull_request.html_url,
+      title: pr.title,
+      description: pr.body,
+      url: pr.html_url,
+      additions: pr.additions,
+      deletions: pr.deletions,
+      filesChanged: pr.changed_files,
     }
   } else if (event === 'release' && payload.action === 'published') {
     sourceType = 'release'
