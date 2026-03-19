@@ -7,6 +7,12 @@ import { publishToTwitter } from '@/lib/twitter'
 import { publishToLinkedIn } from '@/lib/linkedin'
 import { logger } from '@/lib/logger'
 
+// Allow up to 30s for AI generation + publishing
+export const maxDuration = 30
+
+// Max webhook body size: 1MB
+const MAX_BODY_SIZE = 1024 * 1024
+
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.GITHUB_WEBHOOK_SECRET!
   const hmac = createHmac('sha256', secret)
@@ -17,7 +23,17 @@ function verifySignature(body: string, signature: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  // Fix #9: Body size limit
+  const contentLength = request.headers.get('content-length')
+  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
+
   const body = await request.text()
+  if (body.length > MAX_BODY_SIZE) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
+
   const signature = request.headers.get('x-hub-signature-256') ?? ''
   const event = request.headers.get('x-github-event') ?? ''
 
@@ -25,6 +41,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
+  // Fix #6: Top-level try/catch — always return 200 to prevent GitHub retries
+  try {
+    return await handleWebhook(request, body, event)
+  } catch (err) {
+    logger.webhook.error`Unhandled webhook error: ${err instanceof Error ? err.message : String(err)}`
+    // Return 200 to prevent GitHub from retrying and creating duplicate posts
+    return NextResponse.json({ ok: true, error: 'internal' })
+  }
+}
+
+async function handleWebhook(request: NextRequest, body: string, event: string) {
   const payload = JSON.parse(body)
   const installationId = payload.installation?.id
   const repoId = payload.repository?.id
@@ -139,13 +166,41 @@ export async function POST(request: NextRequest) {
 
   const shouldPublish = profile.auto_publish === true
 
-  const sourceData = dedupeKey ? { ...payload, _dedupe_key: dedupeKey } : payload
+  // Fix #10: Strip GitHub payload to only essential fields instead of storing the entire payload
+  const strippedData: Record<string, unknown> = {
+    repo: repoFullName,
+    source_type: sourceType,
+  }
+  if (dedupeKey) strippedData._dedupe_key = dedupeKey
+
+  if (sourceType === 'commit') {
+    const headCommit = payload.head_commit
+    strippedData.commit_sha = headCommit?.id
+    strippedData.message = postData.message
+    strippedData.author = headCommit?.author?.name ?? headCommit?.author?.username
+    strippedData.branch = (payload.ref as string)?.replace('refs/heads/', '')
+    strippedData.url = postData.url
+    strippedData.files_changed = postData.filesChanged
+    if (Array.isArray(postData.files)) {
+      strippedData.files_summary = (postData.files as string[]).slice(0, 20)
+    }
+  } else if (sourceType === 'pr') {
+    strippedData.pr_number = payload.pull_request?.number
+    strippedData.title = postData.title
+    strippedData.url = postData.url
+    strippedData.additions = postData.additions
+    strippedData.deletions = postData.deletions
+    strippedData.files_changed = postData.filesChanged
+  } else if (sourceType === 'release') {
+    strippedData.tag = postData.title
+    strippedData.url = postData.url
+  }
 
   const { data: post } = await supabase.from('posts').insert({
     user_id: profile.id,
     repo_id: repo.id,
     source_type: sourceType,
-    source_data: sourceData,
+    source_data: strippedData,
     content,
     status: shouldPublish ? 'published' : 'draft',
     published_at: shouldPublish ? new Date().toISOString() : null,
@@ -202,7 +257,7 @@ export async function POST(request: NextRequest) {
         platform_post_url: primaryPostUrl,
         platforms: publishedPlatforms,
         status,
-        ...(hasFailures ? { publish_error: JSON.stringify(failedPlatforms) } : {}),
+        ...(hasFailures ? { publish_results: { errors: failedPlatforms, published: publishedPlatforms } } : {}),
       }).eq('id', post.id)
 
       const failedNames = Object.keys(failedPlatforms)
@@ -220,7 +275,7 @@ export async function POST(request: NextRequest) {
       await supabase.from('posts').update({
         status: 'draft',
         published_at: null,
-        publish_error: JSON.stringify(failedPlatforms),
+        publish_results: { errors: failedPlatforms, published: publishedPlatforms },
       }).eq('id', post.id)
 
       await supabase.from('notifications').insert({

@@ -31,7 +31,12 @@ import {
   AtSign,
 } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+// Fix #13: Fetcher checks HTTP errors instead of silently returning error responses as data
+const fetcher = async (url: string) => {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to fetch: ${r.status}`);
+  return r.json();
+};
 
 const platformConfig: Record<string, { label: string; color: string }> = {
   twitter: { label: "X", color: "bg-zinc-800 text-zinc-300" },
@@ -86,12 +91,14 @@ function PostPreviewModal({
   onOpenChange,
   onConfirmPublish,
   busy,
+  connectedPlatforms,
 }: {
   content: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirmPublish: () => void;
   busy: boolean;
+  connectedPlatforms: string[];
 }) {
   const charCount = content.length;
   const overLimit = charCount > 280;
@@ -201,7 +208,7 @@ function PostPreviewModal({
           <button
             type="button"
             onClick={onConfirmPublish}
-            disabled={busy || overLimit}
+            disabled={busy || overLimit || connectedPlatforms.length === 0}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
           >
             {busy ? (
@@ -209,7 +216,9 @@ function PostPreviewModal({
             ) : (
               <Send className="h-3 w-3" />
             )}
-            Publish to X
+            {connectedPlatforms.length === 0
+              ? "No platforms connected"
+              : `Publish to ${connectedPlatforms.map(p => platformConfig[p]?.label ?? p).join(" + ")}`}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -222,11 +231,13 @@ function PostCard({
   onUpdate,
   onDelete,
   onRegenerate,
+  connectedPlatforms,
 }: {
   post: Post;
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onRegenerate: (id: string) => Promise<void>;
+  connectedPlatforms: string[];
 }) {
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
@@ -456,7 +467,13 @@ function PostCard({
                 onClick={handlePublish}
                 disabled={busy || overLimit}
                 className="p-1.5 rounded-md text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                title={overLimit ? "Post exceeds 280 characters" : "Publish to X"}
+                title={
+                  overLimit
+                    ? "Post exceeds 280 characters"
+                    : connectedPlatforms.length === 0
+                      ? "No platforms connected"
+                      : `Publish to ${connectedPlatforms.map(p => platformConfig[p]?.label ?? p).join(" + ")}`
+                }
               >
                 {busy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -478,12 +495,14 @@ function PostCard({
         </div>
       </CardContent>
 
+      {/* Fix #12: Preview shows current edited content, not last-saved version */}
       <PostPreviewModal
-        content={post.content}
+        content={editing ? editContent : post.content}
         open={showPreview}
         onOpenChange={setShowPreview}
         onConfirmPublish={handleConfirmPublish}
         busy={busy}
+        connectedPlatforms={connectedPlatforms}
       />
     </Card>
   );
@@ -598,6 +617,16 @@ export default function PostsPage() {
     fetcher
   );
 
+  // Fetch connected platforms to show accurate publish button labels
+  const { data: connectionsData } = useSWR<{ connections: { platform: string; connected: boolean }[] }>(
+    "/api/settings/connections",
+    fetcher,
+    { dedupingInterval: 30000 }
+  );
+  const connectedPlatforms = (connectionsData?.connections ?? [])
+    .filter(c => c.connected)
+    .map(c => c.platform);
+
   async function handleUpdate(id: string, updates: Record<string, unknown>) {
     mutate(
       (current) => {
@@ -677,6 +706,7 @@ export default function PostsPage() {
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
+            connectedPlatforms={connectedPlatforms}
           />
         ))}
       </div>

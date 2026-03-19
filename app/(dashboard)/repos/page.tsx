@@ -3,7 +3,10 @@
 import useSWR, { mutate } from 'swr'
 import { useState } from 'react'
 
-const INSTALL_URL = `https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_NAME}/installations/new`
+const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
+const INSTALL_URL = GITHUB_APP_NAME
+  ? `https://github.com/apps/${GITHUB_APP_NAME}/installations/new`
+  : null
 
 interface Repo {
   id: number
@@ -18,11 +21,11 @@ interface ReposData {
   needsInstall: boolean
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then(r => {
-    if (!r.ok) return { repos: [], needsInstall: true }
-    return r.json()
-  })
+const fetcher = async (url: string) => {
+  const r = await fetch(url)
+  if (!r.ok) return { repos: [], needsInstall: true }
+  return r.json()
+}
 
 export default function ReposPage() {
   const { data, isLoading } = useSWR<ReposData>('/api/repos', fetcher)
@@ -65,12 +68,18 @@ export default function ReposPage() {
               Connect GitHub repos to auto-generate posts from your activity.
             </p>
           </div>
-          <a
-            href={INSTALL_URL}
-            className="bg-zinc-100 text-zinc-900 font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors text-sm text-center shrink-0"
-          >
-            + Add repos
-          </a>
+          {INSTALL_URL ? (
+            <a
+              href={INSTALL_URL}
+              className="bg-zinc-100 text-zinc-900 font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors text-sm text-center shrink-0"
+            >
+              + Add repos
+            </a>
+          ) : (
+            <span className="text-sm text-red-400">
+              GitHub App not configured
+            </span>
+          )}
         </div>
 
         {/* Loading */}
@@ -89,12 +98,18 @@ export default function ReposPage() {
             <p className="text-sm text-zinc-400 text-center">
               Grant access to your repos so BuildLog can receive push, PR, and release events.
             </p>
-            <a
-              href={INSTALL_URL}
-              className="bg-zinc-100 text-zinc-900 font-medium px-5 py-2.5 rounded-lg hover:bg-white transition-colors text-sm"
-            >
-              Install GitHub App
-            </a>
+            {INSTALL_URL ? (
+              <a
+                href={INSTALL_URL}
+                className="bg-zinc-100 text-zinc-900 font-medium px-5 py-2.5 rounded-lg hover:bg-white transition-colors text-sm"
+              >
+                Install GitHub App
+              </a>
+            ) : (
+              <p className="text-sm text-red-400">
+                GitHub App is not configured. Set NEXT_PUBLIC_GITHUB_APP_NAME in your environment.
+              </p>
+            )}
           </div>
         )}
 

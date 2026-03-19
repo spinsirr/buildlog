@@ -2,11 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { publishToTwitter } from "@/lib/twitter";
 import { publishToLinkedIn } from "@/lib/linkedin";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
+
+// Allow up to 30s for publishing to external platforms
+export const maxDuration = 30;
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limit: 5 publish/update actions per minute per IP
+  const rateLimited = rateLimit(request, { limit: 5, windowMs: 60_000, key: 'publish' });
+  if (rateLimited) return rateLimited;
+
   try {
     const supabase = await createClient();
     const {
@@ -31,20 +39,30 @@ export async function PATCH(
 
     // If publishing, post to connected platforms
     if (body.status === "published") {
-      // Get the post content (use updated content if provided, otherwise fetch current)
-      let content = body.content;
-      if (!content) {
-        const { data: existing } = await supabase
-          .from("posts")
-          .select("content")
-          .eq("id", id)
-          .eq("user_id", user.id)
-          .single();
-        content = existing?.content;
+      // Fix #14: Prevent re-publishing already-published posts
+      const { data: currentPost } = await supabase
+        .from("posts")
+        .select("content, status")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!currentPost) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
       }
 
+      if (currentPost.status === "published") {
+        return NextResponse.json(
+          { error: "Post is already published" },
+          { status: 400 }
+        );
+      }
+
+      // Get the post content (use updated content if provided, otherwise use current)
+      const content = body.content ?? currentPost.content;
+
       if (!content) {
-        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+        return NextResponse.json({ error: "Post has no content" }, { status: 400 });
       }
 
       // Check which platforms are connected

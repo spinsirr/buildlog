@@ -3,8 +3,16 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { generatePost } from '@/lib/ai/generate-post'
 import { checkLimit } from '@/lib/subscription'
+import { rateLimit } from '@/lib/rate-limit'
+
+// Allow up to 30s for AI generation
+export const maxDuration = 30
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 AI generations per minute per IP
+  const rateLimited = rateLimit(request, { limit: 10, windowMs: 60_000, key: 'generate' })
+  if (rateLimited) return rateLimited
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

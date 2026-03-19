@@ -11,11 +11,11 @@ import {
   FileText,
   GitFork,
   Settings,
-  Flame,
   LogOut,
   Menu,
 } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
+import { StreakCounter } from "@/components/streak-counter";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -76,14 +76,8 @@ export function MobileSidebar({
             ))}
           </nav>
 
-          {/* Streak */}
-          <div className="px-3 pb-3">
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800">
-              <Flame className="h-4 w-4 text-orange-400" />
-              <span className="text-sm font-medium text-zinc-300">0</span>
-              <span className="text-xs text-zinc-500">day streak</span>
-            </div>
-          </div>
+          {/* Streak — uses same live data as desktop sidebar */}
+          <StreakCounter />
 
           <Separator className="bg-zinc-800/50" />
 

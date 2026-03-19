@@ -38,7 +38,11 @@ const PLATFORMS = [
   },
 ]
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = async (url: string) => {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`Failed to fetch: ${r.status}`)
+  return r.json()
+}
 
 const TONES = [
   { value: 'casual', label: 'Casual', description: 'Friendly and conversational' },

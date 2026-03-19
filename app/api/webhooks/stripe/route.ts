@@ -23,6 +23,14 @@ export async function POST(req: NextRequest) {
       const userId = sub.metadata.user_id
       if (!userId) break
 
+      // Verify user_id exists in our database before trusting metadata
+      const { data: subProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+      if (!subProfile) break
+
       await supabase.from('subscriptions').upsert({
         user_id: userId,
         stripe_subscription_id: sub.id,
@@ -38,6 +46,14 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object as Stripe.Subscription
       const userId = sub.metadata.user_id
       if (!userId) break
+
+      // Verify user_id exists before trusting metadata
+      const { data: delProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+      if (!delProfile) break
 
       await supabase.from('subscriptions')
         .update({ status: 'canceled', updated_at: new Date().toISOString() })

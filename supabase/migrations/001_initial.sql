@@ -20,12 +20,17 @@ create table public.connected_repos (
 );
 
 -- Platform connections
+-- NOTE: OAuth tokens (access_token, refresh_token) are stored as plaintext.
+-- This is a known limitation. For production hardening, consider encrypting
+-- these values at the application layer using AES-256-GCM before storage
+-- and decrypting on read. Supabase column-level encryption (pgsodium/vault)
+-- is another option. See: https://supabase.com/docs/guides/database/vault
 create table public.platform_connections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.profiles(id) on delete cascade not null,
   platform text not null, -- 'twitter', 'linkedin', 'bluesky'
-  access_token text not null,
-  refresh_token text,
+  access_token text not null, -- TODO: encrypt at rest (see note above)
+  refresh_token text, -- TODO: encrypt at rest (see note above)
   platform_user_id text,
   platform_username text,
   expires_at timestamptz,

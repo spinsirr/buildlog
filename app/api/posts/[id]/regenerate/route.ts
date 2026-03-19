@@ -1,11 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { generatePost } from "@/lib/ai/generate-post";
+import { rateLimit } from "@/lib/rate-limit";
+
+// Allow up to 30s for AI regeneration
+export const maxDuration = 30;
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limit: 10 regenerations per minute per IP
+  const rateLimited = rateLimit(request, { limit: 10, windowMs: 60_000, key: 'regenerate' });
+  if (rateLimited) return rateLimited;
+
   try {
     const supabase = await createClient();
     const {

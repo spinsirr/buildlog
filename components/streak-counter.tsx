@@ -3,7 +3,11 @@
 import useSWR from "swr";
 import { Flame } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = async (url: string) => {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to fetch: ${r.status}`);
+  return r.json();
+};
 
 export function StreakCounter() {
   const { data } = useSWR<{ stats: { label: string; value: number }[] }>(
