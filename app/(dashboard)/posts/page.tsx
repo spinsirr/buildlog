@@ -9,6 +9,13 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Pencil,
   Send,
   Trash2,
@@ -19,6 +26,9 @@ import {
   RefreshCw,
   Plus,
   ExternalLink,
+  Eye,
+  Hash,
+  AtSign,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -42,6 +52,171 @@ type Post = {
   published_at: string | null;
 };
 
+function renderPreviewContent(content: string) {
+  // Render hashtags and @mentions with color highlights
+  return content.split(/(\s)/).map((word, i) => {
+    if (word.match(/^#\w+/)) {
+      return (
+        <span key={i} className="text-sky-400">
+          {word}
+        </span>
+      );
+    }
+    if (word.match(/^@\w+/)) {
+      return (
+        <span key={i} className="text-sky-400">
+          {word}
+        </span>
+      );
+    }
+    if (word.match(/^https?:\/\//)) {
+      return (
+        <span key={i} className="text-sky-400 underline">
+          {word.length > 23 ? `${word.slice(0, 23)}...` : word}
+        </span>
+      );
+    }
+    return word;
+  });
+}
+
+function PostPreviewModal({
+  content,
+  open,
+  onOpenChange,
+  onConfirmPublish,
+  busy,
+}: {
+  content: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirmPublish: () => void;
+  busy: boolean;
+}) {
+  const charCount = content.length;
+  const overLimit = charCount > 280;
+  const remaining = 280 - charCount;
+
+  // Progress ring for character count
+  const pct = Math.min(charCount / 280, 1);
+  const radius = 10;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - pct);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800">
+        <DialogHeader>
+          <DialogTitle className="text-zinc-50">Post Preview</DialogTitle>
+        </DialogHeader>
+
+        {/* Tweet-style preview */}
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-zinc-800" />
+            <div>
+              <div className="text-sm font-semibold text-zinc-200">You</div>
+              <div className="text-xs text-zinc-500">@your_handle</div>
+            </div>
+          </div>
+          <p className="text-[15px] text-zinc-200 leading-relaxed whitespace-pre-wrap">
+            {renderPreviewContent(content)}
+          </p>
+          <div className="text-xs text-zinc-600">
+            {new Date().toLocaleDateString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </div>
+        </div>
+
+        {/* Character count bar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Hash className="h-3 w-3 text-zinc-500" />
+              <span className="text-xs text-zinc-500">
+                {(content.match(/#\w+/g) || []).length} hashtags
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <AtSign className="h-3 w-3 text-zinc-500" />
+              <span className="text-xs text-zinc-500">
+                {(content.match(/@\w+/g) || []).length} mentions
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {remaining <= 20 && (
+              <span
+                className={cn(
+                  "text-xs font-mono",
+                  overLimit ? "text-red-400" : remaining <= 0 ? "text-red-400" : "text-amber-400"
+                )}
+              >
+                {remaining}
+              </span>
+            )}
+            <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+              <circle
+                cx="12"
+                cy="12"
+                r={radius}
+                fill="none"
+                stroke="rgb(63 63 70)"
+                strokeWidth="2"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r={radius}
+                fill="none"
+                stroke={overLimit ? "rgb(248 113 113)" : remaining <= 20 ? "rgb(251 191 36)" : "rgb(99 102 241)"}
+                strokeWidth="2"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {overLimit && (
+          <div className="text-xs text-red-400 bg-red-500/10 rounded-md px-3 py-2">
+            Post exceeds the 280 character limit by {charCount - 280} characters. Edit the post before publishing.
+          </div>
+        )}
+
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-zinc-400 text-xs font-medium hover:text-zinc-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirmPublish}
+            disabled={busy || overLimit}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+          >
+            {busy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Send className="h-3 w-3" />
+            )}
+            Publish to X
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PostCard({
   post,
   onUpdate,
@@ -57,6 +232,7 @@ function PostCard({
   const [editContent, setEditContent] = useState(post.content);
   const [busy, setBusy] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const commitHash =
     post.source_data &&
@@ -76,9 +252,14 @@ function PostCard({
   }
 
   async function handlePublish() {
+    setShowPreview(true);
+  }
+
+  async function handleConfirmPublish() {
     setBusy(true);
     try {
       await onUpdate(post.id, { status: "published" });
+      setShowPreview(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to publish");
     }
@@ -244,6 +425,17 @@ function PostCard({
             {post.status === "draft" && (
               <button
                 type="button"
+                onClick={() => setShowPreview(true)}
+                disabled={busy}
+                className="p-1.5 rounded-md text-zinc-500 hover:text-sky-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                title="Preview post"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {post.status === "draft" && (
+              <button
+                type="button"
                 onClick={handlePublish}
                 disabled={busy || overLimit}
                 className="p-1.5 rounded-md text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
@@ -268,6 +460,14 @@ function PostCard({
           </div>
         </div>
       </CardContent>
+
+      <PostPreviewModal
+        content={post.content}
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        onConfirmPublish={handleConfirmPublish}
+        busy={busy}
+      />
     </Card>
   );
 }
