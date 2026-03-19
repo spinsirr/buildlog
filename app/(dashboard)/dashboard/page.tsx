@@ -1,6 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
+import { useState } from 'react'
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { GitBranch, Pencil, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { GitBranch, Loader2, Pencil, Trash2 } from "lucide-react";
 
 const platformLabels: Record<string, string> = {
   twitter: "X",
@@ -39,7 +41,22 @@ const fetcher = (url: string) =>
   })
 
 export default function DashboardPage() {
-  const { data, isLoading } = useSWR<DashboardData>('/api/dashboard', fetcher)
+  const { data, isLoading, mutate } = useSWR<DashboardData>('/api/dashboard', fetcher)
+  const router = useRouter()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function handleDelete(postId: string) {
+    if (!confirm('Delete this post?')) return
+    setDeletingId(postId)
+    try {
+      const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' })
+      if (res.ok) {
+        mutate(data ? { ...data, posts: data.posts.filter(p => p.id !== postId) } : undefined, { revalidate: true })
+      }
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const stats = data?.stats ?? [
     { label: "Connected Repos", value: 0 },
@@ -186,16 +203,22 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
+                          onClick={() => router.push(`/posts?edit=${post.id}`)}
                           className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
-                          className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                          onClick={() => handleDelete(post.id)}
+                          disabled={deletingId === post.id}
+                          className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                          {deletingId === post.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
                       </div>
                     </TableCell>
                   </TableRow>
