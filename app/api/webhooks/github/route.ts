@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { generatePost } from '@/lib/ai/generate-post'
 import { checkLimit } from '@/lib/subscription'
+import { publishToTwitter } from '@/lib/twitter'
 
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.GITHUB_WEBHOOK_SECRET!
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, tone')
+    .select('id, tone, auto_publish')
     .eq('github_installation_id', installationId)
     .single()
 
@@ -94,14 +95,31 @@ export async function POST(request: NextRequest) {
     data: postData,
   })
 
-  await supabase.from('posts').insert({
+  const shouldPublish = profile.auto_publish === true
+
+  const { data: post } = await supabase.from('posts').insert({
     user_id: profile.id,
     repo_id: repo.id,
     source_type: sourceType,
     source_data: payload,
     content,
-    status: 'draft',
-  })
+    status: shouldPublish ? 'published' : 'draft',
+    published_at: shouldPublish ? new Date().toISOString() : null,
+  }).select('id').single()
+
+  if (shouldPublish && post) {
+    try {
+      const { tweetId, tweetUrl } = await publishToTwitter(profile.id, content)
+      await supabase.from('posts').update({
+        platform_post_id: tweetId,
+        platform_post_url: tweetUrl,
+        platforms: ['twitter'],
+      }).eq('id', post.id)
+    } catch {
+      // If publishing fails, revert to draft so user can retry manually
+      await supabase.from('posts').update({ status: 'draft', published_at: null }).eq('id', post.id)
+    }
+  }
 
   return NextResponse.json({ ok: true })
 }

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Check, Loader2 } from 'lucide-react'
 
 type Connection = {
@@ -50,6 +51,16 @@ export default function SettingsPage() {
 
   const connections = data?.connections ?? []
   const tone = profileData?.tone ?? 'casual'
+  const autoPublish = profileData?.auto_publish ?? false
+
+  async function handleAutoPublishToggle(checked: boolean) {
+    mutateProfile({ ...profileData!, auto_publish: checked }, { revalidate: false })
+    await fetch('/api/settings/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto_publish: checked }),
+    })
+  }
 
   async function handleToneChange(newTone: string) {
     setSavingTone(true)
@@ -203,6 +214,30 @@ export default function SettingsPage() {
               {tone === t.value && <Check className="h-4 w-4 text-indigo-400 shrink-0" />}
             </button>
           ))}
+        </CardContent>
+      </Card>
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-zinc-50">Auto-Publish</CardTitle>
+          <CardDescription className="text-zinc-500">
+            Automatically publish posts when generated from webhooks instead of saving as drafts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
+            <div>
+              <Label className="text-sm font-medium text-zinc-200">
+                Publish immediately
+              </Label>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Posts from GitHub events will be published right away.
+              </p>
+            </div>
+            <Switch
+              checked={autoPublish}
+              onCheckedChange={handleAutoPublishToggle}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
