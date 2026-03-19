@@ -139,6 +139,15 @@
   }
 }
 
+/* Shimmer animation for AI elements */
+@keyframes shimmer {
+  from { background-position: 100% center; }
+  to   { background-position: 0% center; }
+}
+.animate-shimmer {
+  animation: shimmer var(--shimmer-duration, 2s) linear infinite;
+}
+
 /* Neo-brutalism keyframes */
 @keyframes spin-slow {
   from { transform: rotate(0deg); }

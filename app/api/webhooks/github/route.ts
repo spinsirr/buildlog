@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
   if (!sourceType) return NextResponse.json({ ok: true })
 
   // Enforce free tier post limit
-  const { allowed } = await checkLimit(profile.id, 'posts')
+  const { allowed } = await checkLimit(profile.id, 'posts', supabase)
   if (!allowed) return NextResponse.json({ ok: true, skipped: 'post_limit_reached' })
 
   const content = await generatePost({

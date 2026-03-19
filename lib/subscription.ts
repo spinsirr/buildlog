@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { PLANS, type Plan } from '@/lib/plans'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-export async function getUserPlan(userId: string): Promise<Plan> {
-  const supabase = await createClient()
+export async function getUserPlan(userId: string, client?: SupabaseClient): Promise<Plan> {
+  const supabase = client ?? await createClient()
   const { data } = await supabase
     .from('subscriptions')
     .select('status')
@@ -17,10 +19,11 @@ type LimitType = 'posts' | 'repos' | 'platforms'
 
 export async function checkLimit(
   userId: string,
-  type: LimitType
+  type: LimitType,
+  client?: SupabaseClient
 ): Promise<{ allowed: boolean; plan: Plan; count: number; limit: number }> {
-  const supabase = await createClient()
-  const plan = await getUserPlan(userId)
+  const supabase = client ?? await createClient()
+  const plan = await getUserPlan(userId, supabase)
   const limits = PLANS[plan]
 
   let count = 0

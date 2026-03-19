@@ -3,22 +3,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import {
-  LayoutDashboard,
-  FileText,
-  GitFork,
-  Settings,
-  Flame,
-  LogOut,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { MobileSidebar } from "@/components/mobile-sidebar";
-
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/posts", label: "Posts", icon: FileText },
-  { href: "/repos", label: "Repos", icon: GitFork },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+import { SidebarNav } from "@/components/sidebar-nav";
+import { StreakCounter } from "@/components/streak-counter";
 
 export default async function DashboardLayout({
   children,
@@ -55,27 +43,10 @@ export default async function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50 transition-colors"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <SidebarNav />
 
         {/* Streak counter */}
-        <div className="px-3 pb-3">
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800">
-            <Flame className="h-4 w-4 text-orange-400" />
-            <span className="text-sm font-medium text-zinc-300">0</span>
-            <span className="text-xs text-zinc-500">day streak</span>
-          </div>
-        </div>
+        <StreakCounter />
 
         <Separator className="bg-zinc-800/50" />
 

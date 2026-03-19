@@ -44,7 +44,8 @@ export async function proxy(request: NextRequest) {
 
   log.debug`${pathname} — user: ${user?.id ?? 'anonymous'}`
 
-  if (!user && pathname.startsWith('/dashboard')) {
+  const protectedPaths = ['/dashboard', '/posts', '/repos', '/settings']
+  if (!user && protectedPaths.some(p => pathname.startsWith(p))) {
     log.info`Unauthenticated request to ${pathname} — redirecting to /login`
     return NextResponse.redirect(new URL('/login', request.url))
   }

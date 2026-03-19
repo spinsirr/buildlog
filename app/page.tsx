@@ -292,7 +292,7 @@ export default async function LandingPage() {
               Start for free <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="https://github.com"
+              href="https://github.com/spencerzhao2/buildlog"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-[#FFFDF5] font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
