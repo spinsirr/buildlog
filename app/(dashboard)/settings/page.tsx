@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Check, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
 
 type Connection = {
   platform: string
@@ -36,12 +39,39 @@ const PLATFORMS = [
       </svg>
     ),
   },
+  {
+    id: 'bluesky',
+    label: 'Bluesky',
+    description: 'Post build updates to the Bluesky network',
+    icon: (
+      <svg viewBox="0 0 600 530" className="h-5 w-5 fill-current" aria-hidden="true">
+        <path d="m135.72 44.03c66.496 49.921 138.02 151.14 164.28 205.46 26.262-54.316 97.782-155.54 164.28-205.46 47.98-36.021 125.72-63.892 125.72 24.795 0 17.712-10.155 148.79-16.111 170.07-20.703 73.984-96.144 92.854-163.25 81.433 117.3 19.964 147.14 86.092 82.697 152.22-122.39 125.59-175.91-31.511-189.63-71.766-2.514-7.3797-3.6904-10.832-3.7077-7.8964-0.0174-2.9357-1.1937 0.51669-3.7077 7.8964-13.714 40.255-67.233 197.36-189.63 71.766-64.444-66.128-34.605-132.26 82.697-152.22-67.108 11.421-142.55-7.4491-163.25-81.433-5.9562-21.282-16.111-152.36-16.111-170.07 0-88.687 77.742-60.816 125.72-24.795z" />
+      </svg>
+    ),
+  },
 ]
 
-const fetcher = async (url: string) => {
-  const r = await fetch(url)
-  if (!r.ok) throw new Error(`Failed to fetch: ${r.status}`)
-  return r.json()
+async function fetchConnections() {
+  const { data: rows } = await supabase
+    .from('platform_connections')
+    .select('platform, platform_username')
+  const connections = ['twitter', 'linkedin', 'bluesky'].map(platform => {
+    const row = rows?.find(r => r.platform === platform)
+    return { platform, platform_username: row?.platform_username ?? null, connected: !!row }
+  })
+  return { connections }
+}
+
+async function fetchProfile() {
+  const { data } = await supabase
+    .from('profiles')
+    .select('tone, auto_publish, email_notifications')
+    .single()
+  return {
+    tone: data?.tone ?? 'casual',
+    auto_publish: data?.auto_publish ?? false,
+    email_notifications: data?.email_notifications ?? true,
+  }
 }
 
 const TONES = [
@@ -52,39 +82,50 @@ const TONES = [
 
 export default function SettingsPage() {
   const { data, isLoading, mutate } = useSWR<{ connections: Connection[] }>(
-    '/api/settings/connections',
-    fetcher
+    'settings-connections',
+    fetchConnections
   )
-  const { data: profileData, mutate: mutateProfile } = useSWR<{ tone: string; auto_publish: boolean }>(
-    '/api/settings/profile',
-    fetcher
+  const { data: profileData, mutate: mutateProfile } = useSWR<{ tone: string; auto_publish: boolean; email_notifications: boolean }>(
+    'settings-profile',
+    fetchProfile
   )
   const [isPending, startTransition] = useTransition()
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
+  const [showBskyForm, setShowBskyForm] = useState(false)
+  const [bskyHandle, setBskyHandle] = useState('')
+  const [bskyPassword, setBskyPassword] = useState('')
+  const [bskyLoading, setBskyLoading] = useState(false)
 
   const connections = data?.connections ?? []
   const tone = profileData?.tone ?? 'casual'
   const autoPublish = profileData?.auto_publish ?? false
+  const emailNotifications = profileData?.email_notifications ?? true
 
   async function handleAutoPublishToggle(checked: boolean) {
     mutateProfile({ ...profileData!, auto_publish: checked }, { revalidate: false })
-    await fetch('/api/settings/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ auto_publish: checked }),
-    })
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('profiles').update({ auto_publish: checked }).eq('id', user.id)
+    }
+  }
+
+  async function handleEmailNotificationsToggle(checked: boolean) {
+    mutateProfile({ ...profileData!, email_notifications: checked }, { revalidate: false })
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('profiles').update({ email_notifications: checked }).eq('id', user.id)
+    }
   }
 
   async function handleToneChange(newTone: string) {
     setSavingTone(true)
     try {
-      await fetch('/api/settings/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tone: newTone }),
-      })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('profiles').update({ tone: newTone }).eq('id', user.id)
+      }
       mutateProfile({ ...profileData!, tone: newTone }, { revalidate: false })
     } finally {
       setSavingTone(false)
@@ -92,9 +133,23 @@ export default function SettingsPage() {
   }
 
   function handleConnect(platform: string) {
+    if (platform === 'bluesky') {
+      setShowBskyForm(true)
+      return
+    }
     setActionPlatform(platform)
     startTransition(async () => {
-      const res = await fetch(`/api/auth/${platform}`, { method: 'POST' })
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/${platform}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
       const data = await res.json()
       if (!res.ok) {
         setConnectError(data.error ?? 'Failed to connect platform')
@@ -108,10 +163,51 @@ export default function SettingsPage() {
     })
   }
 
+  async function handleBskySubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setBskyLoading(true)
+    setConnectError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/bluesky`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ handle: bskyHandle, appPassword: bskyPassword }),
+        },
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        setConnectError(data.error ?? 'Failed to connect Bluesky')
+        return
+      }
+      setShowBskyForm(false)
+      setBskyHandle('')
+      setBskyPassword('')
+      mutate()
+    } finally {
+      setBskyLoading(false)
+    }
+  }
+
   function handleDisconnect(platform: string) {
     setActionPlatform(platform)
     startTransition(async () => {
-      await fetch(`/api/auth/${platform}/disconnect`, { method: 'POST' })
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-disconnect/${platform}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
       mutate({
         connections: connections.map(c =>
           c.platform === platform ? { ...c, connected: false, platform_username: null } : c
@@ -157,64 +253,124 @@ export default function SettingsPage() {
               const conn = getConnection(platform.id)
               const connected = conn?.connected ?? false
               const busy = actionPlatform === platform.id && isPending
+              const isBsky = platform.id === 'bluesky'
 
               return (
-                <div
-                  key={platform.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-zinc-300">{platform.icon}</div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-zinc-200">
-                          {platform.label}
-                        </span>
-                        {connected ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
-                            Connected
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-zinc-800 text-zinc-500 border-0 text-[10px]">
-                            Not connected
-                          </Badge>
-                        )}
+                <div key={platform.id} className="space-y-3">
+                  <div
+                    className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-zinc-300">{platform.icon}</div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-zinc-200">
+                            {platform.label}
+                          </span>
+                          {connected ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
+                              Connected
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-zinc-800 text-zinc-500 border-0 text-[10px]">
+                              Not connected
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          {connected && conn?.platform_username
+                            ? `@${conn.platform_username}`
+                            : platform.description}
+                        </p>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">
-                        {connected && conn?.platform_username
-                          ? `@${conn.platform_username}`
-                          : platform.description}
-                      </p>
                     </div>
+
+                    <Button
+                      size="sm"
+                      variant={connected ? 'outline' : 'default'}
+                      disabled={busy || (isBsky && bskyLoading)}
+                      onClick={() => connected ? handleDisconnect(platform.id) : handleConnect(platform.id)}
+                      className={
+                        connected
+                          ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white border-0'
+                      }
+                    >
+                      {busy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : connected ? (
+                        'Disconnect'
+                      ) : (
+                        'Connect'
+                      )}
+                    </Button>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant={connected ? 'outline' : 'default'}
-                    disabled={busy}
-                    onClick={() => connected ? handleDisconnect(platform.id) : handleConnect(platform.id)}
-                    className={
-                      connected
-                        ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white border-0'
-                    }
-                  >
-                    {busy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : connected ? (
-                      'Disconnect'
-                    ) : (
-                      'Connect'
-                    )}
-                  </Button>
+                  {isBsky && showBskyForm && !connected && (
+                    <form
+                      onSubmit={handleBskySubmit}
+                      className="ml-8 p-4 rounded-lg border border-zinc-800 bg-zinc-900/50 space-y-3"
+                    >
+                      <div className="space-y-2">
+                        <label htmlFor="bsky-handle" className="text-xs font-medium text-zinc-300">
+                          Handle
+                        </label>
+                        <input
+                          id="bsky-handle"
+                          type="text"
+                          placeholder="yourname.bsky.social"
+                          value={bskyHandle}
+                          onChange={(e) => setBskyHandle(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="bsky-password" className="text-xs font-medium text-zinc-300">
+                          App Password
+                        </label>
+                        <input
+                          id="bsky-password"
+                          type="password"
+                          placeholder="xxxx-xxxx-xxxx-xxxx"
+                          value={bskyPassword}
+                          onChange={(e) => setBskyPassword(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+                      <p className="text-[11px] text-zinc-500">
+                        Use an App Password from Settings &rarr; App Passwords in the Bluesky app.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={bskyLoading}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+                        >
+                          {bskyLoading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Connect'
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowBskyForm(false)}
+                          className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               )
             })
           )}
-
-          <p className="text-xs text-zinc-600 pt-1">
-            Bluesky support coming soon.
-          </p>
         </CardContent>
       </Card>
       <Card className="bg-zinc-900 border-zinc-800">
@@ -268,6 +424,30 @@ export default function SettingsPage() {
             <Switch
               checked={autoPublish}
               onCheckedChange={handleAutoPublishToggle}
+            />
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <CardTitle className="text-zinc-50">Email Notifications</CardTitle>
+          <CardDescription className="text-zinc-500">
+            Receive email alerts when posts are published or drafts are created.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
+            <div>
+              <Label className="text-sm font-medium text-zinc-200">
+                Send email notifications
+              </Label>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Get notified via email in addition to in-app notifications.
+              </p>
+            </div>
+            <Switch
+              checked={emailNotifications}
+              onCheckedChange={handleEmailNotificationsToggle}
             />
           </div>
         </CardContent>

@@ -14,8 +14,10 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { NotificationBell } from "@/components/notification-bell";
 import { StreakCounter } from "@/components/streak-counter";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -27,10 +29,17 @@ const navItems = [
 export function MobileSidebar({
   profile,
 }: {
-  profile: { github_avatar_url?: string; github_username?: string } | null;
+  profile: { github_avatar_url?: string | null; github_username?: string | null } | null;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   return (
     <div className="md:hidden flex items-center h-14 px-4 border-b border-zinc-800/50 bg-zinc-950 sticky top-0 z-40">
@@ -93,15 +102,14 @@ export function MobileSidebar({
               <span className="text-sm text-zinc-400 truncate flex-1">
                 {profile?.github_username ?? "User"}
               </span>
-              <form action="/api/auth/logout" method="POST">
-                <button
-                  type="submit"
-                  className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                  title="Sign out"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </form>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </SheetContent>

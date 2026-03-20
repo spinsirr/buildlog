@@ -30,13 +30,29 @@ import {
   Hash,
   AtSign,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-// Fix #13: Fetcher checks HTTP errors instead of silently returning error responses as data
-const fetcher = async (url: string) => {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`Failed to fetch: ${r.status}`);
-  return r.json();
-};
+const supabase = createClient();
+
+async function fetchPosts() {
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("*, connected_repos(full_name)")
+    .order("created_at", { ascending: false });
+  return { posts: posts ?? [] };
+}
+
+async function fetchConnections() {
+  const { data: rows } = await supabase
+    .from("platform_connections")
+    .select("platform, platform_username");
+
+  const connections = ["twitter", "linkedin", "bluesky"].map((platform) => {
+    const row = rows?.find((r: { platform: string }) => r.platform === platform);
+    return { platform, platform_username: row?.platform_username ?? null, connected: !!row };
+  });
+  return { connections };
+}
 
 const platformConfig: Record<string, { label: string; color: string }> = {
   twitter: { label: "X", color: "bg-zinc-800 text-zinc-300" },
@@ -517,17 +533,14 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     if (!content.trim()) return;
     setBusy(true);
-    const res = await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: content.trim() }),
+    const { data, error } = await supabase.functions.invoke("create-post", {
+      body: { content: content.trim() },
     });
-    if (res.ok) {
+    if (error) {
+      alert(data?.error || "Failed to create post");
+    } else {
       setContent("");
       onCreated();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error || "Failed to create post");
     }
     setBusy(false);
   }
@@ -613,14 +626,14 @@ function PostsSkeleton() {
 export default function PostsPage() {
   const [showNewPost, setShowNewPost] = useState(false);
   const { data, error, isLoading, mutate } = useSWR<{ posts: Post[] }>(
-    "/api/posts",
-    fetcher
+    "posts",
+    fetchPosts
   );
 
   // Fetch connected platforms to show accurate publish button labels
   const { data: connectionsData } = useSWR<{ connections: { platform: string; connected: boolean }[] }>(
-    "/api/settings/connections",
-    fetcher,
+    "connections",
+    fetchConnections,
     { dedupingInterval: 30000 }
   );
   const connectedPlatforms = (connectionsData?.connections ?? [])
@@ -628,6 +641,7 @@ export default function PostsPage() {
     .map(c => c.platform);
 
   async function handleUpdate(id: string, updates: Record<string, unknown>) {
+    // Optimistic update
     mutate(
       (current) => {
         if (!current) return current;
@@ -640,21 +654,24 @@ export default function PostsPage() {
       { revalidate: false }
     );
 
-    const res = await fetch(`/api/posts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-
-    if (!res.ok) {
-      mutate();
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Failed to update post");
-    }
-
-    // Revalidate after publish to get platform_post_url
     if (updates.status === "published") {
+      const { data, error } = await supabase.functions.invoke("publish-post", {
+        body: { id, content: updates.content },
+      });
+      if (error || data?.error) {
+        mutate();
+        throw new Error(data?.error || "Failed to publish");
+      }
       mutate();
+    } else {
+      const { error } = await supabase
+        .from("posts")
+        .update({ content: updates.content })
+        .eq("id", id);
+      if (error) {
+        mutate();
+        throw new Error(error.message);
+      }
     }
   }
 
@@ -667,14 +684,25 @@ export default function PostsPage() {
       { revalidate: false }
     );
 
-    const res = await fetch(`/api/posts/${id}`, { method: "DELETE" });
-    if (!res.ok) {
+    const { error } = await supabase.from("posts").delete().eq("id", id);
+    if (error) {
       mutate();
     }
   }
 
   async function handleRegenerate(id: string) {
-    const res = await fetch(`/api/posts/${id}/regenerate`, { method: "POST" });
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-post/regenerate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ id }),
+      }
+    );
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error || "Failed to regenerate");

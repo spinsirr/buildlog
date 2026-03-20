@@ -1,10 +1,37 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
 
-export default async function LoginPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        router.replace('/dashboard')
+      } else {
+        setLoading(false)
+      }
+    })
+  }, [router])
+
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: '#FFFDF5' }}
+      >
+        <div className="font-mono text-sm font-bold uppercase tracking-widest animate-pulse">
+          Loading...
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -92,38 +119,50 @@ export default async function LoginPage() {
           <div className="border-t-2 border-black" />
 
           <div className="flex flex-col gap-3">
-            <form action="/api/auth/github" method="POST">
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-3 bg-black text-white border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
-              >
-                <GitHubIcon />
-                Continue with GitHub
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signInWithOAuth({
+                  provider: 'github',
+                  options: { redirectTo: `${window.location.origin}/auth/callback` },
+                })
+              }}
+              className="w-full flex items-center justify-center gap-3 bg-black text-white border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
+            >
+              <GitHubIcon />
+              Continue with GitHub
+            </button>
 
-            <form action="/api/auth/google" method="POST">
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-3 bg-white text-black border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
-              >
-                <GoogleIcon />
-                Continue with Google
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signInWithOAuth({
+                  provider: 'google',
+                  options: { redirectTo: `${window.location.origin}/auth/callback` },
+                })
+              }}
+              className="w-full flex items-center justify-center gap-3 bg-white text-black border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
+            >
+              <GoogleIcon />
+              Continue with Google
+            </button>
 
-            <form action="/api/auth/twitter-login" method="POST">
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-3 bg-zinc-700 text-white border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
-              >
-                <XIcon />
-                Continue with X
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signInWithOAuth({
+                  provider: 'twitter',
+                  options: { redirectTo: `${window.location.origin}/auth/callback` },
+                })
+              }}
+              className="w-full flex items-center justify-center gap-3 bg-zinc-700 text-white border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
+            >
+              <XIcon />
+              Continue with X
+            </button>
           </div>
 
           <p

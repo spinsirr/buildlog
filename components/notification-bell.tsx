@@ -4,6 +4,9 @@ import useSWR from "swr";
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+
+const supabase = createClient();
 
 type Notification = {
   id: string;
@@ -13,14 +16,22 @@ type Notification = {
   created_at: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+async function fetchNotifications() {
+  const { data: notifications } = await supabase
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
+  return { notifications: notifications ?? [], unreadCount };
+}
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const { data, mutate } = useSWR<{
     notifications: Notification[];
     unreadCount: number;
-  }>("/api/notifications", fetcher, {
+  }>("notifications", fetchNotifications, {
     refreshInterval: 30000, // Poll every 30s
   });
 
@@ -28,20 +39,12 @@ export function NotificationBell() {
   const notifications = data?.notifications ?? [];
 
   async function markAllRead() {
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAllRead: true }),
-    });
+    await supabase.from("notifications").update({ read: true }).eq("read", false);
     mutate();
   }
 
   async function markRead(id: string) {
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
     mutate();
   }
 

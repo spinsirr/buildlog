@@ -16,6 +16,9 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Circle, GitBranch, Loader2, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
 
 const platformLabels: Record<string, string> = {
   twitter: "X",
@@ -36,14 +39,45 @@ interface DashboardData {
   connections: number
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then(r => {
-    if (!r.ok) throw new Error('Failed to load')
-    return r.json()
-  })
+async function fetchDashboard() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const [{ data: repos }, { data: posts }, { count: connectionsCount }] = await Promise.all([
+    supabase.from('connected_repos').select('*').eq('user_id', user.id),
+    supabase.from('posts').select('*, connected_repos(full_name)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+    supabase.from('platform_connections').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+  ])
+
+  const drafts = posts?.filter(p => p.status === 'draft') ?? []
+  const published = posts?.filter(p => p.status === 'published') ?? []
+
+  // Calculate streak
+  const { data: streakPosts } = await supabase.from('posts').select('created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100)
+  let streak = 0
+  if (streakPosts && streakPosts.length > 0) {
+    const today = new Date(); today.setHours(0,0,0,0)
+    const postDays = new Set(streakPosts.map(p => { const d = new Date(p.created_at); d.setHours(0,0,0,0); return d.getTime() }))
+    const dayMs = 86400000
+    let checkDate = today.getTime()
+    if (!postDays.has(checkDate)) checkDate = today.getTime() - dayMs
+    while (postDays.has(checkDate)) { streak++; checkDate -= dayMs }
+  }
+
+  return {
+    stats: [
+      { label: 'Connected Repos', value: repos?.length ?? 0 },
+      { label: 'Draft Posts', value: drafts.length },
+      { label: 'Published', value: published.length },
+      { label: 'Streak Days', value: streak },
+    ],
+    posts: posts ?? [],
+    connections: connectionsCount ?? 0,
+  }
+}
 
 export default function DashboardPage() {
-  const { data, isLoading, mutate } = useSWR<DashboardData>('/api/dashboard', fetcher)
+  const { data, isLoading, mutate } = useSWR<DashboardData>('dashboard', fetchDashboard)
   const router = useRouter()
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -51,10 +85,8 @@ export default function DashboardPage() {
     if (!confirm('Delete this post?')) return
     setDeletingId(postId)
     try {
-      const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' })
-      if (res.ok) {
-        mutate(data ? { ...data, posts: data.posts.filter(p => p.id !== postId) } : undefined, { revalidate: true })
-      }
+      await supabase.from('posts').delete().eq('id', postId)
+      mutate(data ? { ...data, posts: data.posts.filter(p => p.id !== postId) } : undefined, { revalidate: true })
     } finally {
       setDeletingId(null)
     }

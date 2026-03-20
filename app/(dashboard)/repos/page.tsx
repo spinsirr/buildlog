@@ -2,6 +2,9 @@
 
 import useSWR, { mutate } from 'swr'
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
 
 const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
 const INSTALL_URL = GITHUB_APP_NAME
@@ -21,14 +24,16 @@ interface ReposData {
   needsInstall: boolean
 }
 
-const fetcher = async (url: string) => {
-  const r = await fetch(url)
-  if (!r.ok) return { repos: [], needsInstall: true }
-  return r.json()
+async function fetchRepos() {
+  const { data, error } = await supabase.functions.invoke('github-app', {
+    body: { action: 'list-repos' },
+  })
+  if (error) return { repos: [], needsInstall: true }
+  return data as ReposData
 }
 
 export default function ReposPage() {
-  const { data, isLoading } = useSWR<ReposData>('/api/repos', fetcher)
+  const { data, isLoading } = useSWR<ReposData>('repos', fetchRepos)
   const [pending, setPending] = useState<number | null>(null)
 
   const repos = data?.repos ?? []
@@ -37,20 +42,22 @@ export default function ReposPage() {
   async function toggle(repo: Repo) {
     setPending(repo.id)
     if (repo.connected) {
-      await fetch('/api/repos/connect', {
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/connect-repo`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
         body: JSON.stringify({ repo_id: repo.id }),
       })
     } else {
-      await fetch('/api/repos/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_id: repo.id, full_name: repo.full_name }),
+      await supabase.functions.invoke('connect-repo', {
+        body: { repo_id: repo.id, full_name: repo.full_name },
       })
     }
     // Optimistic update + revalidate
-    mutate('/api/repos', {
+    mutate('repos', {
       ...data,
       repos: repos.map(r => r.id === repo.id ? { ...r, connected: !r.connected } : r),
     }, { revalidate: true })
