@@ -1,7 +1,10 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from "next/link";
 import { Github, ArrowRight, Star, GitCommit, Zap, Globe } from "lucide-react";
 import { LandingNav } from "@/components/landing-nav";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Logo (used in footer) ────────────────────────────────────────────────────
 function LogoMark({ size = 32 }: { size?: number }) {
@@ -214,16 +217,23 @@ function GridOverlay({ opacity = "08" }: { opacity?: string }) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default async function LandingPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+const supabase = createClient();
+
+export default function LandingPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user)
+    })
+  }, [])
 
   return (
     <div
       className="min-h-screen antialiased"
       style={{ background: "#FFFDF5", color: "#000000" }}
     >
-      <LandingNav isLoggedIn={!!user} />
+      <LandingNav isLoggedIn={isLoggedIn} />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative py-24 md:py-32 px-6 overflow-hidden">
