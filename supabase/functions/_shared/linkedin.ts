@@ -70,6 +70,8 @@ export async function publishToLinkedIn(
 
   return {
     postId: postUrn,
-    postUrl: `https://www.linkedin.com/feed/update/${postUrn.includes(":") ? postUrn : `urn:li:share:${activityId}`}`,
+    postUrl: `https://www.linkedin.com/feed/update/${
+      postUrn.includes(":") ? postUrn : `urn:li:share:${activityId}`
+    }`,
   }
 }

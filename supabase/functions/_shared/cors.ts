@@ -38,8 +38,8 @@ export function withCors(res: Response, req?: Request): Response {
 
 export function jsonResponse(
   body: unknown,
-  init: ResponseInit = {},
   req?: Request,
+  init: ResponseInit = {},
 ): Response {
   const headers = new Headers(init.headers)
   headers.set("content-type", "application/json")
@@ -55,7 +55,7 @@ export function jsonResponse(
 
 export function errorResponse(
   message: string,
-  status = 400,
+  status: number,
   req?: Request,
   details?: unknown,
 ): Response {
@@ -64,8 +64,8 @@ export function errorResponse(
       error: message,
       ...(details === undefined ? {} : { details }),
     },
-    { status },
     req,
+    { status },
   )
 }
 

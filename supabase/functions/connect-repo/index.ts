@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { checkLimit } from "../_shared/subscription.ts"
@@ -14,12 +14,12 @@ Deno.serve(async (req) => {
   const supabase = createServiceClient()
 
   if (req.method === "POST") {
-    const { allowed, limit, plan } = await checkLimit(user.id, "repos")
+    const { allowed, limit } = await checkLimit(user.id, "repos")
     if (!allowed) {
       return errorResponse(
         `Free plan is limited to ${limit} repo. Upgrade to Pro for unlimited repos.`,
         403,
-        req
+        req,
       )
     }
 
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     }, { onConflict: "user_id,github_repo_id" })
 
     if (error) return errorResponse(error.message, 500, req)
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   if (req.method === "DELETE") {
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .eq("github_repo_id", body.repo_id)
 
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   return errorResponse("Method not allowed", 405, req)

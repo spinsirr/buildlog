@@ -1,6 +1,6 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createUserClient } from "../_shared/supabase.ts"
-import { requireUser, getAuthorizationHeader } from "../_shared/auth.ts"
+import { getAuthorizationHeader, requireUser } from "../_shared/auth.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 import { checkRateLimit } from "../_shared/rate-limit.ts"
 import { safeJson } from "../_shared/http.ts"
@@ -23,7 +23,11 @@ Deno.serve(async (req) => {
 
   const { allowed } = await checkLimit(user.id, "posts")
   if (!allowed) {
-    return errorResponse("Monthly post limit reached. Upgrade to Pro for unlimited posts.", 403, req)
+    return errorResponse(
+      "Monthly post limit reached. Upgrade to Pro for unlimited posts.",
+      403,
+      req,
+    )
   }
 
   const body = await safeJson<{ content?: string }>(req)
@@ -47,5 +51,5 @@ Deno.serve(async (req) => {
 
   if (error) return errorResponse(error.message, 500, req)
 
-  return jsonResponse({ post }, {}, req)
+  return jsonResponse({ post }, req)
 })

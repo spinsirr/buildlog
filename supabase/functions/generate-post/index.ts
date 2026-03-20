@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { generatePost } from "../_shared/ai.ts"
@@ -118,7 +118,7 @@ async function handleGenerate(req: Request, userId: string): Promise<Response> {
     return errorResponse("Failed to save post", 500, req)
   }
 
-  return jsonResponse({ post }, { status: 201 }, req)
+  return jsonResponse({ post }, req, { status: 201 })
 }
 
 async function handleRegenerate(req: Request, userId: string): Promise<Response> {
@@ -198,5 +198,5 @@ async function handleRegenerate(req: Request, userId: string): Promise<Response>
     return errorResponse("Failed to update post", 500, req)
   }
 
-  return jsonResponse({ post: updatedPost }, { status: 200 }, req)
+  return jsonResponse({ post: updatedPost }, req, { status: 200 })
 }

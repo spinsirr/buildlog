@@ -68,13 +68,16 @@ export function toBase64Utf8(value: string): string {
   return bytesToBase64(utf8ToBytes(value))
 }
 
-async function getAesKey(): Promise<CryptoKey> {
+function getAesKey(): Promise<CryptoKey> {
   const keyHex = requiredEnv("TOKEN_ENCRYPTION_KEY")
   if (keyHex.length !== 64) {
     throw new Error("TOKEN_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)")
   }
 
-  return crypto.subtle.importKey("raw", fromHex(keyHex), AES_ALGORITHM, false, ["encrypt", "decrypt"])
+  return crypto.subtle.importKey("raw", fromHex(keyHex), AES_ALGORITHM, false, [
+    "encrypt",
+    "decrypt",
+  ])
 }
 
 /** Encrypt plaintext -> "iv:ciphertext:tag" (hex, Next.js compatible) */

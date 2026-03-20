@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { safeJson } from "../_shared/http.ts"
@@ -19,10 +19,14 @@ async function getInstallationToken(installationId: number): Promise<string> {
   const pemContent = privateKey.replace(/-----BEGIN RSA PRIVATE KEY-----/, "")
     .replace(/-----END RSA PRIVATE KEY-----/, "")
     .replace(/\s/g, "")
-  const binaryKey = Uint8Array.from(atob(pemContent), c => c.charCodeAt(0))
+  const binaryKey = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0))
 
   const key = await crypto.subtle.importKey(
-    "pkcs8", binaryKey, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]
+    "pkcs8",
+    binaryKey,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
   )
 
   const sigData = new TextEncoder().encode(`${header}.${payload}`)
@@ -83,7 +87,7 @@ Deno.serve(async (req) => {
       .eq("id", user.id)
 
     if (error) return errorResponse(error.message, 500, req)
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   if (action === "list-repos") {
@@ -94,7 +98,7 @@ Deno.serve(async (req) => {
       .single()
 
     if (!profile?.github_installation_id) {
-      return jsonResponse({ repos: [], needsInstall: true }, {}, req)
+      return jsonResponse({ repos: [], needsInstall: true }, req)
     }
 
     try {
@@ -113,7 +117,7 @@ Deno.serve(async (req) => {
 
       if (!res.ok) {
         console.error("[github-app] list repos failed:", await res.text())
-        return jsonResponse({ repos: [], needsInstall: true }, {}, req)
+        return jsonResponse({ repos: [], needsInstall: true }, req)
       }
 
       const data = (await res.json()) as {
@@ -143,10 +147,10 @@ Deno.serve(async (req) => {
         connected: connectedIds.has(repo.id),
       }))
 
-      return jsonResponse({ repos, needsInstall: false }, {}, req)
+      return jsonResponse({ repos, needsInstall: false }, req)
     } catch (err) {
       console.error("[github-app] list repos error:", err)
-      return jsonResponse({ repos: [], needsInstall: true }, {}, req)
+      return jsonResponse({ repos: [], needsInstall: true }, req)
     }
   }
 

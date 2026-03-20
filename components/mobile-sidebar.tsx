@@ -29,7 +29,7 @@ const navItems = [
 export function MobileSidebar({
   profile,
 }: {
-  profile: { github_avatar_url?: string; github_username?: string } | null;
+  profile: { github_avatar_url?: string | null; github_username?: string | null } | null;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();

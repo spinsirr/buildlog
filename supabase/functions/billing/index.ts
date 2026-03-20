@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { getStripe } from "../_shared/stripe.ts"
@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
   const parts = parsePathParts(req, "billing")
   const action = parts[0]
 
-  const frontendUrl =
-    Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ?? "http://localhost:3000"
+  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ??
+    "http://localhost:3000"
   const supabase = createServiceClient()
   const stripe = getStripe()
 
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
         sessionId: session.id,
       })
 
-      return jsonResponse({ url: session.url }, { status: 200 }, req)
+      return jsonResponse({ url: session.url }, req, { status: 200 })
     } else if (action === "portal") {
       // Fetch existing Stripe customer ID
       const { data: profile, error: profileErr } = await supabase
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
         customerId: profile.stripe_customer_id,
       })
 
-      return jsonResponse({ url: session.url }, { status: 200 }, req)
+      return jsonResponse({ url: session.url }, req, { status: 200 })
     } else {
       return errorResponse("Unknown action", 404, req)
     }

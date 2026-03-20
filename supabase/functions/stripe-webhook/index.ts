@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { getStripe } from "../_shared/stripe.ts"
 
@@ -55,8 +55,7 @@ Deno.serve(async (req) => {
 
         // Map status: active/trialing -> 'active', others pass through
         const rawStatus = subscription.status
-        const status =
-          rawStatus === "active" || rawStatus === "trialing" ? "active" : rawStatus
+        const status = rawStatus === "active" || rawStatus === "trialing" ? "active" : rawStatus
 
         const { error } = await supabase
           .from("subscriptions")
@@ -208,5 +207,5 @@ Deno.serve(async (req) => {
   }
 
   // Always return 200 to acknowledge receipt — Stripe retries on non-2xx
-  return jsonResponse({ received: true }, { status: 200 }, req)
+  return jsonResponse({ received: true }, req, { status: 200 })
 })

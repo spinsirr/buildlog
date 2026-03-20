@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { publishToTwitter } from "../_shared/twitter.ts"
@@ -35,7 +35,9 @@ Deno.serve(async (req) => {
     .single()
 
   if (!currentPost) return errorResponse("Post not found", 404, req)
-  if (currentPost.status === "published") return errorResponse("Post is already published", 400, req)
+  if (currentPost.status === "published") {
+    return errorResponse("Post is already published", 400, req)
+  }
 
   const content = body.content ?? currentPost.content
   if (!content) return errorResponse("Post has no content", 400, req)
@@ -49,14 +51,18 @@ Deno.serve(async (req) => {
   const connectedPlatforms = new Set(connections?.map((c) => c.platform) ?? [])
 
   if (connectedPlatforms.size === 0) {
-    return errorResponse("No platforms connected. Connect Twitter, LinkedIn, or Bluesky in Settings.", 400, req)
+    return errorResponse(
+      "No platforms connected. Connect Twitter, LinkedIn, or Bluesky in Settings.",
+      400,
+      req,
+    )
   }
 
   const publishedPlatforms: string[] = []
   const errors: string[] = []
   const updates: Record<string, unknown> = {
     status: "published",
-    published_at: new Date().toISOString(),
+    "published_at": new Date().toISOString(),
   }
 
   // Publish to each connected platform in parallel, catching errors individually
@@ -129,5 +135,5 @@ Deno.serve(async (req) => {
 
   if (error) return errorResponse(error.message, 500, req)
 
-  return jsonResponse({ post }, {}, req)
+  return jsonResponse({ post }, req)
 })

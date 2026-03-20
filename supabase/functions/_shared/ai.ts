@@ -46,18 +46,27 @@ function classifyChange(input: GeneratePostInput): string {
   const files = input.data.files ?? []
 
   if (msg.startsWith("fix") || msg.includes("bug") || msg.includes("hotfix")) return "bugfix"
-  if (msg.startsWith("feat") || msg.includes("add") || msg.includes("implement") || msg.includes("new")) return "feature"
-  if (msg.startsWith("refactor") || msg.includes("clean") || msg.includes("reorganize")) return "refactor"
+  if (
+    msg.startsWith("feat") || msg.includes("add") || msg.includes("implement") ||
+    msg.includes("new")
+  ) return "feature"
+  if (msg.startsWith("refactor") || msg.includes("clean") || msg.includes("reorganize")) {
+    return "refactor"
+  }
   if (msg.includes("test") || msg.includes("spec")) return "testing"
   if (msg.includes("doc") || msg.includes("readme")) return "docs"
   if (msg.includes("perf") || msg.includes("optim") || msg.includes("speed")) return "performance"
-  if (msg.includes("style") || msg.includes("ui") || msg.includes("css") || msg.includes("design")) return "ui"
+  if (
+    msg.includes("style") || msg.includes("ui") || msg.includes("css") || msg.includes("design")
+  ) return "ui"
   if (msg.includes("deploy") || msg.includes("ci") || msg.includes("pipeline")) return "devops"
 
   const fileStr = files.join(" ").toLowerCase()
   if (fileStr.includes("test") || fileStr.includes("spec")) return "testing"
   if (fileStr.includes(".md") || fileStr.includes("doc")) return "docs"
-  if (fileStr.includes(".css") || fileStr.includes("style") || fileStr.includes("component")) return "ui"
+  if (fileStr.includes(".css") || fileStr.includes("style") || fileStr.includes("component")) {
+    return "ui"
+  }
 
   return "general"
 }
@@ -80,7 +89,11 @@ function buildDiffContext(input: GeneratePostInput): string {
 
   if (input.data.files && input.data.files.length > 0) {
     const fileList = input.data.files.slice(0, 8).join(", ")
-    parts.push(`Files: ${fileList}${input.data.files.length > 8 ? ` (+${input.data.files.length - 8} more)` : ""}`)
+    parts.push(
+      `Files: ${fileList}${
+        input.data.files.length > 8 ? ` (+${input.data.files.length - 8} more)` : ""
+      }`,
+    )
   }
 
   return parts.length > 0 ? `\n${parts.join(" | ")}` : ""
@@ -159,7 +172,8 @@ export async function generatePost(input: GeneratePostInput): Promise<string> {
   const changeTypeHints: Record<string, string> = {
     bugfix: "This is a bug fix. Mention the problem solved and the relief of fixing it.",
     feature: "This is a new feature. Highlight what users can now do.",
-    refactor: "This is a refactor/cleanup. Emphasize the improvement to code quality or developer experience.",
+    refactor:
+      "This is a refactor/cleanup. Emphasize the improvement to code quality or developer experience.",
     testing: "This adds tests. Mention the value of reliability and confidence.",
     docs: "This is a docs update. Highlight the value of good documentation.",
     performance: "This is a performance improvement. Mention specific gains if available.",

@@ -2,9 +2,9 @@ import { decrypt, encrypt, toBase64Utf8 } from "./crypto.ts"
 import { createServiceClient } from "./supabase.ts"
 
 interface TwitterTokens {
-  access_token: string
-  refresh_token: string | null
-  expires_at: string | null
+  "access_token": string
+  "refresh_token": string | null
+  "expires_at": string | null
 }
 
 async function refreshAccessToken(userId: string, refreshToken: string): Promise<string> {
@@ -42,9 +42,9 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
   await supabase
     .from("platform_connections")
     .update({
-      access_token: await encrypt(data.access_token),
-      refresh_token: await encrypt(data.refresh_token ?? refreshToken),
-      expires_at: data.expires_in
+      "access_token": await encrypt(data.access_token),
+      "refresh_token": await encrypt(data.refresh_token ?? refreshToken),
+      "expires_at": data.expires_in
         ? new Date(Date.now() + data.expires_in * 1000).toISOString()
         : null,
     })

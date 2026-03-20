@@ -1,12 +1,12 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { getCorsHeaders } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
-import { requireUser, getUserFromJwt } from "../_shared/auth.ts"
-import { encrypt, randomBytes, base64UrlEncode, toBase64Utf8 } from "../_shared/crypto.ts"
+import { getUserFromJwt, requireUser } from "../_shared/auth.ts"
+import { base64UrlEncode, encrypt, randomBytes, toBase64Utf8 } from "../_shared/crypto.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 import { parsePathParts } from "../_shared/http.ts"
 import { safeJson } from "../_shared/http.ts"
-import { getCookie, buildSetCookie, buildClearCookie } from "../_shared/cookies.ts"
+import { buildClearCookie, buildSetCookie, getCookie } from "../_shared/cookies.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -15,8 +15,8 @@ import { getCookie, buildSetCookie, buildClearCookie } from "../_shared/cookies.
 function getFrontendUrl(): string {
   return (
     Deno.env.get("FRONTEND_URL") ??
-    Deno.env.get("APP_URL") ??
-    "http://localhost:3000"
+      Deno.env.get("APP_URL") ??
+      "http://localhost:3000"
   )
 }
 
@@ -587,7 +587,7 @@ async function blueskyConnect(req: Request): Promise<Response> {
   }
 
   // 6. Return success
-  return jsonResponse({ ok: true, username: sessionData.handle }, {}, req)
+  return jsonResponse({ ok: true, username: sessionData.handle }, req)
 }
 
 // ---------------------------------------------------------------------------

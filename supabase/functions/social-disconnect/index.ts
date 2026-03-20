@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { parsePathParts } from "../_shared/http.ts"
@@ -31,5 +31,5 @@ Deno.serve(async (req) => {
     .eq("user_id", user.id)
     .eq("platform", platform)
 
-  return jsonResponse({ ok: true }, {}, req)
+  return jsonResponse({ ok: true }, req)
 })

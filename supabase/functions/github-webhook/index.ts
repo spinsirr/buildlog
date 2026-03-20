@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
 import { generatePost } from "../_shared/ai.ts"
@@ -35,12 +35,12 @@ Deno.serve(async (req) => {
   // Body size limit (check content-length header first)
   const contentLength = req.headers.get("content-length")
   if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
-    return jsonResponse({ error: "Payload too large" }, { status: 413 }, req)
+    return jsonResponse({ error: "Payload too large" }, req, { status: 413 })
   }
 
   const body = await req.text()
   if (body.length > MAX_BODY_SIZE) {
-    return jsonResponse({ error: "Payload too large" }, { status: 413 }, req)
+    return jsonResponse({ error: "Payload too large" }, req, { status: 413 })
   }
 
   // Verify GitHub HMAC-SHA256 signature
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   const event = req.headers.get("x-github-event") ?? ""
 
   if (!await verifySignature(body, signature)) {
-    return jsonResponse({ error: "Invalid signature" }, { status: 401 }, req)
+    return jsonResponse({ error: "Invalid signature" }, req, { status: 401 })
   }
 
   // Top-level try/catch — always return 200 to prevent GitHub retries
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       err instanceof Error ? err.message : String(err),
     )
     // Return 200 to prevent GitHub from retrying and creating duplicate posts
-    return jsonResponse({ ok: true, error: "internal" }, {}, req)
+    return jsonResponse({ ok: true, error: "internal" }, req)
   }
 })
 
@@ -75,7 +75,7 @@ async function handleWebhook(
   const repoFullName = payload.repository?.full_name
 
   if (!installationId || !repoId) {
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   const supabase = createServiceClient()
@@ -88,7 +88,7 @@ async function handleWebhook(
     .single()
 
   if (!profile) {
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   // Verify the repo is connected and active
@@ -101,7 +101,7 @@ async function handleWebhook(
     .single()
 
   if (!repo) {
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   // Parse the event type and extract relevant data
@@ -169,7 +169,7 @@ async function handleWebhook(
 
   // If it's not an event type we handle, acknowledge and return
   if (!sourceType) {
-    return jsonResponse({ ok: true }, {}, req)
+    return jsonResponse({ ok: true }, req)
   }
 
   // Deduplicate: check if we already processed this event
@@ -195,14 +195,14 @@ async function handleWebhook(
 
     if ((count ?? 0) > 0) {
       console.log(`[github-webhook] Skipping duplicate webhook event: ${dedupeKey}`)
-      return jsonResponse({ ok: true, skipped: "duplicate" }, {}, req)
+      return jsonResponse({ ok: true, skipped: "duplicate" }, req)
     }
   }
 
   // Enforce post limit
   const { allowed } = await checkLimit(profile.id, "posts", supabase)
   if (!allowed) {
-    return jsonResponse({ ok: true, skipped: "post_limit_reached" }, {}, req)
+    return jsonResponse({ ok: true, skipped: "post_limit_reached" }, req)
   }
 
   // Generate AI content
@@ -218,7 +218,7 @@ async function handleWebhook(
   // Strip GitHub payload to essential fields only before storing
   const strippedData: Record<string, unknown> = {
     repo: repoFullName,
-    source_type: sourceType,
+    "source_type": sourceType,
   }
   if (dedupeKey) strippedData._dedupe_key = dedupeKey
 
@@ -249,13 +249,13 @@ async function handleWebhook(
   const { data: post } = await supabase
     .from("posts")
     .insert({
-      user_id: profile.id,
-      repo_id: repo.id,
-      source_type: sourceType,
-      source_data: strippedData,
+      "user_id": profile.id,
+      "repo_id": repo.id,
+      "source_type": sourceType,
+      "source_data": strippedData,
       content,
       status: shouldPublish ? "published" : "draft",
-      published_at: shouldPublish ? new Date().toISOString() : null,
+      "published_at": shouldPublish ? new Date().toISOString() : null,
     })
     .select("id")
     .single()
@@ -267,7 +267,9 @@ async function handleWebhook(
       .select("platform")
       .eq("user_id", profile.id)
 
-    const connectedPlatforms = new Set(connections?.map((c: { platform: string }) => c.platform) ?? [])
+    const connectedPlatforms = new Set(
+      connections?.map((c: { platform: string }) => c.platform) ?? [],
+    )
     const publishedPlatforms: string[] = []
     const failedPlatforms: Record<string, string> = {}
     let primaryPostUrl: string | null = null
@@ -335,8 +337,12 @@ async function handleWebhook(
 
       const failedNames = Object.keys(failedPlatforms)
       const notifMessage = hasFailures
-        ? `Post published to ${publishedPlatforms.join(", ")} but failed on ${failedNames.join(", ")} from ${sourceType} in ${repoFullName}`
-        : `Post auto-published to ${publishedPlatforms.join(", ")} from ${sourceType} in ${repoFullName}`
+        ? `Post published to ${publishedPlatforms.join(", ")} but failed on ${
+          failedNames.join(", ")
+        } from ${sourceType} in ${repoFullName}`
+        : `Post auto-published to ${
+          publishedPlatforms.join(", ")
+        } from ${sourceType} in ${repoFullName}`
 
       await notify(supabase, {
         userId: profile.id,
@@ -372,5 +378,5 @@ async function handleWebhook(
     })
   }
 
-  return jsonResponse({ ok: true }, {}, req)
+  return jsonResponse({ ok: true }, req)
 }

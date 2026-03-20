@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { PLANS, type Plan } from "./plans.ts"
+import { type Plan, PLANS } from "./plans.ts"
 import { createServiceClient } from "./supabase.ts"
 
 export type LimitType = "posts" | "repos" | "platforms"
@@ -61,8 +61,7 @@ export async function checkLimit(
     count = c ?? 0
   }
 
-  const limit =
-    (limits[`${type}_per_month` as keyof typeof limits] as number | undefined) ??
+  const limit = (limits[`${type}_per_month` as keyof typeof limits] as number | undefined) ??
     (limits[type as keyof typeof limits] as number)
 
   const allowed = plan === "pro" || count < limit
