@@ -1,135 +1,195 @@
-import { createServiceClient } from "../_shared/supabase.ts"
 import { handleOptions, jsonResponse, errorResponse } from "../_shared/cors.ts"
-import { requireUser } from "../_shared/auth.ts"
+import { getCorsHeaders } from "../_shared/cors.ts"
+import { createServiceClient } from "../_shared/supabase.ts"
+import { requireUser, getUserFromJwt } from "../_shared/auth.ts"
+import { encrypt, randomBytes, base64UrlEncode, toBase64Utf8 } from "../_shared/crypto.ts"
 import { checkLimit } from "../_shared/subscription.ts"
-import { encrypt } from "../_shared/crypto.ts"
-import { safeJson, getOrigin } from "../_shared/http.ts"
-import { randomBytes, base64UrlEncode, toBase64Utf8 } from "../_shared/crypto.ts"
-import { buildSetCookie, buildClearCookie, getCookie } from "../_shared/cookies.ts"
+import { parsePathParts } from "../_shared/http.ts"
+import { safeJson } from "../_shared/http.ts"
+import { getCookie, buildSetCookie, buildClearCookie } from "../_shared/cookies.ts"
 
-Deno.serve(async (req) => {
-  const opts = handleOptions(req)
-  if (opts) return opts
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-  const url = new URL(req.url)
-  const pathParts = url.pathname.split("/").filter(Boolean)
-  // Expected paths: .../social-auth/<platform> or .../social-auth/<platform>/callback
-  const fnIdx = pathParts.indexOf("social-auth")
-  const platform = pathParts[fnIdx + 1] ?? ""
-  const isCallback = pathParts[fnIdx + 2] === "callback"
+function getFrontendUrl(): string {
+  return (
+    Deno.env.get("FRONTEND_URL") ??
+    Deno.env.get("APP_URL") ??
+    "http://localhost:3000"
+  )
+}
 
-  if (!["twitter", "linkedin", "bluesky"].includes(platform)) {
-    return errorResponse("Invalid platform", 400, req)
+function getEdgeFunctionBaseUrl(): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")
+  if (!supabaseUrl) throw new Error("Missing SUPABASE_URL")
+  return `${supabaseUrl}/functions/v1/social-auth`
+}
+
+/** Build a redirect Response with optional Set-Cookie headers. */
+function redirectResponse(url: string, cookies: string[] = []): Response {
+  const headers = new Headers({ Location: url })
+  for (const cookie of cookies) {
+    headers.append("Set-Cookie", cookie)
   }
+  return new Response(null, { status: 302, headers })
+}
 
-  if (platform === "bluesky") {
-    return handleBluesky(req)
-  }
+/** Cookie options shared by all OAuth state cookies. */
+const OAUTH_COOKIE_OPTS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "Lax" as const,
+  maxAge: 600, // 10 minutes
+  path: "/",
+}
 
-  if (isCallback) {
-    if (platform === "twitter") return handleTwitterCallback(req)
-    if (platform === "linkedin") return handleLinkedInCallback(req)
-  }
+// ---------------------------------------------------------------------------
+// Twitter OAuth (PKCE)
+// ---------------------------------------------------------------------------
 
-  // Initiate OAuth flow
-  if (req.method !== "POST") {
-    return errorResponse("Method not allowed", 405, req)
-  }
+async function twitterInitiate(req: Request): Promise<Response> {
+  // 1. Require authenticated user
+  const { user, error } = await requireUser(req)
+  if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
-  if (platform === "twitter") return handleTwitterInitiate(req)
-  if (platform === "linkedin") return handleLinkedInInitiate(req)
-
-  return errorResponse("Invalid platform", 400, req)
-})
-
-// ─── Twitter OAuth ─────────────────────────────────────────────
-
-async function handleTwitterInitiate(req: Request): Promise<Response> {
-  const { user, error: authError } = await requireUser(req)
-  if (!user) return errorResponse(authError!, 401, req)
-
-  const supabase = createServiceClient()
-  const { allowed, limit } = await checkLimit(user.id, "platforms", supabase)
-  if (!allowed) {
+  // 2. Check platform limit
+  const limit = await checkLimit(user.id, "platforms")
+  if (!limit.allowed) {
     return errorResponse(
-      `Platform limit reached (${limit}). Upgrade to Pro to connect more platforms.`,
+      `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
       403,
       req,
     )
   }
 
+  // 3. Generate PKCE code_verifier and code_challenge
+  const verifierBytes = randomBytes(32)
+  const codeVerifier = base64UrlEncode(verifierBytes)
+  const challengeBytes = new Uint8Array(
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(codeVerifier),
+    ),
+  )
+  const codeChallenge = base64UrlEncode(challengeBytes)
+
+  // 4. Generate random state
+  const state = base64UrlEncode(randomBytes(32))
+
+  // 5. Extract the user's access token to store in a cookie for the callback
+  const authHeader = req.headers.get("authorization") ?? ""
+  const accessToken = authHeader.replace(/^bearer\s+/i, "")
+
+  // 6. Build cookies
+  const cookies = [
+    buildSetCookie("twitter_code_verifier", codeVerifier, OAUTH_COOKIE_OPTS),
+    buildSetCookie("twitter_oauth_state", state, OAUTH_COOKIE_OPTS),
+    buildSetCookie("oauth_return_token", accessToken, OAUTH_COOKIE_OPTS),
+  ]
+
+  // 7. Build Twitter OAuth URL
   const clientId = Deno.env.get("TWITTER_CLIENT_ID")
-  if (!clientId) return errorResponse("Twitter not configured", 503, req)
+  if (!clientId) return errorResponse("Twitter OAuth not configured", 500, req)
 
-  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? getOrigin(req)
-  const functionUrl = Deno.env.get("SUPABASE_URL")
-    ? `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-auth/twitter/callback`
-    : `${new URL(req.url).origin}/social-auth/twitter/callback`
-
-  // PKCE
-  const codeVerifier = base64UrlEncode(randomBytes(32))
-  const codeVerifierBytes = new TextEncoder().encode(codeVerifier)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", codeVerifierBytes)
-  const codeChallenge = base64UrlEncode(new Uint8Array(hashBuffer))
-  const state = base64UrlEncode(randomBytes(16))
+  const redirectUri = `${getEdgeFunctionBaseUrl()}/twitter/callback`
 
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
-    redirect_uri: functionUrl,
+    redirect_uri: redirectUri,
     scope: "tweet.read tweet.write users.read offline.access",
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
   })
 
-  const headers = new Headers()
-  headers.append(
-    "Set-Cookie",
-    buildSetCookie("twitter_code_verifier", codeVerifier, { maxAge: 600 }),
-  )
-  headers.append(
-    "Set-Cookie",
-    buildSetCookie("twitter_oauth_state", state, { maxAge: 600 }),
-  )
-  headers.append(
-    "Set-Cookie",
-    buildSetCookie("twitter_auth_user", user.id, { maxAge: 600 }),
-  )
+  const url = `https://twitter.com/i/oauth2/authorize?${params.toString()}`
 
-  const authUrl = `https://twitter.com/i/oauth2/authorize?${params}`
+  // 8. Return the URL with cookies set
+  const body = JSON.stringify({ url })
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...getCorsHeaders(req),
+  })
+  for (const cookie of cookies) {
+    headers.append("Set-Cookie", cookie)
+  }
 
-  return jsonResponse({ url: authUrl }, { headers }, req)
+  return new Response(body, { status: 200, headers })
 }
 
-async function handleTwitterCallback(req: Request): Promise<Response> {
+async function twitterCallback(req: Request): Promise<Response> {
   const url = new URL(req.url)
+  const frontendUrl = getFrontendUrl()
+
+  // 1. Handle error from Twitter (user denied access)
+  const errorParam = url.searchParams.get("error")
+  if (errorParam) {
+    return redirectResponse(`${frontendUrl}/settings?error=twitter_denied`)
+  }
+
+  // 2. Get code and state from query params
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
-  const error = url.searchParams.get("error")
 
-  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? getOrigin(req)
-
-  if (error) {
-    return Response.redirect(`${frontendUrl}/settings?error=twitter_denied`, 302)
+  if (!code || !state) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_missing_params`,
+    )
   }
 
+  // 3. Validate state against cookie
   const storedState = getCookie(req, "twitter_oauth_state")
-  const codeVerifier = getCookie(req, "twitter_code_verifier")
-  const userId = getCookie(req, "twitter_auth_user")
-
-  if (!code || !state || !storedState || state !== storedState || !codeVerifier || !userId) {
-    return Response.redirect(`${frontendUrl}/settings?error=twitter_invalid_state`, 302)
+  if (!storedState || storedState !== state) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_invalid_state`,
+    )
   }
 
-  const clientId = Deno.env.get("TWITTER_CLIENT_ID")!
-  const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET")!
+  // 4. Get code_verifier from cookie
+  const codeVerifier = getCookie(req, "twitter_code_verifier")
+  if (!codeVerifier) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_missing_verifier`,
+    )
+  }
 
-  const functionUrl = Deno.env.get("SUPABASE_URL")
-    ? `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-auth/twitter/callback`
-    : `${url.origin}/social-auth/twitter/callback`
+  // 5. Get user from stored JWT cookie
+  const returnToken = getCookie(req, "oauth_return_token")
+  if (!returnToken) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_auth_expired`,
+    )
+  }
 
-  // Exchange code for tokens
+  const user = await getUserFromJwt(returnToken)
+  if (!user) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_auth_invalid`,
+    )
+  }
+
+  // 6. Clear all OAuth cookies
+  const clearCookies = [
+    buildClearCookie("twitter_code_verifier"),
+    buildClearCookie("twitter_oauth_state"),
+    buildClearCookie("oauth_return_token"),
+  ]
+
+  // 7. Exchange code for tokens
+  const clientId = Deno.env.get("TWITTER_CLIENT_ID")
+  const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET")
+
+  if (!clientId || !clientSecret) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_config`,
+      clearCookies,
+    )
+  }
+
+  const redirectUri = `${getEdgeFunctionBaseUrl()}/twitter/callback`
+
   const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
     method: "POST",
     headers: {
@@ -139,225 +199,441 @@ async function handleTwitterCallback(req: Request): Promise<Response> {
     body: new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      redirect_uri: functionUrl,
+      redirect_uri: redirectUri,
       code_verifier: codeVerifier,
     }),
   })
 
   if (!tokenRes.ok) {
-    console.error("Twitter token exchange failed:", await tokenRes.text())
-    return Response.redirect(`${frontendUrl}/settings?error=twitter_token_failed`, 302)
+    const body = await tokenRes.text()
+    console.error("[social-auth] Twitter token exchange failed:", body)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_token_exchange`,
+      clearCookies,
+    )
   }
 
-  const tokens = await tokenRes.json()
+  const tokenData = (await tokenRes.json()) as {
+    access_token: string
+    refresh_token?: string
+    expires_in?: number
+    token_type: string
+  }
 
-  // Fetch user info
+  // 8. Fetch user info
   const userRes = await fetch(
     "https://api.twitter.com/2/users/me?user.fields=username,name,profile_image_url",
-    { headers: { Authorization: `Bearer ${tokens.access_token}` } },
+    {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    },
   )
-  const { data: twitterUser } = await userRes.json()
 
+  if (!userRes.ok) {
+    const body = await userRes.text()
+    console.error("[social-auth] Twitter user info fetch failed:", body)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_user_fetch`,
+      clearCookies,
+    )
+  }
+
+  const userData = (await userRes.json()) as {
+    data: { id: string; username: string; name: string }
+  }
+
+  // 9. Upsert platform_connection with encrypted tokens
   const supabase = createServiceClient()
-  const expiresAt = tokens.expires_in
-    ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+
+  const encryptedAccessToken = await encrypt(tokenData.access_token)
+  const encryptedRefreshToken = tokenData.refresh_token
+    ? await encrypt(tokenData.refresh_token)
     : null
 
-  await supabase.from("platform_connections").upsert(
-    {
-      user_id: userId,
-      platform: "twitter",
-      access_token: await encrypt(tokens.access_token),
-      refresh_token: tokens.refresh_token ? await encrypt(tokens.refresh_token) : null,
-      platform_user_id: twitterUser?.id ?? null,
-      platform_username: twitterUser?.username ?? null,
-      expires_at: expiresAt,
-    },
-    { onConflict: "user_id,platform" },
+  const expiresAt = tokenData.expires_in
+    ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+    : null
+
+  const { error: upsertError } = await supabase
+    .from("platform_connections")
+    .upsert(
+      {
+        user_id: user.id,
+        platform: "twitter",
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
+        expires_at: expiresAt,
+        platform_user_id: userData.data.id,
+        platform_username: userData.data.username,
+      },
+      { onConflict: "user_id,platform" },
+    )
+
+  if (upsertError) {
+    console.error("[social-auth] Twitter upsert failed:", upsertError.message)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=twitter_save`,
+      clearCookies,
+    )
+  }
+
+  // 10. Redirect to frontend
+  return redirectResponse(
+    `${frontendUrl}/settings?connected=twitter`,
+    clearCookies,
   )
-
-  const headers = new Headers({ Location: `${frontendUrl}/settings?connected=twitter` })
-  headers.append("Set-Cookie", buildClearCookie("twitter_code_verifier"))
-  headers.append("Set-Cookie", buildClearCookie("twitter_oauth_state"))
-  headers.append("Set-Cookie", buildClearCookie("twitter_auth_user"))
-
-  return new Response(null, { status: 302, headers })
 }
 
-// ─── LinkedIn OAuth ────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// LinkedIn OAuth
+// ---------------------------------------------------------------------------
 
-async function handleLinkedInInitiate(req: Request): Promise<Response> {
-  const { user, error: authError } = await requireUser(req)
-  if (!user) return errorResponse(authError!, 401, req)
+async function linkedinInitiate(req: Request): Promise<Response> {
+  // 1. Require authenticated user
+  const { user, error } = await requireUser(req)
+  if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
-  const supabase = createServiceClient()
-  const { allowed, limit } = await checkLimit(user.id, "platforms", supabase)
-  if (!allowed) {
+  // 2. Check platform limit
+  const limit = await checkLimit(user.id, "platforms")
+  if (!limit.allowed) {
     return errorResponse(
-      `Platform limit reached (${limit}). Upgrade to Pro to connect more platforms.`,
+      `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
       403,
       req,
     )
   }
 
+  // 3. Generate random state
+  const state = base64UrlEncode(randomBytes(32))
+
+  // 4. Extract the user's access token to store in a cookie for the callback
+  const authHeader = req.headers.get("authorization") ?? ""
+  const accessToken = authHeader.replace(/^bearer\s+/i, "")
+
+  // 5. Build cookies
+  const cookies = [
+    buildSetCookie("linkedin_oauth_state", state, OAUTH_COOKIE_OPTS),
+    buildSetCookie("oauth_return_token", accessToken, OAUTH_COOKIE_OPTS),
+  ]
+
+  // 6. Build LinkedIn OAuth URL
   const clientId = Deno.env.get("LINKEDIN_CLIENT_ID")
-  if (!clientId) return errorResponse("LinkedIn not configured", 503, req)
+  if (!clientId) return errorResponse("LinkedIn OAuth not configured", 500, req)
 
-  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? getOrigin(req)
-  const functionUrl = Deno.env.get("SUPABASE_URL")
-    ? `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-auth/linkedin/callback`
-    : `${new URL(req.url).origin}/social-auth/linkedin/callback`
-
-  const state = base64UrlEncode(randomBytes(16))
+  const redirectUri = `${getEdgeFunctionBaseUrl()}/linkedin/callback`
 
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
-    redirect_uri: functionUrl,
+    redirect_uri: redirectUri,
+    scope: "openid profile email w_member_social",
     state,
-    scope: "openid profile w_member_social",
   })
 
-  const headers = new Headers()
-  headers.append(
-    "Set-Cookie",
-    buildSetCookie("linkedin_oauth_state", state, { maxAge: 600 }),
-  )
-  headers.append(
-    "Set-Cookie",
-    buildSetCookie("linkedin_auth_user", user.id, { maxAge: 600 }),
-  )
+  const url = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`
 
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?${params}`
+  // 7. Return the URL with cookies set
+  const body = JSON.stringify({ url })
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...getCorsHeaders(req),
+  })
+  for (const cookie of cookies) {
+    headers.append("Set-Cookie", cookie)
+  }
 
-  return jsonResponse({ url: authUrl }, { headers }, req)
+  return new Response(body, { status: 200, headers })
 }
 
-async function handleLinkedInCallback(req: Request): Promise<Response> {
+async function linkedinCallback(req: Request): Promise<Response> {
   const url = new URL(req.url)
+  const frontendUrl = getFrontendUrl()
+
+  // 1. Handle error from LinkedIn (user denied access)
+  const errorParam = url.searchParams.get("error")
+  if (errorParam) {
+    return redirectResponse(`${frontendUrl}/settings?error=linkedin_denied`)
+  }
+
+  // 2. Get code and state from query params
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
-  const error = url.searchParams.get("error")
 
-  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? getOrigin(req)
-
-  if (error) {
-    return Response.redirect(`${frontendUrl}/settings?error=linkedin_denied`, 302)
+  if (!code || !state) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_missing_params`,
+    )
   }
 
+  // 3. Validate state against cookie
   const storedState = getCookie(req, "linkedin_oauth_state")
-  const userId = getCookie(req, "linkedin_auth_user")
-
-  if (!code || !state || !storedState || state !== storedState || !userId) {
-    return Response.redirect(`${frontendUrl}/settings?error=linkedin_invalid_state`, 302)
+  if (!storedState || storedState !== state) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_invalid_state`,
+    )
   }
 
-  const clientId = Deno.env.get("LINKEDIN_CLIENT_ID")!
-  const clientSecret = Deno.env.get("LINKEDIN_CLIENT_SECRET")!
-
-  const functionUrl = Deno.env.get("SUPABASE_URL")
-    ? `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-auth/linkedin/callback`
-    : `${url.origin}/social-auth/linkedin/callback`
-
-  const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: functionUrl,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  })
-
-  if (!tokenRes.ok) {
-    console.error("LinkedIn token exchange failed:", await tokenRes.text())
-    return Response.redirect(`${frontendUrl}/settings?error=linkedin_token_failed`, 302)
+  // 4. Get user from stored JWT cookie
+  const returnToken = getCookie(req, "oauth_return_token")
+  if (!returnToken) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_auth_expired`,
+    )
   }
 
-  const tokens = await tokenRes.json()
+  const user = await getUserFromJwt(returnToken)
+  if (!user) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_auth_invalid`,
+    )
+  }
 
-  // Fetch user info
-  const userRes = await fetch("https://api.linkedin.com/v2/userinfo", {
-    headers: { Authorization: `Bearer ${tokens.access_token}` },
-  })
-  const linkedinUser = userRes.ok ? await userRes.json() : null
+  // 5. Clear all OAuth cookies
+  const clearCookies = [
+    buildClearCookie("linkedin_oauth_state"),
+    buildClearCookie("oauth_return_token"),
+  ]
 
-  const supabase = createServiceClient()
-  const expiresAt = tokens.expires_in
-    ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-    : null
+  // 6. Exchange code for tokens
+  const clientId = Deno.env.get("LINKEDIN_CLIENT_ID")
+  const clientSecret = Deno.env.get("LINKEDIN_CLIENT_SECRET")
 
-  await supabase.from("platform_connections").upsert(
+  if (!clientId || !clientSecret) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_config`,
+      clearCookies,
+    )
+  }
+
+  const redirectUri = `${getEdgeFunctionBaseUrl()}/linkedin/callback`
+
+  const tokenRes = await fetch(
+    "https://www.linkedin.com/oauth/v2/accessToken",
     {
-      user_id: userId,
-      platform: "linkedin",
-      access_token: await encrypt(tokens.access_token),
-      refresh_token: tokens.refresh_token ? await encrypt(tokens.refresh_token) : null,
-      platform_user_id: linkedinUser?.sub ?? null,
-      platform_username: linkedinUser?.name ?? null,
-      expires_at: expiresAt,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
     },
-    { onConflict: "user_id,platform" },
   )
 
-  const headers = new Headers({ Location: `${frontendUrl}/settings?connected=linkedin` })
-  headers.append("Set-Cookie", buildClearCookie("linkedin_oauth_state"))
-  headers.append("Set-Cookie", buildClearCookie("linkedin_auth_user"))
+  if (!tokenRes.ok) {
+    const body = await tokenRes.text()
+    console.error("[social-auth] LinkedIn token exchange failed:", body)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_token_exchange`,
+      clearCookies,
+    )
+  }
 
-  return new Response(null, { status: 302, headers })
+  const tokenData = (await tokenRes.json()) as {
+    access_token: string
+    expires_in?: number
+    refresh_token?: string
+    refresh_token_expires_in?: number
+  }
+
+  // 7. Fetch user info from LinkedIn userinfo endpoint
+  const userRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  })
+
+  if (!userRes.ok) {
+    const body = await userRes.text()
+    console.error("[social-auth] LinkedIn user info fetch failed:", body)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_user_fetch`,
+      clearCookies,
+    )
+  }
+
+  const userData = (await userRes.json()) as {
+    sub: string
+    name?: string
+    email?: string
+    picture?: string
+  }
+
+  // 8. Upsert platform_connection with encrypted tokens
+  const supabase = createServiceClient()
+
+  const encryptedAccessToken = await encrypt(tokenData.access_token)
+  const encryptedRefreshToken = tokenData.refresh_token
+    ? await encrypt(tokenData.refresh_token)
+    : null
+
+  const expiresAt = tokenData.expires_in
+    ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+    : null
+
+  const { error: upsertError } = await supabase
+    .from("platform_connections")
+    .upsert(
+      {
+        user_id: user.id,
+        platform: "linkedin",
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
+        expires_at: expiresAt,
+        platform_user_id: userData.sub,
+        platform_username: userData.name ?? userData.email ?? userData.sub,
+      },
+      { onConflict: "user_id,platform" },
+    )
+
+  if (upsertError) {
+    console.error("[social-auth] LinkedIn upsert failed:", upsertError.message)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_save`,
+      clearCookies,
+    )
+  }
+
+  // 9. Redirect to frontend
+  return redirectResponse(
+    `${frontendUrl}/settings?connected=linkedin`,
+    clearCookies,
+  )
 }
 
-// ─── Bluesky (app password, not OAuth) ─────────────────────────
+// ---------------------------------------------------------------------------
+// Bluesky (credential-based, no OAuth)
+// ---------------------------------------------------------------------------
 
-async function handleBluesky(req: Request): Promise<Response> {
-  if (req.method !== "POST") return errorResponse("Method not allowed", 405, req)
+async function blueskyConnect(req: Request): Promise<Response> {
+  // 1. Require authenticated user (Bearer token)
+  const { user, error } = await requireUser(req)
+  if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
-  const { user, error: authError } = await requireUser(req)
-  if (!user) return errorResponse(authError!, 401, req)
-
-  const supabase = createServiceClient()
-  const { allowed, limit } = await checkLimit(user.id, "platforms", supabase)
-  if (!allowed) {
+  // 2. Check platform limit
+  const limit = await checkLimit(user.id, "platforms")
+  if (!limit.allowed) {
     return errorResponse(
-      `Platform limit reached (${limit}). Upgrade to Pro to connect more platforms.`,
+      `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
       403,
       req,
     )
   }
 
+  // 3. Parse body
   const body = await safeJson<{ handle?: string; appPassword?: string }>(req)
-  if (!body?.handle || !body.appPassword) {
-    return errorResponse("Handle and app password are required", 400, req)
+  if (!body?.handle || !body?.appPassword) {
+    return errorResponse("Missing handle or appPassword", 400, req)
   }
 
-  // Validate credentials
-  const sessionRes = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier: body.handle, password: body.appPassword }),
-  })
+  const { handle, appPassword } = body
 
-  if (!sessionRes.ok) {
-    const err = await sessionRes.text()
-    return errorResponse(`Invalid Bluesky credentials: ${err}`, 400, req)
-  }
-
-  const session = (await sessionRes.json()) as { did: string }
-
-  const { error } = await supabase.from("platform_connections").upsert(
+  // 4. Validate credentials by creating a Bluesky session
+  const sessionRes = await fetch(
+    "https://bsky.social/xrpc/com.atproto.server.createSession",
     {
-      user_id: user.id,
-      platform: "bluesky",
-      access_token: await encrypt(body.appPassword),
-      platform_user_id: session.did,
-      platform_username: body.handle,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: handle,
+        password: appPassword,
+      }),
     },
-    { onConflict: "user_id,platform" },
   )
 
-  if (error) return errorResponse(error.message, 500, req)
+  if (!sessionRes.ok) {
+    const errorBody = await sessionRes.text()
+    console.error("[social-auth] Bluesky session validation failed:", errorBody)
 
-  return jsonResponse({ ok: true, username: body.handle }, {}, req)
+    if (sessionRes.status === 401) {
+      return errorResponse(
+        "Invalid Bluesky credentials. Check your handle and app password.",
+        401,
+        req,
+      )
+    }
+
+    return errorResponse("Failed to validate Bluesky credentials", 400, req)
+  }
+
+  const sessionData = (await sessionRes.json()) as {
+    did: string
+    handle: string
+    accessJwt: string
+  }
+
+  // 5. Upsert platform_connection with encrypted app password
+  const supabase = createServiceClient()
+
+  const encryptedAppPassword = await encrypt(appPassword)
+
+  const { error: upsertError } = await supabase
+    .from("platform_connections")
+    .upsert(
+      {
+        user_id: user.id,
+        platform: "bluesky",
+        access_token: encryptedAppPassword,
+        platform_user_id: sessionData.did,
+        platform_username: sessionData.handle,
+      },
+      { onConflict: "user_id,platform" },
+    )
+
+  if (upsertError) {
+    console.error("[social-auth] Bluesky upsert failed:", upsertError.message)
+    return errorResponse("Failed to save Bluesky connection", 500, req)
+  }
+
+  // 6. Return success
+  return jsonResponse({ ok: true, username: sessionData.handle }, {}, req)
 }
+
+// ---------------------------------------------------------------------------
+// Router
+// ---------------------------------------------------------------------------
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  const optRes = handleOptions(req)
+  if (optRes) return optRes
+
+  const parts = parsePathParts(req, "social-auth")
+  const platform = parts[0] // "twitter" | "linkedin" | "bluesky"
+  const action = parts[1] // "callback" | undefined
+  const method = req.method
+
+  try {
+    // ------- Twitter -------
+    if (platform === "twitter" && method === "POST" && !action) {
+      return await twitterInitiate(req)
+    }
+    if (platform === "twitter" && method === "GET" && action === "callback") {
+      return await twitterCallback(req)
+    }
+
+    // ------- LinkedIn -------
+    if (platform === "linkedin" && method === "POST" && !action) {
+      return await linkedinInitiate(req)
+    }
+    if (platform === "linkedin" && method === "GET" && action === "callback") {
+      return await linkedinCallback(req)
+    }
+
+    // ------- Bluesky -------
+    if (platform === "bluesky" && method === "POST" && !action) {
+      return await blueskyConnect(req)
+    }
+
+    // ------- Fallback -------
+    return errorResponse("Not found", 404, req)
+  } catch (err) {
+    console.error(
+      "[social-auth] Unhandled error:",
+      err instanceof Error ? err.message : String(err),
+      err instanceof Error ? err.stack : "",
+    )
+    return errorResponse("Internal server error", 500, req)
+  }
+})
