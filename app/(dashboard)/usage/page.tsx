@@ -53,10 +53,15 @@ export default async function UsagePage() {
   const supabase = await createServerSupabaseClient()
 
   // Check plan
-  const { data: sub } = await supabase
+  const { data: sub, error: subError } = await supabase
     .from('subscriptions')
     .select('status')
     .single()
+
+  if (subError && subError.code !== 'PGRST116') {
+    console.error('Failed to load subscription:', subError.message)
+  }
+
   const plan = sub?.status === 'active' ? 'pro' : 'free'
 
   const PLANS = {

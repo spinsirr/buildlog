@@ -4,10 +4,14 @@ import { SettingsClient } from '@/components/settings-client'
 export default async function SettingsPage() {
   const supabase = await createServerSupabaseClient()
 
-  const [{ data: rows }, { data: profileData }] = await Promise.all([
+  const [{ data: rows }, { data: profileData, error: profileError }] = await Promise.all([
     supabase.from('platform_connections').select('platform, platform_username'),
     supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
   ])
+
+  if (profileError) {
+    console.error('Failed to load profile settings:', profileError.message)
+  }
 
   const connections = ['twitter', 'linkedin', 'bluesky'].map(platform => {
     const row = rows?.find(r => r.platform === platform)

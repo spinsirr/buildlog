@@ -344,12 +344,16 @@ async function handleWebhook(
           publishedPlatforms.join(", ")
         } from ${sourceType} in ${repoFullName}`
 
-      await notify(supabase, {
-        userId: profile.id,
-        message: notifMessage,
-        link: "/posts",
-        subject: hasFailures ? "Post published with errors" : "Post auto-published",
-      })
+      try {
+        await notify(supabase, {
+          userId: profile.id,
+          message: notifMessage,
+          link: "/posts",
+          subject: hasFailures ? "Post published with errors" : "Post auto-published",
+        })
+      } catch (notifyErr) {
+        console.error("[github-webhook] notify failed:", notifyErr)
+      }
     } else {
       // All platforms failed — revert to draft and record errors
       await supabase
@@ -361,21 +365,29 @@ async function handleWebhook(
         })
         .eq("id", post.id)
 
-      await notify(supabase, {
-        userId: profile.id,
-        message: `Auto-publish failed for ${sourceType} in ${repoFullName}. Saved as draft.`,
-        link: "/posts",
-        subject: "Auto-publish failed",
-      })
+      try {
+        await notify(supabase, {
+          userId: profile.id,
+          message: `Auto-publish failed for ${sourceType} in ${repoFullName}. Saved as draft.`,
+          link: "/posts",
+          subject: "Auto-publish failed",
+        })
+      } catch (notifyErr) {
+        console.error("[github-webhook] notify failed:", notifyErr)
+      }
     }
   } else if (post) {
     // Notify user about new draft created from webhook
-    await notify(supabase, {
-      userId: profile.id,
-      message: `New draft created from ${sourceType} in ${repoFullName}`,
-      link: "/posts",
-      subject: "New draft post created",
-    })
+    try {
+      await notify(supabase, {
+        userId: profile.id,
+        message: `New draft created from ${sourceType} in ${repoFullName}`,
+        link: "/posts",
+        subject: "New draft post created",
+      })
+    } catch (notifyErr) {
+      console.error("[github-webhook] notify failed:", notifyErr)
+    }
   }
 
   return jsonResponse({ ok: true }, req)

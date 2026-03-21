@@ -17,6 +17,7 @@ import {
 import { NotificationBell } from "@/components/notification-bell";
 import { StreakCounter } from "@/components/streak-counter";
 import { createClient } from "@/lib/supabase/client";
+import type { Profile } from "@/lib/types";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -25,12 +26,7 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-type ProfileData = {
-  github_username: string | null;
-  github_avatar_url: string | null;
-};
-
-export function MobileSidebar({ profile }: { profile: ProfileData }) {
+export function MobileSidebar({ profile }: { profile: Profile }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();

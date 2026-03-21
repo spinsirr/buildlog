@@ -7,11 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 const supabase = createClient();
 
 async function fetchStreak() {
-  const { data: streakPosts } = await supabase
+  const { data } = await supabase
     .from("posts")
     .select("created_at")
     .order("created_at", { ascending: false })
     .limit(100);
+  const streakPosts = data as { created_at: string }[] | null;
 
   let streak = 0;
   if (streakPosts && streakPosts.length > 0) {

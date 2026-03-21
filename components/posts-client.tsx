@@ -30,6 +30,7 @@ import {
   AtSign,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { Post } from "@/lib/types";
 
 const supabase = createClient();
 
@@ -37,19 +38,6 @@ const platformConfig: Record<string, { label: string; color: string }> = {
   twitter: { label: "X", color: "bg-zinc-800 text-zinc-300" },
   linkedin: { label: "LinkedIn", color: "bg-blue-500/10 text-blue-400" },
   bluesky: { label: "Bluesky", color: "bg-sky-500/10 text-sky-400" },
-};
-
-type Post = {
-  id: string;
-  content: string;
-  status: string;
-  source_type: string;
-  platforms: string[] | null;
-  created_at: string;
-  source_data: Record<string, unknown> | null;
-  connected_repos: { full_name: string } | null;
-  platform_post_url: string | null;
-  published_at: string | null;
 };
 
 function renderPreviewContent(content: string) {

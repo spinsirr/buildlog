@@ -15,11 +15,15 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('github_username, github_avatar_url')
     .eq('id', user.id)
     .single()
+
+  if (profileError) {
+    console.error('Failed to load profile:', profileError.message)
+  }
 
   const profileData = {
     github_username: profile?.github_username ?? null,

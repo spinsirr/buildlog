@@ -5,25 +5,19 @@ import { useState } from "react";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import type { Notification } from "@/lib/types";
 
 const supabase = createClient();
 
-type Notification = {
-  id: string;
-  message: string;
-  link: string | null;
-  read: boolean;
-  created_at: string;
-};
-
 async function fetchNotifications() {
-  const { data: notifications } = await supabase
+  const { data } = await supabase
     .from("notifications")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(20);
-  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
-  return { notifications: notifications ?? [], unreadCount };
+  const notifications = (data ?? []) as Notification[];
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  return { notifications, unreadCount };
 }
 
 export function NotificationBell() {
