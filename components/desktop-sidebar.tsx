@@ -8,11 +8,14 @@ import { LogOut } from 'lucide-react'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { NotificationBell } from '@/components/notification-bell'
-import { useProfile } from '@/lib/hooks/use-profile'
 import { createClient } from '@/lib/supabase/client'
 
-export function DesktopSidebar() {
-  const { data: profile } = useProfile()
+type ProfileData = {
+  github_username: string | null
+  github_avatar_url: string | null
+}
+
+export function DesktopSidebar({ profile }: { profile: ProfileData }) {
   const router = useRouter()
 
   async function handleLogout() {
@@ -46,13 +49,13 @@ export function DesktopSidebar() {
       <div className="px-3 py-3">
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar className="h-7 w-7">
-            <AvatarImage src={profile?.github_avatar_url ?? undefined} />
+            <AvatarImage src={profile.github_avatar_url ?? undefined} />
             <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-              {profile?.github_username?.[0]?.toUpperCase() ?? 'U'}
+              {profile.github_username?.[0]?.toUpperCase() ?? 'U'}
             </AvatarFallback>
           </Avatar>
           <span className="text-sm text-zinc-400 truncate flex-1">
-            {profile?.github_username ?? 'User'}
+            {profile.github_username ?? 'User'}
           </span>
           <button
             type="button"
