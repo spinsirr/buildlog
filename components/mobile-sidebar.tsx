@@ -17,6 +17,7 @@ import {
 import { useRouter } from "next/navigation";
 import { NotificationBell } from "@/components/notification-bell";
 import { StreakCounter } from "@/components/streak-counter";
+import { useProfile } from "@/lib/hooks/use-profile";
 import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
@@ -26,11 +27,8 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function MobileSidebar({
-  profile,
-}: {
-  profile: { github_avatar_url?: string | null; github_username?: string | null } | null;
-}) {
+export function MobileSidebar() {
+  const { data: profile } = useProfile();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();

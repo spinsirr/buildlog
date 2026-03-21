@@ -1,10 +1,104 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Github, ArrowRight, Star, GitCommit, Zap, Globe } from "lucide-react";
 import { LandingNav } from "@/components/landing-nav";
-import { createClient } from "@/lib/supabase/client";
+
+// ─── SEO Metadata ─────────────────────────────────────────────────────────────
+const SITE_URL = "https://buildlog.dev";
+
+export const metadata: Metadata = {
+  title: "BuildLog — Turn Commits into Content",
+  description:
+    "Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.",
+  keywords: [
+    "build in public",
+    "developer tools",
+    "github automation",
+    "social media automation",
+    "AI content generation",
+    "twitter automation",
+    "linkedin automation",
+    "developer marketing",
+    "open source",
+    "commit to content",
+  ],
+  authors: [{ name: "BuildLog" }],
+  creator: "BuildLog",
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    siteName: "BuildLog",
+    title: "BuildLog — Turn Commits into Content",
+    description:
+      "Connect GitHub once. AI writes the post. Publish to Twitter/X, LinkedIn, and Bluesky from one dashboard.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "BuildLog — Turn Commits into Content",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BuildLog — Turn Commits into Content",
+    description:
+      "Connect GitHub once. AI writes the post. Publish everywhere.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
+
+// ─── JSON-LD Structured Data ──────────────────────────────────────────────────
+// Static structured data — no user input, safe to inline
+const JSON_LD_DATA = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "BuildLog",
+  description:
+    "Turn your GitHub commits into social media posts with AI. Build in public, effortlessly.",
+  url: SITE_URL,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free tier available",
+  },
+  featureList: [
+    "GitHub integration",
+    "AI-powered content generation",
+    "Twitter/X publishing",
+    "LinkedIn publishing",
+    "Bluesky publishing",
+    "Build in public automation",
+  ],
+});
+
+function JsonLd() {
+  // All data is static constants — no XSS risk
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON_LD_DATA }}
+    />
+  );
+}
 
 // ─── Logo (used in footer) ────────────────────────────────────────────────────
 function LogoMark({ size = 32 }: { size?: number }) {
@@ -217,23 +311,14 @@ function GridOverlay({ opacity = "08" }: { opacity?: string }) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-const supabase = createClient();
-
 export default function LandingPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setIsLoggedIn(!!user)
-    })
-  }, [])
-
   return (
     <div
       className="min-h-screen antialiased"
       style={{ background: "#FFFDF5", color: "#000000" }}
     >
-      <LandingNav isLoggedIn={isLoggedIn} />
+      <JsonLd />
+      <LandingNav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative py-24 md:py-32 px-6 overflow-hidden">
@@ -533,7 +618,7 @@ export default function LandingPage() {
             </span>
           </div>
           <span className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40">
-            © {new Date().getFullYear()} — Open Source
+            © 2025 — Open Source
           </span>
         </div>
       </footer>

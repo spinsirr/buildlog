@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Menu, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 function LogoMark({ size = 32 }: { size?: number }) {
   const cell = Math.round(size * 0.42);
@@ -23,8 +24,16 @@ function LogoMark({ size = 32 }: { size?: number }) {
   );
 }
 
-export function LandingNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
+export function LandingNav() {
   const [open, setOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsLoggedIn(!!user);
+    });
+  }, []);
 
   return (
     <header

@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#000000"/>
+
+  <!-- Git line -->
+  <line x1="160" y1="80" x2="160" y2="432" stroke="#333333" stroke-width="8"/>
+
+  <!-- Commit node 1 -->
+  <circle cx="160" cy="148" r="28" fill="#FF6B6B"/>
+  <!-- Broadcast ray -->
+  <line x1="196" y1="148" x2="260" y2="148" stroke="#FF6B6B" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="260,136 284,148 260,160" fill="#FF6B6B"/>
+  <!-- Post block -->
+  <rect x="296" y="128" width="136" height="40" rx="8" fill="#1A1A1A" stroke="#FF6B6B" stroke-width="4"/>
+  <rect x="312" y="142" width="48" height="6" rx="3" fill="#FF6B6B"/>
+  <rect x="368" y="142" width="32" height="6" rx="3" fill="#444"/>
+
+  <!-- Commit node 2 -->
+  <circle cx="160" cy="256" r="28" fill="#FFD93D"/>
+  <line x1="196" y1="256" x2="260" y2="256" stroke="#FFD93D" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="260,244 284,256 260,268" fill="#FFD93D"/>
+  <rect x="296" y="236" width="136" height="40" rx="8" fill="#1A1A1A" stroke="#FFD93D" stroke-width="4"/>
+  <rect x="312" y="250" width="64" height="6" rx="3" fill="#FFD93D"/>
+  <rect x="384" y="250" width="24" height="6" rx="3" fill="#444"/>
+
+  <!-- Commit node 3 -->
+  <circle cx="160" cy="364" r="28" fill="#BFFF00"/>
+  <line x1="196" y1="364" x2="260" y2="364" stroke="#BFFF00" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="260,352 284,364 260,376" fill="#BFFF00"/>
+  <rect x="296" y="344" width="136" height="40" rx="8" fill="#1A1A1A" stroke="#BFFF00" stroke-width="4"/>
+  <rect x="312" y="358" width="56" height="6" rx="3" fill="#BFFF00"/>
+  <rect x="376" y="358" width="40" height="6" rx="3" fill="#444"/>
+</svg>

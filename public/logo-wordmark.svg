@@ -1,0 +1,32 @@
+<svg width="960" height="200" viewBox="0 0 960 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icon portion -->
+  <rect x="0" y="0" width="200" height="200" rx="32" fill="#000000"/>
+
+  <!-- Git line -->
+  <line x1="52" y1="32" x2="52" y2="168" stroke="#333333" stroke-width="4"/>
+
+  <!-- Commits -->
+  <circle cx="52" cy="60" r="14" fill="#FF6B6B"/>
+  <line x1="70" y1="60" x2="96" y2="60" stroke="#FF6B6B" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="96,54 108,60 96,66" fill="#FF6B6B"/>
+  <rect x="114" y="48" width="68" height="24" rx="5" fill="#1A1A1A" stroke="#FF6B6B" stroke-width="2.5"/>
+  <rect x="122" y="57" width="28" height="4" rx="2" fill="#FF6B6B"/>
+  <rect x="154" y="57" width="16" height="4" rx="2" fill="#444"/>
+
+  <circle cx="52" cy="100" r="14" fill="#FFD93D"/>
+  <line x1="70" y1="100" x2="96" y2="100" stroke="#FFD93D" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="96,94 108,100 96,106" fill="#FFD93D"/>
+  <rect x="114" y="88" width="68" height="24" rx="5" fill="#1A1A1A" stroke="#FFD93D" stroke-width="2.5"/>
+  <rect x="122" y="97" width="36" height="4" rx="2" fill="#FFD93D"/>
+  <rect x="162" y="97" width="12" height="4" rx="2" fill="#444"/>
+
+  <circle cx="52" cy="140" r="14" fill="#BFFF00"/>
+  <line x1="70" y1="140" x2="96" y2="140" stroke="#BFFF00" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="96,134 108,140 96,146" fill="#BFFF00"/>
+  <rect x="114" y="128" width="68" height="24" rx="5" fill="#1A1A1A" stroke="#BFFF00" stroke-width="2.5"/>
+  <rect x="122" y="137" width="32" height="4" rx="2" fill="#BFFF00"/>
+  <rect x="158" y="137" width="20" height="4" rx="2" fill="#444"/>
+
+  <!-- Wordmark -->
+  <text x="232" y="130" font-family="'Geist', 'Inter', system-ui, -apple-system, sans-serif" font-size="96" font-weight="800" letter-spacing="-3" fill="#000000">buildlog</text>
+</svg>

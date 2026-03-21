@@ -32,8 +32,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BuildLog",
+  title: {
+    default: "BuildLog — Turn Commits into Content",
+    template: "%s | BuildLog",
+  },
   description: "Turn your commits into content. Build in public, effortlessly.",
+  metadataBase: new URL("https://buildlog.dev"),
+  icons: {
+    icon: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({

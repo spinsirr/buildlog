@@ -50,7 +50,10 @@ Supabase Edge Functions (Deno runtime)
 
 ## Conventions
 
-- All pages are `'use client'` — no Server Components
+- Push `'use client'` to the smallest leaf components possible
+- Landing page + dashboard layout are Server Components
+- Dashboard pages are `'use client'` (client-side data fetching via SWR)
+- Shared hooks live in `lib/hooks/` (e.g. `useProfile`)
 - Auth is client-side via `AuthGuard` component (`components/auth-guard.tsx`)
 - DB reads use direct Supabase client queries (RLS handles auth)
 - DB writes / external API calls go through Edge Functions via `supabase.functions.invoke()`
