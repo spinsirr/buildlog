@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import Link from "next/link";
 import {
   Dialog,
@@ -258,8 +259,11 @@ function PostCard({
     try {
       await onUpdate(post.id, { status: "published" });
       setShowPreview(false);
+      toast.success("Post published", {
+        description: connectedPlatforms.map(p => platformConfig[p]?.label ?? p).join(", "),
+      });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to publish");
+      toast.error(err instanceof Error ? err.message : "Failed to publish");
     }
     setBusy(false);
   }
@@ -268,6 +272,7 @@ function PostCard({
     if (!confirm("Delete this post?")) return;
     setBusy(true);
     await onDelete(post.id);
+    toast.success("Post deleted");
     setBusy(false);
   }
 
@@ -275,8 +280,9 @@ function PostCard({
     setRegenerating(true);
     try {
       await onRegenerate(post.id);
+      toast.success("Post regenerated");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to regenerate");
+      toast.error(err instanceof Error ? err.message : "Failed to regenerate");
     }
     setRegenerating(false);
   }
@@ -504,10 +510,11 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
       body: { content: content.trim() },
     });
     if (error) {
-      alert(data?.error || "Failed to create post");
+      toast.error(data?.error || "Failed to create post");
     } else {
       setContent("");
       onCreated();
+      toast.success("Post created");
     }
     setBusy(false);
   }
@@ -608,6 +615,7 @@ export function PostsClient({
     setPosts(prev => prev.filter(p => p.id !== id));
     const { error } = await supabase.from("posts").delete().eq("id", id);
     if (error) {
+      toast.error("Failed to delete post");
       await refreshPosts();
     }
   }

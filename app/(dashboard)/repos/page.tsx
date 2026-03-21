@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { RepoList } from '@/components/repo-list'
+
+export const metadata: Metadata = { title: 'Repositories' }
 
 const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
 const INSTALL_URL = GITHUB_APP_NAME

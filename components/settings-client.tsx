@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Check, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
@@ -76,7 +77,6 @@ export function SettingsClient({
   const [profile, setProfile] = useState(initialProfile)
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
-  const [connectError, setConnectError] = useState<string | null>(null)
   const [showBskyForm, setShowBskyForm] = useState(false)
   const [bskyHandle, setBskyHandle] = useState('')
   const [bskyPassword, setBskyPassword] = useState('')
@@ -131,7 +131,7 @@ export function SettingsClient({
       )
       const data = await res.json()
       if (!res.ok) {
-        setConnectError(data.error ?? 'Failed to connect platform')
+        toast.error(data.error ?? 'Failed to connect platform')
         setActionPlatform(null)
         return
       }
@@ -145,7 +145,6 @@ export function SettingsClient({
   async function handleBskySubmit(e: React.FormEvent) {
     e.preventDefault()
     setBskyLoading(true)
-    setConnectError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch(
@@ -161,12 +160,13 @@ export function SettingsClient({
       )
       const data = await res.json()
       if (!res.ok) {
-        setConnectError(data.error ?? 'Failed to connect Bluesky')
+        toast.error(data.error ?? 'Failed to connect Bluesky')
         return
       }
       setShowBskyForm(false)
       setBskyHandle('')
       setBskyPassword('')
+      toast.success('Bluesky connected')
       router.refresh()
     } finally {
       setBskyLoading(false)
@@ -192,6 +192,8 @@ export function SettingsClient({
           c.platform === platform ? { ...c, connected: false, platform_username: null } : c
         )
       )
+      const label = PLATFORMS.find(p => p.id === platform)?.label ?? platform
+      toast.success(`${label} disconnected`)
       setActionPlatform(null)
     })
   }
@@ -211,18 +213,6 @@ export function SettingsClient({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {connectError && (
-            <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
-              {connectError}
-              <button
-                type="button"
-                onClick={() => setConnectError(null)}
-                className="ml-2 underline hover:no-underline text-xs"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
           {PLATFORMS.map((platform) => {
             const conn = getConnection(platform.id)
             const connected = conn?.connected ?? false
