@@ -7,6 +7,7 @@ import { publishToTwitter } from "../_shared/twitter.ts"
 import { publishToLinkedIn } from "../_shared/linkedin.ts"
 import { publishToBluesky } from "../_shared/bluesky.ts"
 import { notify } from "../_shared/notify.ts"
+import { checkRateLimit } from "../_shared/rate-limit.ts"
 
 const MAX_BODY_SIZE = 1024 * 1024 // 1MB
 
@@ -18,7 +19,6 @@ async function verifySignature(body: string, signature: string): Promise<boolean
   }
 
   const computed = "sha256=" + await hmacSha256Hex(secret, body)
-  if (computed.length !== signature.length) return false
   return timingSafeEqual(computed, signature)
 }
 
@@ -30,6 +30,11 @@ Deno.serve(async (req) => {
   // Only accept POST
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405, req)
+  }
+
+  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "github-webhook" })
+  if (!rl.allowed) {
+    return errorResponse("Rate limit exceeded", 429, req)
   }
 
   // Body size limit (check content-length header first)
@@ -194,7 +199,6 @@ async function handleWebhook(
       .contains("source_data", { _dedupe_key: dedupeKey })
 
     if ((count ?? 0) > 0) {
-      console.log(`[github-webhook] Skipping duplicate webhook event: ${dedupeKey}`)
       return jsonResponse({ ok: true, skipped: "duplicate" }, req)
     }
   }
