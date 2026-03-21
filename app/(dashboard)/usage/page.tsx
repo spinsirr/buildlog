@@ -1,12 +1,7 @@
-'use client'
-
-import useSWR from 'swr'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
-
-const supabase = createClient()
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 const platformLabels: Record<string, string> = {
   twitter: 'X',
@@ -21,26 +16,42 @@ const sourceLabels: Record<string, string> = {
   manual: 'Manual',
 }
 
-interface UsageData {
-  plan: string
-  limits: {
-    posts_per_month: number
-    repos: number
-    platforms: number
-  }
-  usage: {
-    posts_this_month: number
-    total_posts: number
-    published_posts: number
-    draft_posts: number
-    repos: number
-    platforms: number
-  }
-  platformCounts: Record<string, number>
-  sourceCounts: Record<string, number>
+function UsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const isUnlimited = !Number.isFinite(limit)
+  const pct = isUnlimited ? 0 : Math.min((used / limit) * 100, 100)
+  const isNearLimit = !isUnlimited && pct >= 80
+  const isAtLimit = !isUnlimited && used >= limit
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-zinc-300">{label}</span>
+        <span className={cn(
+          'text-sm font-mono',
+          isAtLimit ? 'text-red-400' : isNearLimit ? 'text-amber-400' : 'text-zinc-400'
+        )}>
+          {used}{isUnlimited ? '' : ` / ${limit}`}
+          {isUnlimited && <span className="text-zinc-600 ml-1">unlimited</span>}
+        </span>
+      </div>
+      {!isUnlimited && (
+        <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+          <div
+            className={cn(
+              'h-full rounded-full transition-all',
+              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-indigo-500'
+            )}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
-async function fetchUsage(): Promise<UsageData> {
+export default async function UsagePage() {
+  const supabase = await createServerSupabaseClient()
+
   // Check plan
   const { data: sub } = await supabase
     .from('subscriptions')
@@ -90,63 +101,14 @@ async function fetchUsage(): Promise<UsageData> {
     sourceCounts[post.source_type] = (sourceCounts[post.source_type] ?? 0) + 1
   }
 
-  return {
-    plan,
-    limits,
-    usage: {
-      posts_this_month: postsThisMonth ?? 0,
-      total_posts: totalPosts ?? 0,
-      published_posts: publishedPosts ?? 0,
-      draft_posts: draftPosts ?? 0,
-      repos: repoCount ?? 0,
-      platforms: platformCount ?? 0,
-    },
-    platformCounts,
-    sourceCounts,
+  const usage = {
+    posts_this_month: postsThisMonth ?? 0,
+    total_posts: totalPosts ?? 0,
+    published_posts: publishedPosts ?? 0,
+    draft_posts: draftPosts ?? 0,
+    repos: repoCount ?? 0,
+    platforms: platformCount ?? 0,
   }
-}
-
-function UsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
-  const isUnlimited = !Number.isFinite(limit)
-  const pct = isUnlimited ? 0 : Math.min((used / limit) * 100, 100)
-  const isNearLimit = !isUnlimited && pct >= 80
-  const isAtLimit = !isUnlimited && used >= limit
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-zinc-300">{label}</span>
-        <span className={cn(
-          'text-sm font-mono',
-          isAtLimit ? 'text-red-400' : isNearLimit ? 'text-amber-400' : 'text-zinc-400'
-        )}>
-          {used}{isUnlimited ? '' : ` / ${limit}`}
-          {isUnlimited && <span className="text-zinc-600 ml-1">unlimited</span>}
-        </span>
-      </div>
-      {!isUnlimited && (
-        <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
-          <div
-            className={cn(
-              'h-full rounded-full transition-all',
-              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-indigo-500'
-            )}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default function UsagePage() {
-  const { data, isLoading } = useSWR<UsageData>('usage', fetchUsage)
-
-  const plan = data?.plan ?? 'free'
-  const usage = data?.usage
-  const limits = data?.limits
-  const platformCounts = data?.platformCounts ?? {}
-  const sourceCounts = data?.sourceCounts ?? {}
 
   return (
     <div className="flex flex-col gap-8">
@@ -162,144 +124,134 @@ export default function UsagePage() {
         </Badge>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 rounded-lg bg-zinc-900/50 animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <>
-          {/* Plan limits */}
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-zinc-50 text-base">Plan Limits</CardTitle>
-              <CardDescription className="text-zinc-500">
-                Current billing period usage against your plan limits.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <UsageBar
-                label="Posts this month"
-                used={usage?.posts_this_month ?? 0}
-                limit={limits?.posts_per_month ?? 20}
-              />
-              <UsageBar
-                label="Connected repos"
-                used={usage?.repos ?? 0}
-                limit={limits?.repos ?? 1}
-              />
-              <UsageBar
-                label="Connected platforms"
-                used={usage?.platforms ?? 0}
-                limit={limits?.platforms ?? 1}
-              />
-            </CardContent>
-          </Card>
+      {/* Plan limits */}
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-zinc-50 text-base">Plan Limits</CardTitle>
+          <CardDescription className="text-zinc-500">
+            Current billing period usage against your plan limits.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <UsageBar
+            label="Posts this month"
+            used={usage.posts_this_month}
+            limit={limits.posts_per_month}
+          />
+          <UsageBar
+            label="Connected repos"
+            used={usage.repos}
+            limit={limits.repos}
+          />
+          <UsageBar
+            label="Connected platforms"
+            used={usage.platforms}
+            limit={limits.platforms}
+          />
+        </CardContent>
+      </Card>
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'Total Posts', value: usage?.total_posts ?? 0 },
-              { label: 'Published', value: usage?.published_posts ?? 0 },
-              { label: 'Drafts', value: usage?.draft_posts ?? 0 },
-              { label: 'This Month', value: usage?.posts_this_month ?? 0 },
-            ].map(stat => (
-              <div key={stat.label} className="rounded-lg bg-zinc-900/50 px-4 py-3">
-                <span className="text-xs text-zinc-500">{stat.label}</span>
-                <p className="text-2xl font-semibold text-zinc-100 mt-1">{stat.value}</p>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Posts', value: usage.total_posts },
+          { label: 'Published', value: usage.published_posts },
+          { label: 'Drafts', value: usage.draft_posts },
+          { label: 'This Month', value: usage.posts_this_month },
+        ].map(stat => (
+          <div key={stat.label} className="rounded-lg bg-zinc-900/50 px-4 py-3">
+            <span className="text-xs text-zinc-500">{stat.label}</span>
+            <p className="text-2xl font-semibold text-zinc-100 mt-1">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Breakdowns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Platform breakdown */}
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-zinc-50 text-base">By Platform</CardTitle>
+            <CardDescription className="text-zinc-500">
+              Published posts per platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(platformCounts).length === 0 ? (
+              <p className="text-sm text-zinc-600 py-4 text-center">No published posts yet</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(platformCounts)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([platform, count]) => {
+                    const total = usage.published_posts || 1
+                    const pct = Math.round((count / total) * 100)
+                    return (
+                      <div key={platform} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-zinc-300">
+                            {platformLabels[platform] ?? platform}
+                          </span>
+                          <span className="text-xs text-zinc-500 font-mono">
+                            {count} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-indigo-500/70"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
               </div>
-            ))}
-          </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Breakdowns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Platform breakdown */}
-            <Card className="bg-zinc-900 border-zinc-800">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-zinc-50 text-base">By Platform</CardTitle>
-                <CardDescription className="text-zinc-500">
-                  Published posts per platform.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {Object.keys(platformCounts).length === 0 ? (
-                  <p className="text-sm text-zinc-600 py-4 text-center">No published posts yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {Object.entries(platformCounts)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([platform, count]) => {
-                        const total = usage?.published_posts ?? 1
-                        const pct = Math.round((count / total) * 100)
-                        return (
-                          <div key={platform} className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-zinc-300">
-                                {platformLabels[platform] ?? platform}
-                              </span>
-                              <span className="text-xs text-zinc-500 font-mono">
-                                {count} ({pct}%)
-                              </span>
-                            </div>
-                            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-indigo-500/70"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Source breakdown */}
-            <Card className="bg-zinc-900 border-zinc-800">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-zinc-50 text-base">By Source</CardTitle>
-                <CardDescription className="text-zinc-500">
-                  Posts generated from each event type.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {Object.keys(sourceCounts).length === 0 ? (
-                  <p className="text-sm text-zinc-600 py-4 text-center">No posts yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {Object.entries(sourceCounts)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([source, count]) => {
-                        const total = Object.values(sourceCounts).reduce((a, b) => a + b, 0)
-                        const pct = Math.round((count / total) * 100)
-                        return (
-                          <div key={source} className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-zinc-300">
-                                {sourceLabels[source] ?? source}
-                              </span>
-                              <span className="text-xs text-zinc-500 font-mono">
-                                {count} ({pct}%)
-                              </span>
-                            </div>
-                            <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                              <div
-                                className="h-full rounded-full bg-purple-500/70"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
+        {/* Source breakdown */}
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-zinc-50 text-base">By Source</CardTitle>
+            <CardDescription className="text-zinc-500">
+              Posts generated from each event type.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(sourceCounts).length === 0 ? (
+              <p className="text-sm text-zinc-600 py-4 text-center">No posts yet</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(sourceCounts)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([source, count]) => {
+                    const total = Object.values(sourceCounts).reduce((a, b) => a + b, 0)
+                    const pct = Math.round((count / total) * 100)
+                    return (
+                      <div key={source} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-zinc-300">
+                            {sourceLabels[source] ?? source}
+                          </span>
+                          <span className="text-xs text-zinc-500 font-mono">
+                            {count} ({pct}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-purple-500/70"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
