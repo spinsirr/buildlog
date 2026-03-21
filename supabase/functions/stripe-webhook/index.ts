@@ -1,6 +1,7 @@
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { getStripe } from "../_shared/stripe.ts"
+import { checkRateLimit } from "../_shared/rate-limit.ts"
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
@@ -8,6 +9,11 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405, req)
+  }
+
+  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "stripe-webhook" })
+  if (!rl.allowed) {
+    return errorResponse("Rate limit exceeded", 429, req)
   }
 
   const body = await req.text()
@@ -21,12 +27,30 @@ Deno.serve(async (req) => {
       sig,
       Deno.env.get("STRIPE_WEBHOOK_SECRET")!,
     )
-  } catch (err) {
-    console.error("[stripe-webhook] signature verification failed:", err)
+  } catch (_err) {
+    console.error("[stripe-webhook] signature verification failed")
     return errorResponse("Invalid signature", 400, req)
   }
 
   const supabase = createServiceClient()
+
+  // Idempotency: check if this event was already processed
+  const { count: existingCount } = await supabase
+    .from("webhook_events")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", event.id)
+
+  if ((existingCount ?? 0) > 0) {
+    return jsonResponse({ received: true, skipped: "duplicate" }, req, { status: 200 })
+  }
+
+  // Record this event before processing
+  await supabase.from("webhook_events").insert({
+    event_id: event.id,
+    event_type: event.type,
+    source: "stripe",
+    processed_at: new Date().toISOString(),
+  })
 
   try {
     switch (event.type) {
@@ -79,12 +103,6 @@ Deno.serve(async (req) => {
             subscriptionId: subscription.id,
             error,
           })
-        } else {
-          console.log("[stripe-webhook] upserted subscription", {
-            userId,
-            subscriptionId: subscription.id,
-            status,
-          })
         }
         break
       }
@@ -124,11 +142,6 @@ Deno.serve(async (req) => {
             userId,
             subscriptionId: subscription.id,
             error,
-          })
-        } else {
-          console.log("[stripe-webhook] canceled subscription", {
-            userId,
-            subscriptionId: subscription.id,
           })
         }
         break
@@ -186,17 +199,12 @@ Deno.serve(async (req) => {
             stripeCustomerId,
             error,
           })
-        } else {
-          console.log("[stripe-webhook] synced stripe_customer_id", {
-            userId,
-            stripeCustomerId,
-          })
         }
         break
       }
 
       default:
-        console.log("[stripe-webhook] unhandled event type", { type: event.type })
+        break
     }
   } catch (err) {
     console.error("[stripe-webhook] unexpected error handling event", {

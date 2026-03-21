@@ -10,12 +10,28 @@ const DEFAULT_ALLOWED_HEADERS = [
   "content-length",
 ].join(", ")
 
+function getAllowedOrigins(): string[] {
+  const configured = Deno.env.get("CORS_ORIGIN")
+  if (configured) {
+    return configured.split(",").map((o) => o.trim()).filter(Boolean)
+  }
+  const appUrl = Deno.env.get("APP_URL")
+  if (appUrl) return [appUrl]
+  return ["https://buildlog.dev"]
+}
+
+function isOriginAllowed(origin: string): boolean {
+  return getAllowedOrigins().includes(origin)
+}
+
 export function getCorsHeaders(req?: Request): HeadersInit {
   const requestOrigin = req?.headers.get("origin")
-  const configuredOrigin = Deno.env.get("CORS_ORIGIN")
+  const allowedOrigin = requestOrigin && isOriginAllowed(requestOrigin)
+    ? requestOrigin
+    : getAllowedOrigins()[0]
 
   return {
-    "Access-Control-Allow-Origin": configuredOrigin ?? requestOrigin ?? "*",
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": DEFAULT_ALLOWED_HEADERS,
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
     "Access-Control-Max-Age": "86400",

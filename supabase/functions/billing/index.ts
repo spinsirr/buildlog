@@ -67,11 +67,6 @@ Deno.serve(async (req) => {
           })
           return errorResponse("Failed to save customer", 500, req)
         }
-
-        console.log("[billing/checkout] created Stripe customer", {
-          userId: user.id,
-          customerId,
-        })
       }
 
       const priceId = Deno.env.get("STRIPE_PRO_PRICE_ID")
@@ -89,11 +84,6 @@ Deno.serve(async (req) => {
         subscription_data: {
           metadata: { user_id: user.id },
         },
-      })
-
-      console.log("[billing/checkout] created checkout session", {
-        userId: user.id,
-        sessionId: session.id,
       })
 
       return jsonResponse({ url: session.url }, req, { status: 200 })
@@ -120,11 +110,6 @@ Deno.serve(async (req) => {
       const session = await stripe.billingPortal.sessions.create({
         customer: profile.stripe_customer_id,
         return_url: `${frontendUrl}/settings`,
-      })
-
-      console.log("[billing/portal] created portal session", {
-        userId: user.id,
-        customerId: profile.stripe_customer_id,
       })
 
       return jsonResponse({ url: session.url }, req, { status: 200 })

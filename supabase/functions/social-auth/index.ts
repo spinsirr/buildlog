@@ -7,6 +7,7 @@ import { checkLimit } from "../_shared/subscription.ts"
 import { parsePathParts } from "../_shared/http.ts"
 import { safeJson } from "../_shared/http.ts"
 import { buildClearCookie, buildSetCookie, getCookie } from "../_shared/cookies.ts"
+import { checkRateLimit } from "../_shared/rate-limit.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -205,8 +206,7 @@ async function twitterCallback(req: Request): Promise<Response> {
   })
 
   if (!tokenRes.ok) {
-    const body = await tokenRes.text()
-    console.error("[social-auth] Twitter token exchange failed:", body)
+    console.error("[social-auth] Twitter token exchange failed:", tokenRes.status)
     return redirectResponse(
       `${frontendUrl}/settings?error=twitter_token_exchange`,
       clearCookies,
@@ -229,8 +229,7 @@ async function twitterCallback(req: Request): Promise<Response> {
   )
 
   if (!userRes.ok) {
-    const body = await userRes.text()
-    console.error("[social-auth] Twitter user info fetch failed:", body)
+    console.error("[social-auth] Twitter user info fetch failed:", userRes.status)
     return redirectResponse(
       `${frontendUrl}/settings?error=twitter_user_fetch`,
       clearCookies,
@@ -302,20 +301,32 @@ async function linkedinInitiate(req: Request): Promise<Response> {
     )
   }
 
-  // 3. Generate random state
+  // 3. Generate PKCE code_verifier and code_challenge
+  const verifierBytes = randomBytes(32)
+  const codeVerifier = base64UrlEncode(verifierBytes)
+  const challengeBytes = new Uint8Array(
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(codeVerifier),
+    ),
+  )
+  const codeChallenge = base64UrlEncode(challengeBytes)
+
+  // 4. Generate random state
   const state = base64UrlEncode(randomBytes(32))
 
-  // 4. Extract the user's access token to store in a cookie for the callback
+  // 5. Extract the user's access token to store in a cookie for the callback
   const authHeader = req.headers.get("authorization") ?? ""
   const accessToken = authHeader.replace(/^bearer\s+/i, "")
 
-  // 5. Build cookies
+  // 6. Build cookies
   const cookies = [
+    buildSetCookie("linkedin_code_verifier", codeVerifier, OAUTH_COOKIE_OPTS),
     buildSetCookie("linkedin_oauth_state", state, OAUTH_COOKIE_OPTS),
     buildSetCookie("oauth_return_token", accessToken, OAUTH_COOKIE_OPTS),
   ]
 
-  // 6. Build LinkedIn OAuth URL
+  // 7. Build LinkedIn OAuth URL
   const clientId = Deno.env.get("LINKEDIN_CLIENT_ID")
   if (!clientId) return errorResponse("LinkedIn OAuth not configured", 500, req)
 
@@ -327,11 +338,13 @@ async function linkedinInitiate(req: Request): Promise<Response> {
     redirect_uri: redirectUri,
     scope: "openid profile email w_member_social",
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   })
 
   const url = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`
 
-  // 7. Return the URL with cookies set
+  // 8. Return the URL with cookies set
   const body = JSON.stringify({ url })
   const headers = new Headers({
     "Content-Type": "application/json",
@@ -372,7 +385,15 @@ async function linkedinCallback(req: Request): Promise<Response> {
     )
   }
 
-  // 4. Get user from stored JWT cookie
+  // 4. Get code_verifier from cookie
+  const codeVerifier = getCookie(req, "linkedin_code_verifier")
+  if (!codeVerifier) {
+    return redirectResponse(
+      `${frontendUrl}/settings?error=linkedin_missing_verifier`,
+    )
+  }
+
+  // 5. Get user from stored JWT cookie
   const returnToken = getCookie(req, "oauth_return_token")
   if (!returnToken) {
     return redirectResponse(
@@ -387,13 +408,14 @@ async function linkedinCallback(req: Request): Promise<Response> {
     )
   }
 
-  // 5. Clear all OAuth cookies
+  // 6. Clear all OAuth cookies
   const clearCookies = [
+    buildClearCookie("linkedin_code_verifier"),
     buildClearCookie("linkedin_oauth_state"),
     buildClearCookie("oauth_return_token"),
   ]
 
-  // 6. Exchange code for tokens
+  // 7. Exchange code for tokens (HTTP Basic Auth + PKCE)
   const clientId = Deno.env.get("LINKEDIN_CLIENT_ID")
   const clientSecret = Deno.env.get("LINKEDIN_CLIENT_SECRET")
 
@@ -412,20 +434,19 @@ async function linkedinCallback(req: Request): Promise<Response> {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${toBase64Utf8(`${clientId}:${clientSecret}`)}`,
       },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
         redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
+        code_verifier: codeVerifier,
       }),
     },
   )
 
   if (!tokenRes.ok) {
-    const body = await tokenRes.text()
-    console.error("[social-auth] LinkedIn token exchange failed:", body)
+    console.error("[social-auth] LinkedIn token exchange failed:", tokenRes.status)
     return redirectResponse(
       `${frontendUrl}/settings?error=linkedin_token_exchange`,
       clearCookies,
@@ -445,8 +466,7 @@ async function linkedinCallback(req: Request): Promise<Response> {
   })
 
   if (!userRes.ok) {
-    const body = await userRes.text()
-    console.error("[social-auth] LinkedIn user info fetch failed:", body)
+    console.error("[social-auth] LinkedIn user info fetch failed:", userRes.status)
     return redirectResponse(
       `${frontendUrl}/settings?error=linkedin_user_fetch`,
       clearCookies,
@@ -543,8 +563,7 @@ async function blueskyConnect(req: Request): Promise<Response> {
   )
 
   if (!sessionRes.ok) {
-    const errorBody = await sessionRes.text()
-    console.error("[social-auth] Bluesky session validation failed:", errorBody)
+    console.error("[social-auth] Bluesky session validation failed:", sessionRes.status)
 
     if (sessionRes.status === 401) {
       return errorResponse(
@@ -598,6 +617,11 @@ Deno.serve(async (req) => {
   // Handle CORS preflight
   const optRes = handleOptions(req)
   if (optRes) return optRes
+
+  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "social-auth" })
+  if (!rl.allowed) {
+    return errorResponse("Rate limit exceeded", 429, req)
+  }
 
   const parts = parsePathParts(req, "social-auth")
   const platform = parts[0] // "twitter" | "linkedin" | "bluesky"

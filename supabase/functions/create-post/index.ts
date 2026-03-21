@@ -35,7 +35,8 @@ Deno.serve(async (req) => {
     return errorResponse("Content is required", 400, req)
   }
 
-  const authHeader = getAuthorizationHeader(req)!
+  const authHeader = getAuthorizationHeader(req)
+  if (!authHeader) return errorResponse("Unauthorized", 401, req)
   const supabase = createUserClient(authHeader)
 
   const { data: post, error } = await supabase
