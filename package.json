@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-"backend:lint": "deno lint supabase/functions/",
+    "backend:lint": "deno lint supabase/functions/",
     "backend:fmt": "deno fmt --check supabase/functions/",
     "backend:check": "deno lint supabase/functions/ && deno fmt --check supabase/functions/",
     "secrets:local": "./scripts/sync-secrets-to-local.sh",
@@ -44,6 +44,7 @@
     "react-jsx-parser": "^2.4.1",
     "shadcn": "^4.1.0",
     "shiki": "^4.0.2",
+    "sonner": "^2.0.7",
     "streamdown": "^2.5.0",
     "swr": "^2.4.1",
     "tailwind-merge": "^3.5.0",
@@ -60,7 +61,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "16.1.7",
     "eslint-plugin-vercel-ai-security": "^1.3.5",
-"tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

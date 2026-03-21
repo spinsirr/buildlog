@@ -11,8 +11,11 @@ import {
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { Check, Circle, GitBranch, Share2, Sparkles } from "lucide-react"
+import type { Metadata } from 'next'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { DashboardActions } from '@/components/dashboard-actions'
+
+export const metadata: Metadata = { title: 'Dashboard' }
 
 const platformLabels: Record<string, string> = {
   twitter: "X",
