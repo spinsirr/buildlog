@@ -29,10 +29,12 @@ export function LandingNav() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    async function checkAuth() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
-    });
+    }
+    checkAuth();
   }, []);
 
   return (

@@ -10,20 +10,9 @@ import { Switch } from '@/components/ui/switch'
 import { Check, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import type { Connection, ProfileSettings } from '@/lib/types'
 
 const supabase = createClient()
-
-type Connection = {
-  platform: string
-  platform_username: string | null
-  connected: boolean
-}
-
-type ProfileData = {
-  tone: string
-  auto_publish: boolean
-  email_notifications: boolean
-}
 
 const PLATFORMS = [
   {
@@ -69,7 +58,7 @@ export function SettingsClient({
   initialProfile,
 }: {
   initialConnections: Connection[]
-  initialProfile: ProfileData
+  initialProfile: ProfileSettings
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()

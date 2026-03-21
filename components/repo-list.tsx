@@ -3,16 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import type { Repo } from '@/lib/types'
 
 const supabase = createClient()
-
-interface Repo {
-  id: number
-  full_name: string
-  private: boolean
-  description: string | null
-  connected: boolean
-}
 
 export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   const router = useRouter()
@@ -23,14 +16,9 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
     setPending(repo.id)
     try {
       if (repo.connected) {
-        const { data: { session } } = await supabase.auth.getSession()
-        await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/connect-repo`, {
+        await supabase.functions.invoke('connect-repo', {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ repo_id: repo.id }),
+          body: { repo_id: repo.id },
         })
       } else {
         await supabase.functions.invoke('connect-repo', {

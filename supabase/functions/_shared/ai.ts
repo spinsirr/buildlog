@@ -99,6 +99,51 @@ function buildDiffContext(input: GeneratePostInput): string {
   return parts.length > 0 ? `\n${parts.join(" | ")}` : ""
 }
 
+async function callGeminiOnce(
+  url: string,
+  body: string,
+): Promise<string> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30_000)
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      const err = new Error(`Gemini API error: ${res.status} ${text}`)
+      ;(err as Error & { status: number }).status = res.status
+      throw err
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("")
+      .trim()
+    if (!text) throw new Error("Gemini response was empty")
+
+    return text
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function isTransient(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "AbortError") return true
+  if (err instanceof TypeError) return true // network error
+  if (typeof (err as { status?: number }).status === "number") {
+    return (err as { status: number }).status >= 500
+  }
+  return false
+}
+
 async function callGemini(system: string, prompt: string): Promise<string> {
   const apiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_API_KEY")
   if (!apiKey) {
@@ -107,43 +152,34 @@ async function callGemini(system: string, prompt: string): Promise<string> {
 
   const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.0-flash"
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: system }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.8,
-          topP: 0.95,
-          maxOutputTokens: 220,
-        },
-      }),
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+  const body = JSON.stringify({
+    system_instruction: {
+      parts: [{ text: system }],
     },
-  )
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.8,
+      topP: 0.95,
+      maxOutputTokens: 220,
+    },
+  })
 
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`Gemini API error: ${res.status} ${body}`)
+  try {
+    return await callGeminiOnce(url, body)
+  } catch (err) {
+    if (isTransient(err)) {
+      console.warn("[ai] Gemini transient error, retrying once:", String(err))
+      return await callGeminiOnce(url, body)
+    }
+    throw err
   }
-
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim()
-  if (!text) throw new Error("Gemini response was empty")
-
-  return text
 }
 
 export async function generatePost(input: GeneratePostInput): Promise<string> {

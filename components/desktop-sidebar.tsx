@@ -9,13 +9,9 @@ import { SidebarNav } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { NotificationBell } from '@/components/notification-bell'
 import { createClient } from '@/lib/supabase/client'
+import type { Profile } from '@/lib/types'
 
-type ProfileData = {
-  github_username: string | null
-  github_avatar_url: string | null
-}
-
-export function DesktopSidebar({ profile }: { profile: ProfileData }) {
+export function DesktopSidebar({ profile }: { profile: Profile }) {
   const router = useRouter()
 
   async function handleLogout() {
