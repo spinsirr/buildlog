@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "🔍 Pre-push checks..."
+
+echo "→ biome check"
+bun run check
+
+echo "→ eslint"
+bun run lint
+
+echo "→ typecheck"
+bun run typecheck
+
+echo "→ tests"
+bun run test
+
+echo "→ backend lint + fmt"
+bun run backend:check
+
+echo "→ build"
+bun run build
+
+echo "✅ All checks passed."
