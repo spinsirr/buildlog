@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -577,7 +576,6 @@ export function PostsClient({
   initialPosts: Post[];
   initialConnectedPlatforms: string[];
 }) {
-  const router = useRouter();
   const [showNewPost, setShowNewPost] = useState(false);
   const [posts, setPosts] = useState(initialPosts);
   const connectedPlatforms = initialConnectedPlatforms;
