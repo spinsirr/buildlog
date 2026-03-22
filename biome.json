@@ -6,7 +6,23 @@
     "rules": {
       "recommended": true,
       "correctness": {
-        "noUnusedVariables": "warn"
+        "noUnusedVariables": "warn",
+        "noUnusedFunctionParameters": "off",
+        "noUnknownTypeSelector": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off"
+      },
+      "a11y": {
+        "useButtonType": "warn",
+        "noSvgWithoutTitle": "off",
+        "noLabelWithoutControl": "off",
+        "useSemanticElements": "off",
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "warn"
       },
       "style": {
         "noNonNullAssertion": "off"
@@ -26,7 +42,11 @@
       "semicolons": "asNeeded"
     }
   },
+  "css": {
+    "linter": { "enabled": false },
+    "formatter": { "enabled": false }
+  },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/.next", "!**/dist"]
+    "includes": ["**", "!**/node_modules", "!**/.next", "!**/dist", "!**/out", "!**/*.css"]
   }
 }

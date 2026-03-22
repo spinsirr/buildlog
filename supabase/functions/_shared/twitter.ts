@@ -2,9 +2,9 @@ import { decrypt, encrypt, toBase64Utf8 } from './crypto.ts'
 import { createServiceClient } from './supabase.ts'
 
 interface TwitterTokens {
-  "access_token": string
-  "refresh_token": string | null
-  "expires_at": string | null
+  access_token: string
+  refresh_token: string | null
+  expires_at: string | null
 }
 
 async function refreshAccessToken(userId: string, refreshToken: string): Promise<string> {

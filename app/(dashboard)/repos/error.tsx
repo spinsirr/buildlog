@@ -14,6 +14,7 @@ export default function ReposError({
       </div>
       <p className="text-sm text-zinc-400">Something went wrong loading your repositories.</p>
       <button
+        type="button"
         onClick={reset}
         className="px-4 py-2 text-sm rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
       >

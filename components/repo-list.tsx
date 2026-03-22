@@ -58,6 +58,7 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
             )}
           </div>
           <button
+            type="button"
             onClick={() => toggle(repo)}
             disabled={pending === repo.id}
             className={`font-medium text-sm px-4 py-1.5 rounded-lg shrink-0 transition-colors disabled:opacity-50 ${

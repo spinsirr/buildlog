@@ -73,6 +73,7 @@ export function LandingNav() {
 
         {/* Mobile hamburger */}
         <button
+          type="button"
           onClick={() => setOpen((o) => !o)}
           className="md:hidden border-4 border-black p-2 neo-btn-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
           style={{ background: '#FFFDF5' }}
