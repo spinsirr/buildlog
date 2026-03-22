@@ -47,6 +47,14 @@
     "formatter": { "enabled": false }
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/.next", "!**/dist", "!**/out", "!**/*.css"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/dist",
+      "!**/out",
+      "!**/*.css",
+      "!supabase"
+    ]
   }
 }
