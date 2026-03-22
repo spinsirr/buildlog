@@ -30,6 +30,12 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 
   if (!res.ok) {
     const body = await res.text()
+    // Track refresh failure
+    const supabase = createServiceClient()
+    await supabase.rpc("increment_refresh_failures", {
+      p_user_id: userId,
+      p_platform: "twitter",
+    }).catch(() => {}) // best-effort tracking
     throw new Error(`Twitter token refresh failed: ${body}`)
   }
 
@@ -39,6 +45,7 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
     expires_in?: number
   }
 
+  // Preserve existing refresh_token if new response doesn't include one (Nango pattern)
   const supabase = createServiceClient()
   await supabase
     .from("platform_connections")
@@ -48,6 +55,8 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
       expires_at: data.expires_in
         ? new Date(Date.now() + data.expires_in * 1000).toISOString()
         : null,
+      last_refresh_at: new Date().toISOString(),
+      refresh_failures: 0,
     })
     .eq("user_id", userId)
     .eq("platform", "twitter")

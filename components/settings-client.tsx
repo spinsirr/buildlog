@@ -1,8 +1,8 @@
 'use client'
 
 import { Check, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -61,8 +61,28 @@ export function SettingsClient({
   initialProfile: ProfileSettings
 }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
   const [connections, setConnections] = useState(initialConnections)
+
+  // Handle OAuth redirect results (?connected=twitter or ?error=twitter_denied)
+  useEffect(() => {
+    const connected = searchParams.get('connected')
+    const error = searchParams.get('error')
+
+    if (connected) {
+      const label = PLATFORMS.find((p) => p.id === connected)?.label ?? connected
+      toast.success(`${label} connected successfully`)
+      // Refresh data to show the new connection
+      router.replace('/settings', { scroll: false })
+      router.refresh()
+    } else if (error) {
+      const platform = error.split('_')[0]
+      const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
+      toast.error(`Failed to connect ${label}: ${error}`)
+      router.replace('/settings', { scroll: false })
+    }
+  }, [searchParams, router])
   const [profile, setProfile] = useState(initialProfile)
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
