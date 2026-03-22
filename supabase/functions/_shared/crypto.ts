@@ -1,7 +1,7 @@
-const AES_ALGORITHM = 'AES-GCM'
+const AES_ALGORITHM = "AES-GCM"
 const IV_LENGTH = 12
 const TAG_LENGTH = 16
-const HMAC_ALGORITHM = 'HMAC'
+const HMAC_ALGORITHM = "HMAC"
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)
@@ -20,13 +20,13 @@ export function randomBytes(length: number): Uint8Array {
 
 export function toHex(bytes: Uint8Array): string {
   return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
 }
 
 export function fromHex(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) {
-    throw new Error('Invalid hex length')
+    throw new Error("Invalid hex length")
   }
 
   const out = new Uint8Array(hex.length / 2)
@@ -45,7 +45,7 @@ export function bytesToUtf8(value: Uint8Array): string {
 }
 
 export function bytesToBase64(value: Uint8Array): string {
-  let binary = ''
+  let binary = ""
   for (let i = 0; i < value.length; i++) binary += String.fromCharCode(value[i])
   return btoa(binary)
 }
@@ -58,7 +58,7 @@ export function base64ToBytes(value: string): Uint8Array {
 }
 
 export function base64UrlEncode(value: Uint8Array): string {
-  return bytesToBase64(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+  return bytesToBase64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
 }
 
 export function toBase64Utf8(value: string): string {
@@ -66,14 +66,14 @@ export function toBase64Utf8(value: string): string {
 }
 
 function getAesKey(): Promise<CryptoKey> {
-  const keyHex = requiredEnv('TOKEN_ENCRYPTION_KEY')
+  const keyHex = requiredEnv("TOKEN_ENCRYPTION_KEY")
   if (keyHex.length !== 64) {
-    throw new Error('TOKEN_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)')
+    throw new Error("TOKEN_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)")
   }
 
-  return crypto.subtle.importKey('raw', fromHex(keyHex), AES_ALGORITHM, false, [
-    'encrypt',
-    'decrypt',
+  return crypto.subtle.importKey("raw", fromHex(keyHex), AES_ALGORITHM, false, [
+    "encrypt",
+    "decrypt",
   ])
 }
 
@@ -86,8 +86,8 @@ export async function encrypt(plaintext: string): Promise<string> {
     await crypto.subtle.encrypt(
       { name: AES_ALGORITHM, iv, tagLength: TAG_LENGTH * 8 },
       key,
-      utf8ToBytes(plaintext)
-    )
+      utf8ToBytes(plaintext),
+    ),
   )
 
   const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - TAG_LENGTH)
@@ -98,9 +98,9 @@ export async function encrypt(plaintext: string): Promise<string> {
 
 /** Decrypt "iv:ciphertext:tag" (hex, Next.js compatible) */
 export async function decrypt(blob: string): Promise<string> {
-  const parts = blob.split(':')
+  const parts = blob.split(":")
   if (parts.length !== 3) {
-    throw new Error('Invalid encrypted token format')
+    throw new Error("Invalid encrypted token format")
   }
 
   const [ivHex, encHex, tagHex] = parts
@@ -116,7 +116,7 @@ export async function decrypt(blob: string): Promise<string> {
   const decrypted = await crypto.subtle.decrypt(
     { name: AES_ALGORITHM, iv, tagLength: TAG_LENGTH * 8 },
     key,
-    combined
+    combined,
   )
 
   return bytesToUtf8(new Uint8Array(decrypted))
@@ -124,11 +124,11 @@ export async function decrypt(blob: string): Promise<string> {
 
 export async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     utf8ToBytes(secret),
-    { name: HMAC_ALGORITHM, hash: 'SHA-256' },
+    { name: HMAC_ALGORITHM, hash: "SHA-256" },
     false,
-    ['sign']
+    ["sign"],
   )
 
   const signature = await crypto.subtle.sign(HMAC_ALGORITHM, key, utf8ToBytes(payload))

@@ -1,7 +1,7 @@
-const FROM_EMAIL = 'BuildLog <notifications@buildlog.dev>'
+const FROM_EMAIL = "BuildLog <notifications@buildlog.dev>"
 
 function getAppUrl(): string {
-  return Deno.env.get('APP_URL') ?? Deno.env.get('NEXT_PUBLIC_APP_URL') ?? 'https://buildlog.dev'
+  return Deno.env.get("APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://buildlog.dev"
 }
 
 export async function sendNotificationEmail({
@@ -15,13 +15,13 @@ export async function sendNotificationEmail({
   message: string
   link?: string | null
 }): Promise<void> {
-  const apiKey = Deno.env.get('RESEND_API_KEY')
+  const apiKey = Deno.env.get("RESEND_API_KEY")
   if (!apiKey) return
 
   const appUrl = getAppUrl()
   const linkHtml = link
     ? `<p style="margin-top:16px"><a href="${appUrl}${link}" style="color:#818cf8;text-decoration:underline">View in BuildLog</a></p>`
-    : ''
+    : ""
 
   const html = `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#e4e4e7;background:#09090b;border-radius:8px">
@@ -33,11 +33,11 @@ export async function sendNotificationEmail({
       </div>
     `
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       from: FROM_EMAIL,

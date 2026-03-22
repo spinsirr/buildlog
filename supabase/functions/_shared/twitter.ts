@@ -1,6 +1,6 @@
 // deno-lint-ignore-file camelcase
-import { decrypt, encrypt, toBase64Utf8 } from './crypto.ts'
-import { createServiceClient } from './supabase.ts'
+import { decrypt, encrypt, toBase64Utf8 } from "./crypto.ts"
+import { createServiceClient } from "./supabase.ts"
 
 interface TwitterTokens {
   access_token: string
@@ -9,21 +9,21 @@ interface TwitterTokens {
 }
 
 async function refreshAccessToken(userId: string, refreshToken: string): Promise<string> {
-  const clientId = Deno.env.get('TWITTER_CLIENT_ID')
-  const clientSecret = Deno.env.get('TWITTER_CLIENT_SECRET')
+  const clientId = Deno.env.get("TWITTER_CLIENT_ID")
+  const clientSecret = Deno.env.get("TWITTER_CLIENT_SECRET")
 
   if (!clientId || !clientSecret) {
-    throw new Error('Missing Twitter OAuth configuration')
+    throw new Error("Missing Twitter OAuth configuration")
   }
 
-  const res = await fetch('https://api.twitter.com/2/oauth2/token', {
-    method: 'POST',
+  const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
       Authorization: `Basic ${toBase64Utf8(`${clientId}:${clientSecret}`)}`,
     },
     body: new URLSearchParams({
-      grant_type: 'refresh_token',
+      grant_type: "refresh_token",
       refresh_token: refreshToken,
     }),
   })
@@ -41,7 +41,7 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 
   const supabase = createServiceClient()
   await supabase
-    .from('platform_connections')
+    .from("platform_connections")
     .update({
       access_token: await encrypt(data.access_token),
       refresh_token: await encrypt(data.refresh_token ?? refreshToken),
@@ -49,8 +49,8 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
         ? new Date(Date.now() + data.expires_in * 1000).toISOString()
         : null,
     })
-    .eq('user_id', userId)
-    .eq('platform', 'twitter')
+    .eq("user_id", userId)
+    .eq("platform", "twitter")
 
   return data.access_token
 }
@@ -58,13 +58,13 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 async function getValidToken(userId: string): Promise<string> {
   const supabase = createServiceClient()
   const { data: conn } = await supabase
-    .from('platform_connections')
-    .select('access_token, refresh_token, expires_at')
-    .eq('user_id', userId)
-    .eq('platform', 'twitter')
+    .from("platform_connections")
+    .select("access_token, refresh_token, expires_at")
+    .eq("user_id", userId)
+    .eq("platform", "twitter")
     .single()
 
-  if (!conn) throw new Error('Twitter not connected')
+  if (!conn) throw new Error("Twitter not connected")
 
   const tokens = conn as TwitterTokens
 
@@ -82,15 +82,15 @@ async function getValidToken(userId: string): Promise<string> {
 
 export async function publishToTwitter(
   userId: string,
-  text: string
+  text: string,
 ): Promise<{ tweetId: string; tweetUrl: string }> {
   const accessToken = await getValidToken(userId)
 
-  const res = await fetch('https://api.twitter.com/2/tweets', {
-    method: 'POST',
+  const res = await fetch("https://api.twitter.com/2/tweets", {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({ text }),
   })
@@ -104,13 +104,13 @@ export async function publishToTwitter(
 
   const supabase = createServiceClient()
   const { data: conn } = await supabase
-    .from('platform_connections')
-    .select('platform_username')
-    .eq('user_id', userId)
-    .eq('platform', 'twitter')
+    .from("platform_connections")
+    .select("platform_username")
+    .eq("user_id", userId)
+    .eq("platform", "twitter")
     .single()
 
-  const username = conn?.platform_username ?? 'i'
+  const username = conn?.platform_username ?? "i"
 
   return {
     tweetId: payload.data.id,

@@ -1,26 +1,26 @@
 const DEFAULT_ALLOWED_HEADERS = [
-  'authorization',
-  'x-client-info',
-  'apikey',
-  'content-type',
-  'stripe-signature',
-  'x-hub-signature-256',
-  'x-github-event',
-  'x-github-delivery',
-  'content-length',
-].join(', ')
+  "authorization",
+  "x-client-info",
+  "apikey",
+  "content-type",
+  "stripe-signature",
+  "x-hub-signature-256",
+  "x-github-event",
+  "x-github-delivery",
+  "content-length",
+].join(", ")
 
 function getAllowedOrigins(): string[] {
-  const configured = Deno.env.get('CORS_ORIGIN')
+  const configured = Deno.env.get("CORS_ORIGIN")
   if (configured) {
     return configured
-      .split(',')
+      .split(",")
       .map((o) => o.trim())
       .filter(Boolean)
   }
-  const appUrl = Deno.env.get('APP_URL')
+  const appUrl = Deno.env.get("APP_URL")
   if (appUrl) return [appUrl]
-  return ['https://buildlog.dev']
+  return ["https://buildlog.dev"]
 }
 
 function isOriginAllowed(origin: string): boolean {
@@ -28,15 +28,16 @@ function isOriginAllowed(origin: string): boolean {
 }
 
 export function getCorsHeaders(req?: Request): HeadersInit {
-  const requestOrigin = req?.headers.get('origin')
-  const allowedOrigin =
-    requestOrigin && isOriginAllowed(requestOrigin) ? requestOrigin : getAllowedOrigins()[0]
+  const requestOrigin = req?.headers.get("origin")
+  const allowedOrigin = requestOrigin && isOriginAllowed(requestOrigin)
+    ? requestOrigin
+    : getAllowedOrigins()[0]
 
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': DEFAULT_ALLOWED_HEADERS,
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-    'Access-Control-Max-Age': '86400',
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": DEFAULT_ALLOWED_HEADERS,
+    "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
+    "Access-Control-Max-Age": "86400",
   }
 }
 
@@ -56,14 +57,14 @@ export function withCors(res: Response, req?: Request): Response {
 
 export function jsonResponse(body: unknown, req?: Request, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers)
-  headers.set('content-type', 'application/json')
+  headers.set("content-type", "application/json")
 
   return withCors(
     new Response(JSON.stringify(body), {
       ...init,
       headers,
     }),
-    req
+    req,
   )
 }
 
@@ -71,7 +72,7 @@ export function errorResponse(
   message: string,
   status: number,
   req?: Request,
-  details?: unknown
+  details?: unknown,
 ): Response {
   return jsonResponse(
     {
@@ -79,11 +80,11 @@ export function errorResponse(
       ...(details === undefined ? {} : { details }),
     },
     req,
-    { status }
+    { status },
   )
 }
 
 export function handleOptions(req: Request): Response | null {
-  if (req.method !== 'OPTIONS') return null
-  return withCors(new Response('ok', { status: 200 }), req)
+  if (req.method !== "OPTIONS") return null
+  return withCors(new Response("ok", { status: 200 }), req)
 }

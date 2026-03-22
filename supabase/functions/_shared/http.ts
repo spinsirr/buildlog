@@ -5,15 +5,15 @@ export function parsePathParts(req: Request, functionName: string): string[] {
   if (idx === -1) return []
 
   const remainder = url.pathname.slice(idx + marker.length)
-  return remainder.split('/').filter(Boolean)
+  return remainder.split("/").filter(Boolean)
 }
 
 export function getOrigin(req: Request): string {
   return (
-    req.headers.get('origin') ??
-    Deno.env.get('APP_URL') ??
-    Deno.env.get('NEXT_PUBLIC_APP_URL') ??
-    'http://localhost:3000'
+    req.headers.get("origin") ??
+      Deno.env.get("APP_URL") ??
+      Deno.env.get("NEXT_PUBLIC_APP_URL") ??
+      "http://localhost:3000"
   )
 }
 

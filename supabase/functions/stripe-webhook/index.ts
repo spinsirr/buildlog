@@ -1,65 +1,65 @@
-import { errorResponse, handleOptions, jsonResponse } from '../_shared/cors.ts'
-import { checkRateLimit } from '../_shared/rate-limit.ts'
-import { getStripe } from '../_shared/stripe.ts'
-import { createServiceClient } from '../_shared/supabase.ts'
+import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
+import { checkRateLimit } from "../_shared/rate-limit.ts"
+import { getStripe } from "../_shared/stripe.ts"
+import { createServiceClient } from "../_shared/supabase.ts"
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
   if (optRes) return optRes
 
-  if (req.method !== 'POST') {
-    return errorResponse('Method not allowed', 405, req)
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405, req)
   }
 
-  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: 'stripe-webhook' })
+  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "stripe-webhook" })
   if (!rl.allowed) {
-    return errorResponse('Rate limit exceeded', 429, req)
+    return errorResponse("Rate limit exceeded", 429, req)
   }
 
   const body = await req.text()
-  const sig = req.headers.get('stripe-signature')
-  if (!sig) return errorResponse('Missing stripe-signature', 400, req)
+  const sig = req.headers.get("stripe-signature")
+  if (!sig) return errorResponse("Missing stripe-signature", 400, req)
 
   let event
   try {
     event = await getStripe().webhooks.constructEventAsync(
       body,
       sig,
-      Deno.env.get('STRIPE_WEBHOOK_SECRET')!
+      Deno.env.get("STRIPE_WEBHOOK_SECRET")!,
     )
   } catch (_err) {
-    console.error('[stripe-webhook] signature verification failed')
-    return errorResponse('Invalid signature', 400, req)
+    console.error("[stripe-webhook] signature verification failed")
+    return errorResponse("Invalid signature", 400, req)
   }
 
   const supabase = createServiceClient()
 
   // Idempotency: check if this event was already processed
   const { count: existingCount } = await supabase
-    .from('webhook_events')
-    .select('*', { count: 'exact', head: true })
-    .eq('event_id', event.id)
+    .from("webhook_events")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", event.id)
 
   if ((existingCount ?? 0) > 0) {
-    return jsonResponse({ received: true, skipped: 'duplicate' }, req, { status: 200 })
+    return jsonResponse({ received: true, skipped: "duplicate" }, req, { status: 200 })
   }
 
   // Record this event before processing
-  await supabase.from('webhook_events').insert({
+  await supabase.from("webhook_events").insert({
     event_id: event.id,
     event_type: event.type,
-    source: 'stripe',
+    source: "stripe",
     processed_at: new Date().toISOString(),
   })
 
   try {
     switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
         const subscription = event.data.object
         const userId = subscription.metadata?.user_id
         if (!userId) {
-          console.error('[stripe-webhook] missing user_id in subscription metadata', {
+          console.error("[stripe-webhook] missing user_id in subscription metadata", {
             subscriptionId: subscription.id,
           })
           break
@@ -67,21 +67,21 @@ Deno.serve(async (req) => {
 
         // Validate user exists in profiles
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', userId)
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
           .single()
 
         if (!profile) {
-          console.error('[stripe-webhook] user_id not found in profiles', { userId })
+          console.error("[stripe-webhook] user_id not found in profiles", { userId })
           break
         }
 
         // Map status: active/trialing -> 'active', others pass through
         const rawStatus = subscription.status
-        const status = rawStatus === 'active' || rawStatus === 'trialing' ? 'active' : rawStatus
+        const status = rawStatus === "active" || rawStatus === "trialing" ? "active" : rawStatus
 
-        const { error } = await supabase.from('subscriptions').upsert(
+        const { error } = await supabase.from("subscriptions").upsert(
           {
             user_id: userId,
             stripe_subscription_id: subscription.id,
@@ -92,11 +92,11 @@ Deno.serve(async (req) => {
               : null,
             updated_at: new Date().toISOString(),
           },
-          { onConflict: 'user_id' }
+          { onConflict: "user_id" },
         )
 
         if (error) {
-          console.error('[stripe-webhook] failed to upsert subscription', {
+          console.error("[stripe-webhook] failed to upsert subscription", {
             userId,
             subscriptionId: subscription.id,
             error,
@@ -105,11 +105,11 @@ Deno.serve(async (req) => {
         break
       }
 
-      case 'customer.subscription.deleted': {
+      case "customer.subscription.deleted": {
         const subscription = event.data.object
         const userId = subscription.metadata?.user_id
         if (!userId) {
-          console.error('[stripe-webhook] missing user_id in subscription metadata', {
+          console.error("[stripe-webhook] missing user_id in subscription metadata", {
             subscriptionId: subscription.id,
           })
           break
@@ -117,26 +117,26 @@ Deno.serve(async (req) => {
 
         // Validate user exists in profiles
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', userId)
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
           .single()
 
         if (!profile) {
-          console.error('[stripe-webhook] user_id not found in profiles', { userId })
+          console.error("[stripe-webhook] user_id not found in profiles", { userId })
           break
         }
 
         const { error } = await supabase
-          .from('subscriptions')
+          .from("subscriptions")
           .update({
-            status: 'canceled',
+            status: "canceled",
             updated_at: new Date().toISOString(),
           })
-          .eq('user_id', userId)
+          .eq("user_id", userId)
 
         if (error) {
-          console.error('[stripe-webhook] failed to cancel subscription', {
+          console.error("[stripe-webhook] failed to cancel subscription", {
             userId,
             subscriptionId: subscription.id,
             error,
@@ -145,20 +145,20 @@ Deno.serve(async (req) => {
         break
       }
 
-      case 'checkout.session.completed': {
+      case "checkout.session.completed": {
         const session = event.data.object
         const userId = session.metadata?.user_id
         const stripeCustomerId = session.customer as string | null
 
         if (!userId) {
-          console.error('[stripe-webhook] missing user_id in session metadata', {
+          console.error("[stripe-webhook] missing user_id in session metadata", {
             sessionId: session.id,
           })
           break
         }
 
         if (!stripeCustomerId) {
-          console.error('[stripe-webhook] missing customer in session', {
+          console.error("[stripe-webhook] missing customer in session", {
             sessionId: session.id,
           })
           break
@@ -166,19 +166,19 @@ Deno.serve(async (req) => {
 
         // Validate user exists in profiles
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, stripe_customer_id')
-          .eq('id', userId)
+          .from("profiles")
+          .select("id, stripe_customer_id")
+          .eq("id", userId)
           .single()
 
         if (!profile) {
-          console.error('[stripe-webhook] user_id not found in profiles', { userId })
+          console.error("[stripe-webhook] user_id not found in profiles", { userId })
           break
         }
 
         // Don't overwrite if the user already has a different customer ID
         if (profile.stripe_customer_id && profile.stripe_customer_id !== stripeCustomerId) {
-          console.error('[stripe-webhook] user already has a different stripe_customer_id', {
+          console.error("[stripe-webhook] user already has a different stripe_customer_id", {
             userId,
             existing: profile.stripe_customer_id,
             incoming: stripeCustomerId,
@@ -187,12 +187,12 @@ Deno.serve(async (req) => {
         }
 
         const { error } = await supabase
-          .from('profiles')
+          .from("profiles")
           .update({ stripe_customer_id: stripeCustomerId })
-          .eq('id', userId)
+          .eq("id", userId)
 
         if (error) {
-          console.error('[stripe-webhook] failed to sync stripe_customer_id', {
+          console.error("[stripe-webhook] failed to sync stripe_customer_id", {
             userId,
             stripeCustomerId,
             error,
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         break
     }
   } catch (err) {
-    console.error('[stripe-webhook] unexpected error handling event', {
+    console.error("[stripe-webhook] unexpected error handling event", {
       type: event.type,
       error: String(err),
       stack: (err as Error).stack,
