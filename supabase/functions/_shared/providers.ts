@@ -1,6 +1,8 @@
+/* eslint-disable vercel-ai-security/no-hardcoded-api-keys */
 /**
  * Data-driven OAuth provider configuration (inspired by Nango).
  * Adding a new OAuth platform = adding an entry here. No code changes needed.
+ * Values here are OAuth endpoint URLs and env var names, not actual secrets.
  */
 
 export interface OAuthProviderConfig {

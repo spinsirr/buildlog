@@ -1,7 +1,7 @@
 'use client'
 
 export default function UsageError({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string }
