@@ -92,11 +92,15 @@ async function fetchUsageData() {
     supabase.from('platform_connections').select('*', { count: 'exact', head: true }),
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const posts: any[] = allPosts ?? []
-  const publishedPosts = posts.filter((p: any) => p.status === 'published')
-  const draftPosts = posts.filter((p: any) => p.status === 'draft')
-  const postsThisMonth = posts.filter((p: any) => p.created_at >= monthStart)
+  const posts = (allPosts ?? []) as {
+    status: string
+    source_type: string
+    platforms: string[] | null
+    created_at: string
+  }[]
+  const publishedPosts = posts.filter((p) => p.status === 'published')
+  const draftPosts = posts.filter((p) => p.status === 'draft')
+  const postsThisMonth = posts.filter((p) => p.created_at >= monthStart)
 
   const platformCounts: Record<string, number> = {}
   for (const post of publishedPosts) {

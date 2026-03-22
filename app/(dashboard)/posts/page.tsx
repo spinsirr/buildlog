@@ -16,8 +16,7 @@ async function fetchPostsData() {
     supabase.from('platform_connections').select('platform'),
   ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const connectedPlatforms = (connectionRows ?? []).map((r: any) => r.platform as string)
+  const connectedPlatforms = (connectionRows ?? []).map((r: { platform: string }) => r.platform)
 
   return {
     posts: posts ?? [],
@@ -83,9 +82,6 @@ export default function PostsPage() {
   if (error || !data) return <ErrorState retry={() => mutate()} />
 
   return (
-    <PostsClient
-      initialPosts={data.posts}
-      initialConnectedPlatforms={data.connectedPlatforms}
-    />
+    <PostsClient initialPosts={data.posts} initialConnectedPlatforms={data.connectedPlatforms} />
   )
 }

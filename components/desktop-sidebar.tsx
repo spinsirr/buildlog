@@ -8,8 +8,8 @@ import { SidebarNav } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import { createClient } from '@/lib/supabase/client'
 import { useProfile } from '@/lib/hooks/use-profile'
+import { createClient } from '@/lib/supabase/client'
 
 export function DesktopSidebar() {
   const router = useRouter()

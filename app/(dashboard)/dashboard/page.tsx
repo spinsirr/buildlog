@@ -6,6 +6,7 @@ import useSWR from 'swr'
 import { DashboardActions } from '@/components/dashboard-actions'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -14,8 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
+import type { Post } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const supabase = createClient()
@@ -53,17 +54,16 @@ async function fetchDashboardData() {
         .limit(100),
     ])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allPosts: any[] = posts ?? []
-  const drafts = allPosts.filter((p: any) => p.status === 'draft')
-  const published = allPosts.filter((p: any) => p.status === 'published')
+  const allPosts = (posts ?? []) as Post[]
+  const drafts = allPosts.filter((p) => p.status === 'draft')
+  const published = allPosts.filter((p) => p.status === 'published')
 
   let streak = 0
   if (streakPosts && streakPosts.length > 0) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const postDays = new Set(
-      (streakPosts as any[]).map((p: any) => {
+      (streakPosts as { created_at: string }[]).map((p) => {
         const d = new Date(p.created_at)
         d.setHours(0, 0, 0, 0)
         return d.getTime()

@@ -18,8 +18,9 @@ async function fetchSettingsData() {
   }
 
   const connections = ['twitter', 'linkedin', 'bluesky'].map((platform) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const row = rows?.find((r: any) => r.platform === platform)
+    const row = rows?.find(
+      (r: { platform: string; platform_username: string | null }) => r.platform === platform
+    )
     return { platform, platform_username: row?.platform_username ?? null, connected: !!row }
   })
 
@@ -94,10 +95,5 @@ export default function SettingsPage() {
   if (isLoading) return <SettingsSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />
 
-  return (
-    <SettingsClient
-      initialConnections={data.connections}
-      initialProfile={data.profile}
-    />
-  )
+  return <SettingsClient initialConnections={data.connections} initialProfile={data.profile} />
 }
