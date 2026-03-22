@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /dashboard/
-Disallow: /auth/
-
-Sitemap: https://buildlog.dev/sitemap.xml

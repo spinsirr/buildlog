@@ -12,10 +12,6 @@ import { createServiceClient } from "../_shared/supabase.ts"
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getFrontendUrl(): string {
-  return Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ?? "http://localhost:3000"
-}
-
 function getEdgeFunctionBaseUrl(): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")
   if (!supabaseUrl) throw new Error("Missing SUPABASE_URL")
@@ -35,6 +31,7 @@ async function storeOAuthState(
   platform: string,
   state: string,
   codeVerifier: string,
+  returnUrl: string,
 ): Promise<void> {
   const supabase = createServiceClient()
   await supabase
@@ -48,17 +45,18 @@ async function storeOAuthState(
     platform,
     state,
     code_verifier: codeVerifier,
+    return_url: returnUrl,
   })
   if (error) throw new Error(`Failed to store OAuth state: ${error.message}`)
 }
 
 async function retrieveOAuthState(
   state: string,
-): Promise<{ userId: string; platform: string; codeVerifier: string } | null> {
+): Promise<{ userId: string; platform: string; codeVerifier: string; returnUrl: string } | null> {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from("oauth_states")
-    .select("user_id, platform, code_verifier, expires_at")
+    .select("user_id, platform, code_verifier, return_url, expires_at")
     .eq("state", state)
     .single()
 
@@ -74,6 +72,7 @@ async function retrieveOAuthState(
     userId: data.user_id,
     platform: data.platform,
     codeVerifier: data.code_verifier,
+    returnUrl: data.return_url ?? "https://buildlog.dev",
   }
 }
 
@@ -101,6 +100,10 @@ async function oauthInitiate(
   const clientId = Deno.env.get(provider.envClientId)
   if (!clientId) return errorResponse(`${provider.name} OAuth not configured`, 500, req)
 
+  // Read return_url from request body (frontend passes window.location.origin)
+  const body = await safeJson<{ return_url?: string }>(req)
+  const returnUrl = body?.return_url ?? "https://buildlog.dev"
+
   const state = base64UrlEncode(randomBytes(32))
   const redirectUri = `${getEdgeFunctionBaseUrl()}/${platform}/callback`
 
@@ -124,7 +127,7 @@ async function oauthInitiate(
     params.code_challenge_method = "S256"
   }
 
-  await storeOAuthState(user.id, platform, state, codeVerifier)
+  await storeOAuthState(user.id, platform, state, codeVerifier, returnUrl)
 
   const url = `${provider.authorizationUrl}?${new URLSearchParams(params).toString()}`
   return jsonResponse({ url }, req)
@@ -136,22 +139,30 @@ async function oauthCallback(
   platform: string,
 ): Promise<Response> {
   const url = new URL(req.url)
-  const frontendUrl = getFrontendUrl()
 
+  // For errors before we have state, fall back to default
   if (url.searchParams.get("error")) {
+    const fallbackState = url.searchParams.get("state")
+    let frontendUrl = "https://buildlog.dev"
+    if (fallbackState) {
+      const s = await retrieveOAuthState(fallbackState)
+      if (s) frontendUrl = s.returnUrl
+    }
     return redirectResponse(`${frontendUrl}/settings?error=${platform}_denied`)
   }
 
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
   if (!code || !state) {
-    return redirectResponse(`${frontendUrl}/settings?error=${platform}_missing_params`)
+    return redirectResponse(`https://buildlog.dev/settings?error=${platform}_missing_params`)
   }
 
   const oauthState = await retrieveOAuthState(state)
   if (!oauthState || oauthState.platform !== platform) {
-    return redirectResponse(`${frontendUrl}/settings?error=${platform}_invalid_state`)
+    return redirectResponse(`https://buildlog.dev/settings?error=${platform}_invalid_state`)
   }
+
+  const frontendUrl = oauthState.returnUrl
 
   const clientId = Deno.env.get(provider.envClientId)
   const clientSecret = Deno.env.get(provider.envClientSecret)

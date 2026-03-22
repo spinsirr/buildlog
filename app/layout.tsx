@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, IBM_Plex_Mono, JetBrains_Mono, Space_Grotesk } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -32,16 +32,73 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ['400', '700'],
 })
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FFFDF5' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+}
+
 export const metadata: Metadata = {
+  metadataBase: new URL('https://buildlog.dev'),
   title: {
     default: 'BuildLog — Turn Commits into Content',
     template: '%s | BuildLog',
   },
-  description: 'Turn your commits into content. Build in public, effortlessly.',
-  metadataBase: new URL('https://buildlog.dev'),
+  description:
+    'Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.',
+  applicationName: 'BuildLog',
+  authors: [{ name: 'BuildLog', url: 'https://buildlog.dev' }],
+  creator: 'BuildLog',
+  publisher: 'BuildLog',
+  generator: 'Next.js',
+  keywords: [
+    'build in public',
+    'developer tools',
+    'github automation',
+    'social media automation',
+    'AI content generation',
+    'twitter automation',
+    'linkedin automation',
+    'developer marketing',
+    'open source',
+    'commit to content',
+  ],
+  referrer: 'origin-when-cross-origin',
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: '/logo-icon.png',
     apple: '/logo-icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://buildlog.dev',
+    siteName: 'BuildLog',
+    title: 'BuildLog — Turn Commits into Content',
+    description:
+      'Connect GitHub once. AI writes the post. Publish to Twitter/X, LinkedIn, and Bluesky from one dashboard.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'BuildLog — Turn Commits into Content',
+    description: 'Connect GitHub once. AI writes the post. Publish everywhere.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 }
 
@@ -55,6 +112,10 @@ export default function RootLayout({
       lang="en"
       className={`dark ${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <link rel="preconnect" href="https://kxhtfrmrvijxyvzstsdw.supabase.co" />
+        <link rel="dns-prefetch" href="https://kxhtfrmrvijxyvzstsdw.supabase.co" />
+      </head>
       <body className="antialiased">
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster theme="dark" richColors closeButton />

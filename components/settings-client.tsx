@@ -144,6 +144,7 @@ export function SettingsClient({
             Authorization: `Bearer ${session?.access_token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ return_url: window.location.origin }),
         }
       )
       const data = await res.json()
