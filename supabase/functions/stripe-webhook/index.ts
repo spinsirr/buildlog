@@ -1,7 +1,10 @@
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { checkRateLimit } from "../_shared/rate-limit.ts"
+import { getLog, setupLogger } from "../_shared/logger.ts"
 import { getStripe } from "../_shared/stripe.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
+
+await setupLogger()
+const log = getLog("stripe-webhook")
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
@@ -9,11 +12,6 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405, req)
-  }
-
-  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "stripe-webhook" })
-  if (!rl.allowed) {
-    return errorResponse("Rate limit exceeded", 429, req)
   }
 
   const body = await req.text()
@@ -28,7 +26,7 @@ Deno.serve(async (req) => {
       Deno.env.get("STRIPE_WEBHOOK_SECRET")!,
     )
   } catch (_err) {
-    console.error("[stripe-webhook] signature verification failed")
+    log.error("signature verification failed")
     return errorResponse("Invalid signature", 400, req)
   }
 
@@ -59,9 +57,7 @@ Deno.serve(async (req) => {
         const subscription = event.data.object
         const userId = subscription.metadata?.user_id
         if (!userId) {
-          console.error("[stripe-webhook] missing user_id in subscription metadata", {
-            subscriptionId: subscription.id,
-          })
+          log.error("missing user_id in subscription metadata", { subscriptionId: subscription.id })
           break
         }
 
@@ -73,7 +69,7 @@ Deno.serve(async (req) => {
           .single()
 
         if (!profile) {
-          console.error("[stripe-webhook] user_id not found in profiles", { userId })
+          log.error("user_id not found in profiles", { userId })
           break
         }
 
@@ -96,10 +92,10 @@ Deno.serve(async (req) => {
         )
 
         if (error) {
-          console.error("[stripe-webhook] failed to upsert subscription", {
+          log.error("failed to upsert subscription", {
             userId,
             subscriptionId: subscription.id,
-            error,
+            error: String(error),
           })
         }
         break
@@ -109,9 +105,7 @@ Deno.serve(async (req) => {
         const subscription = event.data.object
         const userId = subscription.metadata?.user_id
         if (!userId) {
-          console.error("[stripe-webhook] missing user_id in subscription metadata", {
-            subscriptionId: subscription.id,
-          })
+          log.error("missing user_id in subscription metadata", { subscriptionId: subscription.id })
           break
         }
 
@@ -123,7 +117,7 @@ Deno.serve(async (req) => {
           .single()
 
         if (!profile) {
-          console.error("[stripe-webhook] user_id not found in profiles", { userId })
+          log.error("user_id not found in profiles", { userId })
           break
         }
 
@@ -136,10 +130,10 @@ Deno.serve(async (req) => {
           .eq("user_id", userId)
 
         if (error) {
-          console.error("[stripe-webhook] failed to cancel subscription", {
+          log.error("failed to cancel subscription", {
             userId,
             subscriptionId: subscription.id,
-            error,
+            error: String(error),
           })
         }
         break
@@ -151,16 +145,12 @@ Deno.serve(async (req) => {
         const stripeCustomerId = session.customer as string | null
 
         if (!userId) {
-          console.error("[stripe-webhook] missing user_id in session metadata", {
-            sessionId: session.id,
-          })
+          log.error("missing user_id in session metadata", { sessionId: session.id })
           break
         }
 
         if (!stripeCustomerId) {
-          console.error("[stripe-webhook] missing customer in session", {
-            sessionId: session.id,
-          })
+          log.error("missing customer in session", { sessionId: session.id })
           break
         }
 
@@ -172,13 +162,13 @@ Deno.serve(async (req) => {
           .single()
 
         if (!profile) {
-          console.error("[stripe-webhook] user_id not found in profiles", { userId })
+          log.error("user_id not found in profiles", { userId })
           break
         }
 
         // Don't overwrite if the user already has a different customer ID
         if (profile.stripe_customer_id && profile.stripe_customer_id !== stripeCustomerId) {
-          console.error("[stripe-webhook] user already has a different stripe_customer_id", {
+          log.error("user already has a different stripe_customer_id", {
             userId,
             existing: profile.stripe_customer_id,
             incoming: stripeCustomerId,
@@ -192,10 +182,10 @@ Deno.serve(async (req) => {
           .eq("id", userId)
 
         if (error) {
-          console.error("[stripe-webhook] failed to sync stripe_customer_id", {
+          log.error("failed to sync stripe_customer_id", {
             userId,
             stripeCustomerId,
-            error,
+            error: String(error),
           })
         }
         break
@@ -205,7 +195,7 @@ Deno.serve(async (req) => {
         break
     }
   } catch (err) {
-    console.error("[stripe-webhook] unexpected error handling event", {
+    log.error("unexpected error handling event: {type}", {
       type: event.type,
       error: String(err),
       stack: (err as Error).stack,

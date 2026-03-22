@@ -1,13 +1,12 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { RepoList } from '@/components/repo-list'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
-
-const supabase = createClient()
+import type { Repo } from '@/lib/types'
 
 const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
 
@@ -15,20 +14,8 @@ function getInstallUrl() {
   if (!GITHUB_APP_NAME) return null
   if (typeof window === 'undefined')
     return `https://github.com/apps/${GITHUB_APP_NAME}/installations/new`
-  // state carries the origin so the callback redirects back to wherever the user started
   const state = encodeURIComponent(window.location.origin)
   return `https://github.com/apps/${GITHUB_APP_NAME}/installations/new?state=${state}`
-}
-
-async function fetchReposData() {
-  const { data, error } = await supabase.functions.invoke('github-app', {
-    body: { action: 'list-repos' },
-  })
-
-  const repos = error ? [] : (data?.repos ?? [])
-  const needsInstall = error ? true : (data?.needsInstall ?? false)
-
-  return { repos, needsInstall }
 }
 
 function ReposSkeleton() {
@@ -86,10 +73,29 @@ export default function ReposPage() {
 }
 
 function ReposContent() {
-  const { data, error, isLoading, mutate } = useSWR('repos-data', fetchReposData)
+  const supabase = useMemo(() => createClient(), [])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [installing, setInstalling] = useState(false)
+
+  const fetchReposData = useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('github-app', {
+      body: { action: 'list-repos' },
+    })
+
+    if (error) {
+      console.error('[repos] functions.invoke error:', error)
+      throw error
+    }
+
+    const result = data as { repos?: Repo[]; needsInstall?: boolean } | null
+    return {
+      repos: result?.repos ?? [],
+      needsInstall: result?.needsInstall ?? false,
+    }
+  }, [supabase])
+
+  const { data, error, isLoading, mutate } = useSWR('repos-data', fetchReposData)
 
   // Handle GitHub App installation callback (installation_id in query params)
   useEffect(() => {
@@ -100,23 +106,18 @@ function ReposContent() {
 
     async function saveInstallation() {
       setInstalling(true)
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
 
       await supabase.functions.invoke('github-app', {
         body: { action: 'set-installation', installation_id: parseInt(installationId!, 10) },
       })
 
-      // Clean up query params and refresh data
       router.replace('/repos')
       mutate()
       setInstalling(false)
     }
 
     saveInstallation()
-  }, [searchParams, router, mutate])
+  }, [searchParams, router, mutate, supabase])
 
   if (isLoading || installing) return <ReposSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />

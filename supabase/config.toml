@@ -1,0 +1,31 @@
+# Functions that handle auth internally (requireUser) — disable gateway JWT verification
+# so requests aren't rejected before reaching our code
+[functions.social-auth]
+verify_jwt = false
+
+[functions.social-disconnect]
+verify_jwt = false
+
+[functions.github-app]
+verify_jwt = false
+
+[functions.github-webhook]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.publish-post]
+verify_jwt = false
+
+[functions.generate-post]
+verify_jwt = false
+
+[functions.create-post]
+verify_jwt = false
+
+[functions.billing]
+verify_jwt = false
+
+[functions.connect-repo]
+verify_jwt = false

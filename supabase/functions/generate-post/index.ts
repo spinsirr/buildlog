@@ -1,10 +1,13 @@
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { generatePost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { parsePathParts, safeJson } from "../_shared/http.ts"
-import { checkRateLimit } from "../_shared/rate-limit.ts"
+import { getLog, setupLogger } from "../_shared/logger.ts"
 import { checkLimit } from "../_shared/subscription.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
+
+await setupLogger()
+const log = getLog("generate-post")
 
 Deno.serve(async (req) => {
   const optionsRes = handleOptions(req)
@@ -14,16 +17,7 @@ Deno.serve(async (req) => {
     return errorResponse("Method not allowed", 405, req)
   }
 
-  const { allowed: rateLimitAllowed, retryAfter } = checkRateLimit(req, {
-    limit: 20,
-    windowMs: 60_000,
-    key: "generate-post",
-  })
-  if (!rateLimitAllowed) {
-    return errorResponse(`Rate limited. Retry after ${retryAfter}s`, 429, req)
-  }
-
-  const { user, error: authError } = await requireUser(req)
+  const { user, supabase, error: authError } = await requireUser(req)
   if (!user) {
     return errorResponse(authError ?? "Unauthorized", 401, req)
   }
@@ -33,16 +27,20 @@ Deno.serve(async (req) => {
 
   try {
     if (isRegenerate) {
-      return await handleRegenerate(req, user.id)
+      return await handleRegenerate(req, user.id, supabase)
     }
-    return await handleGenerate(req, user.id)
+    return await handleGenerate(req, user.id, supabase)
   } catch (err) {
-    console.error("[generate-post] unhandled error", err)
+    log.error("unhandled error: {error}", { error: String(err), stack: (err as Error).stack })
     return errorResponse("Internal server error", 500, req)
   }
 })
 
-async function handleGenerate(req: Request, userId: string): Promise<Response> {
+async function handleGenerate(
+  req: Request,
+  userId: string,
+  supabase: SupabaseClient,
+): Promise<Response> {
   const body = await safeJson<{
     sourceType: "commit" | "pr" | "release"
     repoName: string
@@ -64,7 +62,7 @@ async function handleGenerate(req: Request, userId: string): Promise<Response> {
     return errorResponse("sourceType must be one of: commit, pr, release", 400, req)
   }
 
-  const { allowed, plan, count, limit } = await checkLimit(userId, "posts")
+  const { allowed, plan, count, limit } = await checkLimit(userId, "posts", supabase)
   if (!allowed) {
     return errorResponse(
       `Post limit reached (${count}/${limit} this month on ${plan} plan)`,
@@ -72,8 +70,6 @@ async function handleGenerate(req: Request, userId: string): Promise<Response> {
       req,
     )
   }
-
-  const supabase = createServiceClient()
 
   const { data: profile } = await supabase.from("profiles").select("tone").eq("id", userId).single()
 
@@ -109,21 +105,23 @@ async function handleGenerate(req: Request, userId: string): Promise<Response> {
     .single()
 
   if (insertError) {
-    console.error("[generate-post] insert error", insertError)
+    log.error("insert error: {error}", { error: String(insertError) })
     return errorResponse("Failed to save post", 500, req)
   }
 
   return jsonResponse({ post }, req, { status: 201 })
 }
 
-async function handleRegenerate(req: Request, userId: string): Promise<Response> {
+async function handleRegenerate(
+  req: Request,
+  userId: string,
+  supabase: SupabaseClient,
+): Promise<Response> {
   const body = await safeJson<{ id: string }>(req)
 
   if (!body?.id) {
     return errorResponse("Missing required field: id", 400, req)
   }
-
-  const supabase = createServiceClient()
 
   const { data: post, error: fetchError } = await supabase
     .from("posts")
@@ -185,7 +183,7 @@ async function handleRegenerate(req: Request, userId: string): Promise<Response>
     .single()
 
   if (updateError) {
-    console.error("[generate-post/regenerate] update error", updateError)
+    log.error("regenerate: update error: {error}", { error: String(updateError) })
     return errorResponse("Failed to update post", 500, req)
   }
 

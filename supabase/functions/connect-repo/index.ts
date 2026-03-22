@@ -2,16 +2,13 @@ import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { safeJson } from "../_shared/http.ts"
 import { checkLimit } from "../_shared/subscription.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
   if (optRes) return optRes
 
-  const { user, error: authErr } = await requireUser(req)
+  const { user, supabase, error: authErr } = await requireUser(req)
   if (!user) return errorResponse(authErr!, 401, req)
-
-  const supabase = createServiceClient()
 
   if (req.method === "POST") {
     const { allowed, limit } = await checkLimit(user.id, "repos")

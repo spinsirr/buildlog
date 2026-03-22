@@ -1,14 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
 
-const supabase = createClient()
-
 export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const [repos, setRepos] = useState(initialRepos)
   const [pending, setPending] = useState<number | null>(null)
 

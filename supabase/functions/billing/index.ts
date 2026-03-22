@@ -1,8 +1,11 @@
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { parsePathParts } from "../_shared/http.ts"
+import { getLog, setupLogger } from "../_shared/logger.ts"
 import { getStripe } from "../_shared/stripe.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
+
+await setupLogger()
+const log = getLog("billing")
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
@@ -12,7 +15,7 @@ Deno.serve(async (req) => {
     return errorResponse("Method not allowed", 405, req)
   }
 
-  const { user, error: authErr } = await requireUser(req)
+  const { user, supabase, error: authErr } = await requireUser(req)
   if (!user) return errorResponse(authErr!, 401, req)
 
   const parts = parsePathParts(req, "billing")
@@ -20,7 +23,6 @@ Deno.serve(async (req) => {
 
   const frontendUrl = Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ??
     "http://localhost:3000"
-  const supabase = createServiceClient()
   const stripe = getStripe()
 
   try {
@@ -33,9 +35,9 @@ Deno.serve(async (req) => {
         .single()
 
       if (profileErr || !profile) {
-        console.error("[billing/checkout] failed to fetch profile", {
+        log.error("checkout: failed to fetch profile", {
           userId: user.id,
-          error: profileErr,
+          error: String(profileErr),
         })
         return errorResponse("Profile not found", 404, req)
       }
@@ -60,10 +62,10 @@ Deno.serve(async (req) => {
           .eq("id", user.id)
 
         if (updateErr) {
-          console.error("[billing/checkout] failed to save stripe_customer_id", {
+          log.error("checkout: failed to save stripe_customer_id", {
             userId: user.id,
             customerId,
-            error: updateErr,
+            error: String(updateErr),
           })
           return errorResponse("Failed to save customer", 500, req)
         }
@@ -71,7 +73,7 @@ Deno.serve(async (req) => {
 
       const priceId = Deno.env.get("STRIPE_PRO_PRICE_ID")
       if (!priceId) {
-        console.error("[billing/checkout] missing STRIPE_PRO_PRICE_ID env var")
+        log.error("checkout: missing STRIPE_PRO_PRICE_ID env var")
         return errorResponse("Billing not configured", 500, req)
       }
 
@@ -96,10 +98,7 @@ Deno.serve(async (req) => {
         .single()
 
       if (profileErr || !profile) {
-        console.error("[billing/portal] failed to fetch profile", {
-          userId: user.id,
-          error: profileErr,
-        })
+        log.error("portal: failed to fetch profile", { userId: user.id, error: String(profileErr) })
         return errorResponse("Profile not found", 404, req)
       }
 
@@ -117,7 +116,7 @@ Deno.serve(async (req) => {
       return errorResponse("Unknown action", 404, req)
     }
   } catch (err) {
-    console.error("[billing] unexpected error", {
+    log.error("unexpected error: {action}", {
       action,
       userId: user.id,
       error: String(err),

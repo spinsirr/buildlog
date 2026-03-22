@@ -3,10 +3,13 @@ import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { base64UrlEncode, encrypt, randomBytes, toBase64Utf8 } from "../_shared/crypto.ts"
 import { parsePathParts, safeJson } from "../_shared/http.ts"
+import { getLog, setupLogger } from "../_shared/logger.ts"
 import { OAUTH_PROVIDERS, type OAuthProviderConfig } from "../_shared/providers.ts"
-import { checkRateLimit } from "../_shared/rate-limit.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
+
+await setupLogger()
+const log = getLog("social-auth")
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,6 +23,43 @@ function getEdgeFunctionBaseUrl(): string {
 
 function redirectResponse(url: string): Response {
   return new Response(null, { status: 302, headers: { Location: url } })
+}
+
+/** Validate return_url against allowed origins to prevent open redirect */
+function sanitizeReturnUrl(url: string): string {
+  const fallback = "https://buildlog.ink"
+  try {
+    const parsed = new URL(url)
+    const allowed = getAllowedReturnOrigins()
+    if (allowed.has(parsed.origin)) return parsed.origin
+  } catch {
+    // invalid URL
+  }
+  return fallback
+}
+
+function getAllowedReturnOrigins(): Set<string> {
+  const origins = new Set(["https://buildlog.ink"])
+  const appUrl = Deno.env.get("APP_URL")
+  if (appUrl) {
+    try {
+      origins.add(new URL(appUrl).origin)
+    } catch { /* ignore */ }
+  }
+  const corsOrigin = Deno.env.get("CORS_ORIGIN")
+  if (corsOrigin) {
+    for (const o of corsOrigin.split(",")) {
+      const trimmed = o.trim()
+      if (trimmed) {
+        try {
+          origins.add(new URL(trimmed).origin)
+        } catch { /* ignore */ }
+      }
+    }
+  }
+  // Allow localhost for development
+  origins.add("http://localhost:3000")
+  return origins
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +125,7 @@ async function oauthInitiate(
   provider: OAuthProviderConfig,
   platform: string,
 ): Promise<Response> {
-  const { user, error } = await requireUser(req)
+  const { user, supabase: _userClient, error } = await requireUser(req)
   if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
   const limit = await checkLimit(user.id, "platforms")
@@ -102,7 +142,7 @@ async function oauthInitiate(
 
   // Read return_url from request body (frontend passes window.location.origin)
   const body = await safeJson<{ return_url?: string }>(req)
-  const returnUrl = body?.return_url ?? "https://buildlog.ink"
+  const returnUrl = sanitizeReturnUrl(body?.return_url ?? "https://buildlog.ink")
 
   const state = base64UrlEncode(randomBytes(32))
   const redirectUri = `${getEdgeFunctionBaseUrl()}/${platform}/callback`
@@ -199,7 +239,11 @@ async function oauthCallback(
 
   if (!tokenRes.ok) {
     const body = await tokenRes.text()
-    console.error(`[social-auth] ${provider.name} token exchange failed:`, tokenRes.status, body)
+    log.error("{provider} token exchange failed: {status} {body}", {
+      provider: provider.name,
+      status: tokenRes.status,
+      body,
+    })
     return redirectResponse(`${frontendUrl}/settings?error=${platform}_token_exchange`)
   }
 
@@ -214,7 +258,10 @@ async function oauthCallback(
     headers: { Authorization: `Bearer ${tokenData.access_token}` },
   })
   if (!userRes.ok) {
-    console.error(`[social-auth] ${provider.name} user info failed:`, userRes.status)
+    log.error("{provider} user info failed: {status}", {
+      provider: provider.name,
+      status: userRes.status,
+    })
     return redirectResponse(`${frontendUrl}/settings?error=${platform}_user_fetch`)
   }
 
@@ -259,7 +306,10 @@ async function oauthCallback(
     .upsert(upsertData, { onConflict: "user_id,platform" })
 
   if (upsertError) {
-    console.error(`[social-auth] ${provider.name} upsert failed:`, upsertError.message)
+    log.error("{provider} upsert failed: {error}", {
+      provider: provider.name,
+      error: upsertError.message,
+    })
     return redirectResponse(`${frontendUrl}/settings?error=${platform}_save`)
   }
 
@@ -271,7 +321,7 @@ async function oauthCallback(
 // ---------------------------------------------------------------------------
 
 async function blueskyConnect(req: Request): Promise<Response> {
-  const { user, error } = await requireUser(req)
+  const { user, supabase: _userClient, error } = await requireUser(req)
   if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
   const limit = await checkLimit(user.id, "platforms")
@@ -335,9 +385,6 @@ Deno.serve(async (req) => {
   const optRes = handleOptions(req)
   if (optRes) return optRes
 
-  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "social-auth" })
-  if (!rl.allowed) return errorResponse("Rate limit exceeded", 429, req)
-
   const parts = parsePathParts(req, "social-auth")
   const platform = parts[0]
   const action = parts[1]
@@ -362,10 +409,9 @@ Deno.serve(async (req) => {
 
     return errorResponse("Not found", 404, req)
   } catch (err) {
-    console.error(
-      "[social-auth] Unhandled error:",
-      err instanceof Error ? err.message : String(err),
-    )
+    log.error("unhandled error: {error}", {
+      error: err instanceof Error ? err.message : String(err),
+    })
     return errorResponse("Internal server error", 500, req)
   }
 })

@@ -2,6 +2,7 @@
 
 import { Check, Circle, GitBranch, Share2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
+import { useCallback, useMemo } from 'react'
 import useSWR from 'swr'
 import { DashboardActions } from '@/components/dashboard-actions'
 import { Badge } from '@/components/ui/badge'
@@ -19,78 +20,10 @@ import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const supabase = createClient()
-
 const platformLabels: Record<string, string> = {
   twitter: 'X',
   linkedin: 'LinkedIn',
   bluesky: 'Bluesky',
-}
-
-async function fetchDashboardData() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  const [{ data: repos }, { data: posts }, { count: connectionsCount }, { data: streakPosts }] =
-    await Promise.all([
-      supabase.from('connected_repos').select('*').eq('user_id', user.id),
-      supabase
-        .from('posts')
-        .select('*, connected_repos(full_name)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      supabase
-        .from('platform_connections')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id),
-      supabase
-        .from('posts')
-        .select('created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(100),
-    ])
-
-  const allPosts = (posts ?? []) as Post[]
-  const drafts = allPosts.filter((p) => p.status === 'draft')
-  const published = allPosts.filter((p) => p.status === 'published')
-
-  let streak = 0
-  if (streakPosts && streakPosts.length > 0) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const postDays = new Set(
-      (streakPosts as { created_at: string }[]).map((p) => {
-        const d = new Date(p.created_at)
-        d.setHours(0, 0, 0, 0)
-        return d.getTime()
-      })
-    )
-    const dayMs = 86400000
-    let checkDate = today.getTime()
-    if (!postDays.has(checkDate)) checkDate = today.getTime() - dayMs
-    while (postDays.has(checkDate)) {
-      streak++
-      checkDate -= dayMs
-    }
-  }
-
-  return {
-    stats: [
-      { label: 'Connected Repos', value: repos?.length ?? 0 },
-      { label: 'Draft Posts', value: drafts.length },
-      { label: 'Published', value: published.length },
-      { label: 'Streak Days', value: streak },
-    ],
-    connections: connectionsCount ?? 0,
-    allPosts,
-    hasRepos: (repos?.length ?? 0) > 0,
-    hasSocial: (connectionsCount ?? 0) > 0,
-    hasPosts: allPosts.length > 0,
-  }
 }
 
 function DashboardSkeleton() {
@@ -139,6 +72,74 @@ function ErrorState({ retry }: { retry: () => void }) {
 }
 
 export default function DashboardPage() {
+  const supabase = useMemo(() => createClient(), [])
+
+  const fetchDashboardData = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+
+    const [{ data: repos }, { data: posts }, { count: connectionsCount }, { data: streakPosts }] =
+      await Promise.all([
+        supabase.from('connected_repos').select('*').eq('user_id', user.id),
+        supabase
+          .from('posts')
+          .select('*, connected_repos(full_name)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('platform_connections')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+        supabase
+          .from('posts')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(100),
+      ])
+
+    const allPosts = (posts ?? []) as Post[]
+    const drafts = allPosts.filter((p) => p.status === 'draft')
+    const published = allPosts.filter((p) => p.status === 'published')
+
+    let streak = 0
+    if (streakPosts && streakPosts.length > 0) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const postDays = new Set(
+        (streakPosts as { created_at: string }[]).map((p) => {
+          const d = new Date(p.created_at)
+          d.setHours(0, 0, 0, 0)
+          return d.getTime()
+        })
+      )
+      const dayMs = 86400000
+      let checkDate = today.getTime()
+      if (!postDays.has(checkDate)) checkDate = today.getTime() - dayMs
+      while (postDays.has(checkDate)) {
+        streak++
+        checkDate -= dayMs
+      }
+    }
+
+    return {
+      stats: [
+        { label: 'Connected Repos', value: repos?.length ?? 0 },
+        { label: 'Draft Posts', value: drafts.length },
+        { label: 'Published', value: published.length },
+        { label: 'Streak Days', value: streak },
+      ],
+      connections: connectionsCount ?? 0,
+      allPosts,
+      hasRepos: (repos?.length ?? 0) > 0,
+      hasSocial: (connectionsCount ?? 0) > 0,
+      hasPosts: allPosts.length > 0,
+    }
+  }, [supabase])
+
   const { data, error, isLoading, mutate } = useSWR('dashboard-data', fetchDashboardData)
 
   if (isLoading) return <DashboardSkeleton />

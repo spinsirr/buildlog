@@ -11,15 +11,17 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const supabase = createClient()
 
-    // Supabase client library automatically handles the code exchange
-    // when it detects the auth callback URL parameters.
-    // We just need to check for the session after a brief delay.
     const handleCallback = async () => {
-      const { error } = await supabase.auth.getSession()
+      // Extract the auth code from URL and exchange it for a session
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get('code')
 
-      if (error) {
-        router.replace(`/login?error=auth_failed&message=${encodeURIComponent(error.message)}`)
-        return
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          router.replace(`/login?error=auth_failed&message=${encodeURIComponent(error.message)}`)
+          return
+        }
       }
 
       const {

@@ -16,8 +16,9 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useAuth } from '@/components/auth-provider'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -32,8 +33,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { cn } from '@/lib/utils'
-
-const supabase = createClient()
 
 const platformConfig: Record<string, { label: string; color: string }> = {
   twitter: { label: 'X', color: 'bg-zinc-800 text-zinc-300' },
@@ -485,6 +484,7 @@ function PostCard({
 }
 
 function NewPostForm({ onCreated }: { onCreated: () => void }) {
+  const supabase = useMemo(() => createClient(), [])
   const [content, setContent] = useState('')
   const [busy, setBusy] = useState(false)
   const charCount = content.length
@@ -493,9 +493,10 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
     e.preventDefault()
     if (!content.trim()) return
     setBusy(true)
-    const { data, error } = await supabase.functions.invoke('create-post', {
+    const { data: rawData, error } = await supabase.functions.invoke('create-post', {
       body: { content: content.trim() },
     })
+    const data = rawData as { error?: string } | null
     if (error) {
       toast.error(data?.error || 'Failed to create post')
     } else {
@@ -566,6 +567,8 @@ export function PostsClient({
   initialPosts: Post[]
   initialConnectedPlatforms: string[]
 }) {
+  const supabase = useMemo(() => createClient(), [])
+  const { session } = useAuth()
   const [showNewPost, setShowNewPost] = useState(false)
   const [posts, setPosts] = useState(initialPosts)
   const connectedPlatforms = initialConnectedPlatforms
@@ -574,9 +577,10 @@ export function PostsClient({
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)))
 
     if (updates.status === 'published') {
-      const { data, error } = await supabase.functions.invoke('publish-post', {
+      const { data: rawData, error } = await supabase.functions.invoke('publish-post', {
         body: { id, content: updates.content },
       })
+      const data = rawData as { error?: string } | null
       if (error || data?.error) {
         await refreshPosts()
         throw new Error(data?.error || 'Failed to publish')
@@ -604,16 +608,15 @@ export function PostsClient({
   }
 
   async function handleRegenerate(id: string) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-post/regenerate`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${token}`,
           apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         },
         body: JSON.stringify({ id }),

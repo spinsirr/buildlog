@@ -1,3 +1,7 @@
+import { getLog } from "./logger.ts"
+
+const log = getLog("ai")
+
 interface GeneratePostInput {
   sourceType: "commit" | "pr" | "release"
   repoName: string
@@ -155,7 +159,7 @@ async function callGemini(system: string, prompt: string): Promise<string> {
     throw new Error("Missing GEMINI_API_KEY (or GOOGLE_API_KEY)")
   }
 
-  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.0-flash"
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3-flash-preview"
 
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
@@ -180,7 +184,7 @@ async function callGemini(system: string, prompt: string): Promise<string> {
     return await callGeminiOnce(url, body)
   } catch (err) {
     if (isTransient(err)) {
-      console.warn("[ai] Gemini transient error, retrying once:", String(err))
+      log.warn("Gemini transient error, retrying once: {error}", { error: String(err) })
       return await callGeminiOnce(url, body)
     }
     throw err

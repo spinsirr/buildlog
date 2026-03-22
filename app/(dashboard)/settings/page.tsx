@@ -1,36 +1,38 @@
 'use client'
 
+import { useMemo } from 'react'
 import useSWR from 'swr'
 import { SettingsClient } from '@/components/settings-client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
 
-const supabase = createClient()
+function useSettingsData() {
+  const supabase = useMemo(() => createClient(), [])
+  return useSWR('settings-data', async () => {
+    const [{ data: rows }, { data: profileData, error: profileError }] = await Promise.all([
+      supabase.from('platform_connections').select('platform, platform_username'),
+      supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
+    ])
 
-async function fetchSettingsData() {
-  const [{ data: rows }, { data: profileData, error: profileError }] = await Promise.all([
-    supabase.from('platform_connections').select('platform, platform_username'),
-    supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
-  ])
+    if (profileError) {
+      console.error('Failed to load profile settings:', profileError.message)
+    }
 
-  if (profileError) {
-    console.error('Failed to load profile settings:', profileError.message)
-  }
+    const connections = ['twitter', 'linkedin', 'bluesky'].map((platform) => {
+      const row = rows?.find(
+        (r: { platform: string; platform_username: string | null }) => r.platform === platform
+      )
+      return { platform, platform_username: row?.platform_username ?? null, connected: !!row }
+    })
 
-  const connections = ['twitter', 'linkedin', 'bluesky'].map((platform) => {
-    const row = rows?.find(
-      (r: { platform: string; platform_username: string | null }) => r.platform === platform
-    )
-    return { platform, platform_username: row?.platform_username ?? null, connected: !!row }
+    const profile = {
+      tone: profileData?.tone ?? 'casual',
+      auto_publish: profileData?.auto_publish ?? false,
+      email_notifications: profileData?.email_notifications ?? true,
+    }
+
+    return { connections, profile }
   })
-
-  const profile = {
-    tone: profileData?.tone ?? 'casual',
-    auto_publish: profileData?.auto_publish ?? false,
-    email_notifications: profileData?.email_notifications ?? true,
-  }
-
-  return { connections, profile }
 }
 
 function SettingsSkeleton() {
@@ -90,7 +92,7 @@ function ErrorState({ retry }: { retry: () => void }) {
 }
 
 export default function SettingsPage() {
-  const { data, error, isLoading, mutate } = useSWR('settings-data', fetchSettingsData)
+  const { data, error, isLoading, mutate } = useSettingsData()
 
   if (isLoading) return <SettingsSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />

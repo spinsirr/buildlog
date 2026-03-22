@@ -1,27 +1,29 @@
 'use client'
 
+import { useMemo } from 'react'
 import useSWR from 'swr'
 import { PostsClient } from '@/components/posts-client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createClient } from '@/lib/supabase/client'
 
-const supabase = createClient()
+function usePostsData() {
+  const supabase = useMemo(() => createClient(), [])
+  return useSWR('posts-data', async () => {
+    const [{ data: posts }, { data: connectionRows }] = await Promise.all([
+      supabase
+        .from('posts')
+        .select('*, connected_repos(full_name)')
+        .order('created_at', { ascending: false }),
+      supabase.from('platform_connections').select('platform'),
+    ])
 
-async function fetchPostsData() {
-  const [{ data: posts }, { data: connectionRows }] = await Promise.all([
-    supabase
-      .from('posts')
-      .select('*, connected_repos(full_name)')
-      .order('created_at', { ascending: false }),
-    supabase.from('platform_connections').select('platform'),
-  ])
+    const connectedPlatforms = (connectionRows ?? []).map((r: { platform: string }) => r.platform)
 
-  const connectedPlatforms = (connectionRows ?? []).map((r: { platform: string }) => r.platform)
-
-  return {
-    posts: posts ?? [],
-    connectedPlatforms,
-  }
+    return {
+      posts: posts ?? [],
+      connectedPlatforms,
+    }
+  })
 }
 
 function PostsSkeleton() {
@@ -76,7 +78,7 @@ function ErrorState({ retry }: { retry: () => void }) {
 }
 
 export default function PostsPage() {
-  const { data, error, isLoading, mutate } = useSWR('posts-data', fetchPostsData)
+  const { data, error, isLoading, mutate } = usePostsData()
 
   if (isLoading) return <PostsSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />

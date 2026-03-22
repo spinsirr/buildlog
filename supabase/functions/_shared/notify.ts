@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { getLog, setupLogger } from "./logger.ts"
 import { sendNotificationEmail } from "./email.ts"
 
 export async function notify(
@@ -15,11 +16,17 @@ export async function notify(
     subject?: string
   },
 ): Promise<void> {
-  await supabase.from("notifications").insert({
+  await setupLogger()
+  const log = getLog("notify")
+
+  const { error: insertError } = await supabase.from("notifications").insert({
     user_id: userId,
     message,
     link: link ?? null,
   })
+  if (insertError) {
+    log.error("failed to insert notification: {error}", { error: insertError.message, userId })
+  }
 
   const { data: profile } = await supabase
     .from("profiles")

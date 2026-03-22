@@ -2,7 +2,7 @@
 
 import { Check, Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,6 @@ import { Switch } from '@/components/ui/switch'
 import { createClient } from '@/lib/supabase/client'
 import type { Connection, ProfileSettings } from '@/lib/types'
 
-const supabase = createClient()
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 const PLATFORMS = [
@@ -63,6 +62,7 @@ export function SettingsClient({
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const supabase = useMemo(() => createClient(), [])
   const [isPending, startTransition] = useTransition()
   const [connections, setConnections] = useState(initialConnections)
 
@@ -99,7 +99,7 @@ export function SettingsClient({
       toast.error(`Failed to connect ${label}: ${error}`)
       router.replace('/settings', { scroll: false })
     }
-  }, [searchParams, router])
+  }, [searchParams, router, supabase])
   const [profile, setProfile] = useState(initialProfile)
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
@@ -153,12 +153,13 @@ export function SettingsClient({
       const {
         data: { session },
       } = await supabase.auth.getSession()
+      if (!session) return
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/${platform}`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
             apikey: ANON_KEY,
             'Content-Type': 'application/json',
           },
@@ -185,12 +186,13 @@ export function SettingsClient({
       const {
         data: { session },
       } = await supabase.auth.getSession()
+      if (!session) return
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/bluesky`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
             apikey: ANON_KEY,
             'Content-Type': 'application/json',
           },
@@ -222,12 +224,13 @@ export function SettingsClient({
       const {
         data: { session },
       } = await supabase.auth.getSession()
+      if (!session) return
       await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-disconnect/${platform}`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
             apikey: ANON_KEY,
             'Content-Type': 'application/json',
           },

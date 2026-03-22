@@ -3,18 +3,21 @@ import { publishToBluesky } from "../_shared/bluesky.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
 import { publishToLinkedIn } from "../_shared/linkedin.ts"
+import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
-import { checkRateLimit } from "../_shared/rate-limit.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 import { publishToTwitter } from "../_shared/twitter.ts"
+
+await setupLogger()
+const log = getLog("github-webhook")
 
 const MAX_BODY_SIZE = 1024 * 1024 // 1MB
 
 async function verifySignature(body: string, signature: string): Promise<boolean> {
   const secret = Deno.env.get("GITHUB_WEBHOOK_SECRET")
   if (!secret) {
-    console.error("[github-webhook] Missing GITHUB_WEBHOOK_SECRET")
+    log.error("missing GITHUB_WEBHOOK_SECRET")
     return false
   }
 
@@ -30,11 +33,6 @@ Deno.serve(async (req) => {
   // Only accept POST
   if (req.method !== "POST") {
     return errorResponse("Method not allowed", 405, req)
-  }
-
-  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "github-webhook" })
-  if (!rl.allowed) {
-    return errorResponse("Rate limit exceeded", 429, req)
   }
 
   // Body size limit (check content-length header first)
@@ -60,10 +58,9 @@ Deno.serve(async (req) => {
   try {
     return await handleWebhook(req, body, event)
   } catch (err) {
-    console.error(
-      "[github-webhook] Unhandled webhook error:",
-      err instanceof Error ? err.message : String(err),
-    )
+    log.error("unhandled webhook error: {error}", {
+      error: err instanceof Error ? err.message : String(err),
+    })
     // Return 200 to prevent GitHub from retrying and creating duplicate posts
     return jsonResponse({ ok: true, error: "internal" }, req)
   }
@@ -284,7 +281,10 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         publishedPlatforms.push("twitter")
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        console.error(`[github-webhook] Twitter publish failed for post ${post.id}: ${message}`)
+        log.error("Twitter publish failed for post {postId}: {error}", {
+          postId: post.id,
+          error: message,
+        })
         failedPlatforms.twitter = message
       }
     }
@@ -298,7 +298,10 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         publishedPlatforms.push("linkedin")
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        console.error(`[github-webhook] LinkedIn publish failed for post ${post.id}: ${message}`)
+        log.error("LinkedIn publish failed for post {postId}: {error}", {
+          postId: post.id,
+          error: message,
+        })
         failedPlatforms.linkedin = message
       }
     }
@@ -312,7 +315,10 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         publishedPlatforms.push("bluesky")
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        console.error(`[github-webhook] Bluesky publish failed for post ${post.id}: ${message}`)
+        log.error("Bluesky publish failed for post {postId}: {error}", {
+          postId: post.id,
+          error: message,
+        })
         failedPlatforms.bluesky = message
       }
     }
@@ -356,7 +362,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
           subject: hasFailures ? "Post published with errors" : "Post auto-published",
         })
       } catch (notifyErr) {
-        console.error("[github-webhook] notify failed:", notifyErr)
+        log.error("notify failed: {error}", { error: String(notifyErr) })
       }
     } else {
       // All platforms failed — revert to draft and record errors
@@ -377,7 +383,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
           subject: "Auto-publish failed",
         })
       } catch (notifyErr) {
-        console.error("[github-webhook] notify failed:", notifyErr)
+        log.error("notify failed: {error}", { error: String(notifyErr) })
       }
     }
   } else if (post) {
@@ -390,7 +396,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         subject: "New draft post created",
       })
     } catch (notifyErr) {
-      console.error("[github-webhook] notify failed:", notifyErr)
+      log.error("notify failed: {error}", { error: String(notifyErr) })
     }
   }
 

@@ -1,7 +1,10 @@
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { safeJson } from "../_shared/http.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
+import { getLog, setupLogger } from "../_shared/logger.ts"
+
+await setupLogger()
+const log = getLog("github-app")
 
 async function getInstallationToken(installationId: number): Promise<string> {
   const appId = Deno.env.get("GITHUB_APP_ID")
@@ -21,8 +24,8 @@ async function getInstallationToken(installationId: number): Promise<string> {
 
   // Import private key and sign
   const pemContent = privateKey
-    .replace(/-----BEGIN RSA PRIVATE KEY-----/, "")
-    .replace(/-----END RSA PRIVATE KEY-----/, "")
+    .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, "")
+    .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/\s/g, "")
   const binaryKey = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0))
 
@@ -72,7 +75,7 @@ Deno.serve(async (req) => {
     return errorResponse("Method not allowed", 405, req)
   }
 
-  const { user, error: authErr } = await requireUser(req)
+  const { user, supabase, error: authErr } = await requireUser(req)
   if (!user) return errorResponse(authErr!, 401, req)
 
   const body = await safeJson<{
@@ -81,7 +84,6 @@ Deno.serve(async (req) => {
   }>(req)
 
   const action = body?.action ?? "set-installation"
-  const supabase = createServiceClient()
 
   if (action === "set-installation") {
     if (!body?.installation_id) {
@@ -98,18 +100,29 @@ Deno.serve(async (req) => {
   }
 
   if (action === "list-repos") {
-    const { data: profile } = await supabase
+    log.info("list-repos for user {userId}", { userId: user.id })
+
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("github_installation_id")
       .eq("id", user.id)
       .single()
+
+    log.info("profile query result: installationId={installationId}, error={error}", {
+      installationId: profile?.github_installation_id,
+      error: profileErr?.message,
+    })
 
     if (!profile?.github_installation_id) {
       return jsonResponse({ repos: [], needsInstall: true }, req)
     }
 
     try {
+      log.info("getting installation token for {installationId}", {
+        installationId: profile.github_installation_id,
+      })
       const token = await getInstallationToken(profile.github_installation_id)
+      log.info("got installation token OK")
 
       const res = await fetch("https://api.github.com/installation/repositories?per_page=100", {
         headers: {
@@ -120,8 +133,9 @@ Deno.serve(async (req) => {
       })
 
       if (!res.ok) {
-        console.error("[github-app] list repos failed:", await res.text())
-        return jsonResponse({ repos: [], needsInstall: true }, req)
+        const errText = await res.text()
+        log.error("list repos failed: {status} {body}", { status: res.status, body: errText })
+        return errorResponse(`GitHub API error: ${res.status} ${errText}`, 502, req)
       }
 
       const data = (await res.json()) as {
@@ -153,8 +167,11 @@ Deno.serve(async (req) => {
 
       return jsonResponse({ repos, needsInstall: false }, req)
     } catch (err) {
-      console.error("[github-app] list repos error:", err)
-      return jsonResponse({ repos: [], needsInstall: true }, req)
+      log.error("list repos error: {error}", {
+        error: (err as Error).message,
+        stack: (err as Error).stack,
+      })
+      return errorResponse(`Failed to list repos: ${(err as Error).message}`, 500, req)
     }
   }
 

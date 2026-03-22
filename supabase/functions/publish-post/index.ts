@@ -3,8 +3,6 @@ import { publishToBluesky } from "../_shared/bluesky.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { safeJson } from "../_shared/http.ts"
 import { publishToLinkedIn } from "../_shared/linkedin.ts"
-import { checkRateLimit } from "../_shared/rate-limit.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
 import { publishToTwitter } from "../_shared/twitter.ts"
 
 Deno.serve(async (req) => {
@@ -15,16 +13,11 @@ Deno.serve(async (req) => {
     return errorResponse("Method not allowed", 405, req)
   }
 
-  const rl = checkRateLimit(req, { limit: 5, windowMs: 60_000, key: "publish" })
-  if (!rl.allowed) return errorResponse("Rate limit exceeded", 429, req)
-
-  const { user, error: authErr } = await requireUser(req)
+  const { user, supabase, error: authErr } = await requireUser(req)
   if (!user) return errorResponse(authErr!, 401, req)
 
   const body = await safeJson<{ id?: string; content?: string }>(req)
   if (!body?.id) return errorResponse("Post ID is required", 400, req)
-
-  const supabase = createServiceClient()
 
   // Fetch and verify post ownership
   const { data: currentPost } = await supabase
