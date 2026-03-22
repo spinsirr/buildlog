@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { RepoList } from '@/components/repo-list'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,9 +10,15 @@ import { createClient } from '@/lib/supabase/client'
 const supabase = createClient()
 
 const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
-const INSTALL_URL = GITHUB_APP_NAME
-  ? `https://github.com/apps/${GITHUB_APP_NAME}/installations/new`
-  : null
+
+function getInstallUrl() {
+  if (!GITHUB_APP_NAME) return null
+  if (typeof window === 'undefined')
+    return `https://github.com/apps/${GITHUB_APP_NAME}/installations/new`
+  // state carries the origin so the callback redirects back to wherever the user started
+  const state = encodeURIComponent(window.location.origin)
+  return `https://github.com/apps/${GITHUB_APP_NAME}/installations/new?state=${state}`
+}
 
 async function fetchReposData() {
   const { data, error } = await supabase.functions.invoke('github-app', {
@@ -70,9 +78,47 @@ function ErrorState({ retry }: { retry: () => void }) {
 }
 
 export default function ReposPage() {
-  const { data, error, isLoading, mutate } = useSWR('repos-data', fetchReposData)
+  return (
+    <Suspense fallback={<ReposSkeleton />}>
+      <ReposContent />
+    </Suspense>
+  )
+}
 
-  if (isLoading) return <ReposSkeleton />
+function ReposContent() {
+  const { data, error, isLoading, mutate } = useSWR('repos-data', fetchReposData)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [installing, setInstalling] = useState(false)
+
+  // Handle GitHub App installation callback (installation_id in query params)
+  useEffect(() => {
+    const installationId = searchParams.get('installation_id')
+    const setupAction = searchParams.get('setup_action')
+
+    if (!installationId || setupAction === 'delete') return
+
+    async function saveInstallation() {
+      setInstalling(true)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) return
+
+      await supabase.functions.invoke('github-app', {
+        body: { action: 'set-installation', installation_id: parseInt(installationId!, 10) },
+      })
+
+      // Clean up query params and refresh data
+      router.replace('/repos')
+      mutate()
+      setInstalling(false)
+    }
+
+    saveInstallation()
+  }, [searchParams, router, mutate])
+
+  if (isLoading || installing) return <ReposSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />
 
   const { repos, needsInstall } = data
@@ -88,9 +134,9 @@ export default function ReposPage() {
               Connect GitHub repos to auto-generate posts from your activity.
             </p>
           </div>
-          {INSTALL_URL ? (
+          {GITHUB_APP_NAME ? (
             <a
-              href={INSTALL_URL}
+              href={getInstallUrl()!}
               className="bg-zinc-100 text-zinc-900 font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors text-sm text-center shrink-0"
             >
               + Add repos
@@ -109,9 +155,9 @@ export default function ReposPage() {
             <p className="text-sm text-zinc-400 text-center">
               Grant access to your repos so BuildLog can receive push, PR, and release events.
             </p>
-            {INSTALL_URL ? (
+            {GITHUB_APP_NAME ? (
               <a
-                href={INSTALL_URL}
+                href={getInstallUrl()!}
                 className="bg-zinc-100 text-zinc-900 font-medium px-5 py-2.5 rounded-lg hover:bg-white transition-colors text-sm"
               >
                 Install GitHub App

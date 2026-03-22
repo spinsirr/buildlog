@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Connection, ProfileSettings } from '@/lib/types'
 
 const supabase = createClient()
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 const PLATFORMS = [
   {
@@ -73,9 +74,25 @@ export function SettingsClient({
     if (connected) {
       const label = PLATFORMS.find((p) => p.id === connected)?.label ?? connected
       toast.success(`${label} connected successfully`)
-      // Refresh data to show the new connection
+      // Refetch connections from DB to show the new connection
+      supabase
+        .from('platform_connections')
+        .select('platform, platform_username')
+        .then(
+          ({ data: rows }: { data: { platform: string; platform_username: string }[] | null }) => {
+            if (rows) {
+              setConnections((prev) =>
+                prev.map((c) => {
+                  const row = rows.find((r: { platform: string }) => r.platform === c.platform)
+                  return row
+                    ? { ...c, connected: true, platform_username: row.platform_username }
+                    : { ...c, connected: false, platform_username: null }
+                })
+              )
+            }
+          }
+        )
       router.replace('/settings', { scroll: false })
-      router.refresh()
     } else if (error) {
       const platform = error.split('_')[0]
       const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
@@ -142,6 +159,7 @@ export function SettingsClient({
           method: 'POST',
           headers: {
             Authorization: `Bearer ${session?.access_token}`,
+            apikey: ANON_KEY,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ return_url: window.location.origin }),
@@ -173,6 +191,7 @@ export function SettingsClient({
           method: 'POST',
           headers: {
             Authorization: `Bearer ${session?.access_token}`,
+            apikey: ANON_KEY,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ handle: bskyHandle, appPassword: bskyPassword }),
@@ -184,10 +203,14 @@ export function SettingsClient({
         return
       }
       setShowBskyForm(false)
+      setConnections((prev) =>
+        prev.map((c) =>
+          c.platform === 'bluesky' ? { ...c, connected: true, platform_username: bskyHandle } : c
+        )
+      )
       setBskyHandle('')
       setBskyPassword('')
       toast.success('Bluesky connected')
-      router.refresh()
     } finally {
       setBskyLoading(false)
     }
@@ -205,6 +228,7 @@ export function SettingsClient({
           method: 'POST',
           headers: {
             Authorization: `Bearer ${session?.access_token}`,
+            apikey: ANON_KEY,
             'Content-Type': 'application/json',
           },
         }
@@ -324,7 +348,16 @@ export function SettingsClient({
                       />
                     </div>
                     <p className="text-[11px] text-zinc-500">
-                      Use an App Password from Settings &rarr; App Passwords in the Bluesky app.
+                      Use an{' '}
+                      <a
+                        href="https://bsky.app/settings/app-passwords"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-400 hover:text-indigo-300 underline"
+                      >
+                        App Password
+                      </a>{' '}
+                      from your Bluesky settings.
                     </p>
                     <div className="flex items-center gap-2">
                       <Button

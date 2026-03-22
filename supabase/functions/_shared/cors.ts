@@ -20,7 +20,7 @@ function getAllowedOrigins(): string[] {
   }
   const appUrl = Deno.env.get("APP_URL")
   if (appUrl) return [appUrl]
-  return ["https://buildlog.dev"]
+  return ["https://buildlog.ink"]
 }
 
 function isOriginAllowed(origin: string): boolean {

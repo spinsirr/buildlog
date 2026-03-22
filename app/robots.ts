@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/dashboard/', '/auth/', '/api/'],
       },
     ],
-    sitemap: 'https://buildlog.dev/sitemap.xml',
+    sitemap: 'https://buildlog.ink/sitemap.xml',
   }
 }

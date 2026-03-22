@@ -72,7 +72,7 @@ async function retrieveOAuthState(
     userId: data.user_id,
     platform: data.platform,
     codeVerifier: data.code_verifier,
-    returnUrl: data.return_url ?? "https://buildlog.dev",
+    returnUrl: data.return_url ?? "https://buildlog.ink",
   }
 }
 
@@ -102,7 +102,7 @@ async function oauthInitiate(
 
   // Read return_url from request body (frontend passes window.location.origin)
   const body = await safeJson<{ return_url?: string }>(req)
-  const returnUrl = body?.return_url ?? "https://buildlog.dev"
+  const returnUrl = body?.return_url ?? "https://buildlog.ink"
 
   const state = base64UrlEncode(randomBytes(32))
   const redirectUri = `${getEdgeFunctionBaseUrl()}/${platform}/callback`
@@ -143,7 +143,7 @@ async function oauthCallback(
   // For errors before we have state, fall back to default
   if (url.searchParams.get("error")) {
     const fallbackState = url.searchParams.get("state")
-    let frontendUrl = "https://buildlog.dev"
+    let frontendUrl = "https://buildlog.ink"
     if (fallbackState) {
       const s = await retrieveOAuthState(fallbackState)
       if (s) frontendUrl = s.returnUrl
@@ -154,12 +154,12 @@ async function oauthCallback(
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
   if (!code || !state) {
-    return redirectResponse(`https://buildlog.dev/settings?error=${platform}_missing_params`)
+    return redirectResponse(`https://buildlog.ink/settings?error=${platform}_missing_params`)
   }
 
   const oauthState = await retrieveOAuthState(state)
   if (!oauthState || oauthState.platform !== platform) {
-    return redirectResponse(`https://buildlog.dev/settings?error=${platform}_invalid_state`)
+    return redirectResponse(`https://buildlog.ink/settings?error=${platform}_invalid_state`)
   }
 
   const frontendUrl = oauthState.returnUrl

@@ -1,11 +1,15 @@
 export function parsePathParts(req: Request, functionName: string): string[] {
   const url = new URL(req.url)
-  const marker = `/functions/v1/${functionName}`
-  const idx = url.pathname.indexOf(marker)
-  if (idx === -1) return []
-
-  const remainder = url.pathname.slice(idx + marker.length)
-  return remainder.split("/").filter(Boolean)
+  // Try full path first (external URL), then just the function name (Edge Runtime internal URL)
+  const markers = [`/functions/v1/${functionName}`, `/${functionName}`]
+  for (const marker of markers) {
+    const idx = url.pathname.indexOf(marker)
+    if (idx !== -1) {
+      const remainder = url.pathname.slice(idx + marker.length)
+      return remainder.split("/").filter(Boolean)
+    }
+  }
+  return []
 }
 
 export function getOrigin(req: Request): string {

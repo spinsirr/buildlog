@@ -1,7 +1,7 @@
-const FROM_EMAIL = "BuildLog <notifications@buildlog.dev>"
+const FROM_EMAIL = "BuildLog <notifications@buildlog.ink>"
 
 function getAppUrl(): string {
-  return Deno.env.get("APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://buildlog.dev"
+  return Deno.env.get("APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://buildlog.ink"
 }
 
 export async function sendNotificationEmail({

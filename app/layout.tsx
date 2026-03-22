@@ -43,7 +43,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://buildlog.dev'),
+  metadataBase: new URL('https://buildlog.ink'),
   title: {
     default: 'BuildLog — Turn Commits into Content',
     template: '%s | BuildLog',
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   description:
     'Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.',
   applicationName: 'BuildLog',
-  authors: [{ name: 'BuildLog', url: 'https://buildlog.dev' }],
+  authors: [{ name: 'BuildLog', url: 'https://buildlog.ink' }],
   creator: 'BuildLog',
   publisher: 'BuildLog',
   generator: 'Next.js',
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://buildlog.dev',
+    url: 'https://buildlog.ink',
     siteName: 'BuildLog',
     title: 'BuildLog — Turn Commits into Content',
     description:

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { LandingNav } from '@/components/landing-nav'
 
 // ─── SEO Metadata ─────────────────────────────────────────────────────────────
-const SITE_URL = 'https://buildlog.dev'
+const SITE_URL = 'https://buildlog.ink'
 
 export const metadata: Metadata = {
   title: 'BuildLog — Turn Commits into Content',
