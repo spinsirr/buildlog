@@ -6,7 +6,7 @@ A "build in public" assistant. Connect your GitHub repos and let AI auto-generat
 
 - **Next.js 16** — App Router, TypeScript, React 19
 - **Supabase** — Auth (GitHub OAuth) + Postgres with RLS
-- **Vercel AI SDK** + Anthropic Claude — AI post generation
+- **Gemini API** — AI post generation (via Supabase Edge Functions)
 - **Tailwind CSS** + shadcn/ui — UI components
 - **Biome** — Linting and formatting
 
