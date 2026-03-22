@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function DashboardLoading() {
   return (
@@ -9,7 +9,7 @@ export default function DashboardLoading() {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg bg-zinc-900/50 px-4 py-3 space-y-2">
+          <div key={`skeleton-${i}`} className="rounded-lg bg-zinc-900/50 px-4 py-3 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-8 w-12" />
           </div>
@@ -19,7 +19,7 @@ export default function DashboardLoading() {
         <Skeleton className="h-4 w-24" />
         <div className="rounded-lg bg-zinc-900/50 p-4 space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={`skeleton-${i}`} className="h-12 w-full" />
           ))}
         </div>
       </div>

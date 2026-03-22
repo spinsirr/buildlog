@@ -1,56 +1,47 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Menu, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { ArrowRight, Menu, X } from 'lucide-react'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 function LogoMark({ size = 32 }: { size?: number }) {
-  const cell = Math.round(size * 0.42);
-  const start2 = size - cell;
+  const cell = Math.round(size * 0.42)
+  const start2 = size - cell
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      fill="none"
-      aria-hidden
-    >
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" aria-hidden>
       <rect x="0" y="0" width={cell} height={cell} fill="#000000" />
       <rect x={start2} y="0" width={cell} height={cell} fill="#FF6B6B" />
       <rect x="0" y={start2} width={cell} height={cell} fill="#FFD93D" />
       <rect x={start2} y={start2} width={cell} height={cell} fill="#000000" />
     </svg>
-  );
+  )
 }
 
 export function LandingNav() {
-  const [open, setOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [open, setOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
     async function checkAuth() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsLoggedIn(!!user);
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setIsLoggedIn(!!user)
     }
-    checkAuth();
-  }, []);
+    checkAuth()
+  }, [])
 
   return (
-    <header
-      className="border-b-4 border-black sticky top-0 z-50"
-      style={{ background: "#FFFDF5" }}
-    >
+    <header className="border-b-4 border-black sticky top-0 z-50" style={{ background: '#FFFDF5' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link
           href="/"
           className="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
         >
           <LogoMark size={32} />
-          <span className="font-display font-bold text-xl tracking-tight">
-            buildlog
-          </span>
+          <span className="font-display font-bold text-xl tracking-tight">buildlog</span>
         </Link>
 
         {/* Desktop nav */}
@@ -84,8 +75,8 @@ export function LandingNav() {
         <button
           onClick={() => setOpen((o) => !o)}
           className="md:hidden border-4 border-black p-2 neo-btn-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-          style={{ background: "#FFFDF5" }}
-          aria-label={open ? "Close menu" : "Open menu"}
+          style={{ background: '#FFFDF5' }}
+          aria-label={open ? 'Close menu' : 'Open menu'}
           aria-expanded={open}
           aria-controls="mobile-menu"
         >
@@ -102,7 +93,7 @@ export function LandingNav() {
         <div
           id="mobile-menu"
           className="md:hidden border-t-4 border-black px-6 py-6 flex flex-col gap-4"
-          style={{ background: "#FFFDF5" }}
+          style={{ background: '#FFFDF5' }}
         >
           {isLoggedIn ? (
             <Link
@@ -118,7 +109,7 @@ export function LandingNav() {
                 href="/login"
                 onClick={() => setOpen(false)}
                 className="block border-4 border-black px-5 py-4 font-mono-ui text-sm font-bold uppercase tracking-wider text-center neo-btn"
-                style={{ background: "#FFFDF5" }}
+                style={{ background: '#FFFDF5' }}
               >
                 Sign in
               </Link>
@@ -134,5 +125,5 @@ export function LandingNav() {
         </div>
       )}
     </header>
-  );
+  )
 }

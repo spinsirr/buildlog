@@ -2,9 +2,10 @@ import type { Metadata } from 'next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export const metadata: Metadata = { title: 'Usage' }
+
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { cn } from '@/lib/utils'
 
 const platformLabels: Record<string, string> = {
   twitter: 'X',
@@ -29,11 +30,14 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm text-zinc-300">{label}</span>
-        <span className={cn(
-          'text-sm font-mono',
-          isAtLimit ? 'text-red-400' : isNearLimit ? 'text-amber-400' : 'text-zinc-400'
-        )}>
-          {used}{isUnlimited ? '' : ` / ${limit}`}
+        <span
+          className={cn(
+            'text-sm font-mono',
+            isAtLimit ? 'text-red-400' : isNearLimit ? 'text-amber-400' : 'text-zinc-400'
+          )}
+        >
+          {used}
+          {isUnlimited ? '' : ` / ${limit}`}
           {isUnlimited && <span className="text-zinc-600 ml-1">unlimited</span>}
         </span>
       </div>
@@ -87,13 +91,24 @@ export default async function UsagePage() {
     { data: recentPosts },
     { data: platformBreakdown },
   ] = await Promise.all([
-    supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', monthStart).lt('created_at', monthEnd),
+    supabase
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', monthStart)
+      .lt('created_at', monthEnd),
     supabase.from('posts').select('*', { count: 'exact', head: true }),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'published'),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
-    supabase.from('connected_repos').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase
+      .from('connected_repos')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true),
     supabase.from('platform_connections').select('*', { count: 'exact', head: true }),
-    supabase.from('posts').select('source_type').order('created_at', { ascending: false }).limit(30),
+    supabase
+      .from('posts')
+      .select('source_type')
+      .order('created_at', { ascending: false })
+      .limit(30),
     supabase.from('posts').select('platforms').eq('status', 'published'),
   ])
 
@@ -122,12 +137,14 @@ export default async function UsagePage() {
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-50">Usage</h1>
-        <Badge className={cn(
-          'text-xs',
-          plan === 'pro'
-            ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-            : 'bg-zinc-800 text-zinc-400 border-0'
-        )}>
+        <Badge
+          className={cn(
+            'text-xs',
+            plan === 'pro'
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+              : 'bg-zinc-800 text-zinc-400 border-0'
+          )}
+        >
           {plan === 'pro' ? 'Pro' : 'Free'} plan
         </Badge>
       </div>
@@ -146,16 +163,8 @@ export default async function UsagePage() {
             used={usage.posts_this_month}
             limit={limits.posts_per_month}
           />
-          <UsageBar
-            label="Connected repos"
-            used={usage.repos}
-            limit={limits.repos}
-          />
-          <UsageBar
-            label="Connected platforms"
-            used={usage.platforms}
-            limit={limits.platforms}
-          />
+          <UsageBar label="Connected repos" used={usage.repos} limit={limits.repos} />
+          <UsageBar label="Connected platforms" used={usage.platforms} limit={limits.platforms} />
         </CardContent>
       </Card>
 
@@ -166,7 +175,7 @@ export default async function UsagePage() {
           { label: 'Published', value: usage.published_posts },
           { label: 'Drafts', value: usage.draft_posts },
           { label: 'This Month', value: usage.posts_this_month },
-        ].map(stat => (
+        ].map((stat) => (
           <div key={stat.label} className="rounded-lg bg-zinc-900/50 px-4 py-3">
             <span className="text-xs text-zinc-500">{stat.label}</span>
             <p className="text-2xl font-semibold text-zinc-100 mt-1">{stat.value}</p>

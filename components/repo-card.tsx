@@ -1,6 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface Repo {
@@ -26,7 +26,9 @@ export function RepoCard({ repo }: RepoCardProps) {
               {repo.is_active ? 'Active' : 'Inactive'}
             </Badge>
             {repo.webhook_id && (
-              <Badge variant="outline" className="text-xs">Webhook</Badge>
+              <Badge variant="outline" className="text-xs">
+                Webhook
+              </Badge>
             )}
           </div>
         </div>
@@ -44,7 +46,11 @@ export function RepoCard({ repo }: RepoCardProps) {
           >
             View on GitHub
           </a>
-          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive ml-auto">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive ml-auto"
+          >
             Disconnect
           </Button>
         </div>

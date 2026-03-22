@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 
 interface Post {
@@ -40,8 +40,14 @@ export function PostCard({ post, showActions = true }: PostCardProps) {
             <Separator />
             <div className="flex gap-2">
               <Button size="sm">Publish</Button>
-              <Button size="sm" variant="outline">Edit</Button>
-              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive ml-auto">
+              <Button size="sm" variant="outline">
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive ml-auto"
+              >
                 Archive
               </Button>
             </div>

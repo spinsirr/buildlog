@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { Check, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Check, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import type { Connection, ProfileSettings } from '@/lib/types'
 
@@ -72,16 +72,20 @@ export function SettingsClient({
   const [bskyLoading, setBskyLoading] = useState(false)
 
   async function handleAutoPublishToggle(checked: boolean) {
-    setProfile(prev => ({ ...prev, auto_publish: checked }))
-    const { data: { user } } = await supabase.auth.getUser()
+    setProfile((prev) => ({ ...prev, auto_publish: checked }))
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').update({ auto_publish: checked }).eq('id', user.id)
     }
   }
 
   async function handleEmailNotificationsToggle(checked: boolean) {
-    setProfile(prev => ({ ...prev, email_notifications: checked }))
-    const { data: { user } } = await supabase.auth.getUser()
+    setProfile((prev) => ({ ...prev, email_notifications: checked }))
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').update({ email_notifications: checked }).eq('id', user.id)
     }
@@ -90,11 +94,13 @@ export function SettingsClient({
   async function handleToneChange(newTone: string) {
     setSavingTone(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (user) {
         await supabase.from('profiles').update({ tone: newTone }).eq('id', user.id)
       }
-      setProfile(prev => ({ ...prev, tone: newTone }))
+      setProfile((prev) => ({ ...prev, tone: newTone }))
     } finally {
       setSavingTone(false)
     }
@@ -107,7 +113,9 @@ export function SettingsClient({
     }
     setActionPlatform(platform)
     startTransition(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/${platform}`,
         {
@@ -116,7 +124,7 @@ export function SettingsClient({
             Authorization: `Bearer ${session?.access_token}`,
             'Content-Type': 'application/json',
           },
-        },
+        }
       )
       const data = await res.json()
       if (!res.ok) {
@@ -135,7 +143,9 @@ export function SettingsClient({
     e.preventDefault()
     setBskyLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/bluesky`,
         {
@@ -145,7 +155,7 @@ export function SettingsClient({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ handle: bskyHandle, appPassword: bskyPassword }),
-        },
+        }
       )
       const data = await res.json()
       if (!res.ok) {
@@ -165,7 +175,9 @@ export function SettingsClient({
   function handleDisconnect(platform: string) {
     setActionPlatform(platform)
     startTransition(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-disconnect/${platform}`,
         {
@@ -174,20 +186,20 @@ export function SettingsClient({
             Authorization: `Bearer ${session?.access_token}`,
             'Content-Type': 'application/json',
           },
-        },
+        }
       )
-      setConnections(prev =>
-        prev.map(c =>
+      setConnections((prev) =>
+        prev.map((c) =>
           c.platform === platform ? { ...c, connected: false, platform_username: null } : c
         )
       )
-      const label = PLATFORMS.find(p => p.id === platform)?.label ?? platform
+      const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
       toast.success(`${label} disconnected`)
       setActionPlatform(null)
     })
   }
 
-  const getConnection = (id: string) => connections.find(c => c.platform === id)
+  const getConnection = (id: string) => connections.find((c) => c.platform === id)
   const { tone, auto_publish: autoPublish, email_notifications: emailNotifications } = profile
 
   return (
@@ -210,16 +222,12 @@ export function SettingsClient({
 
             return (
               <div key={platform.id} className="space-y-3">
-                <div
-                  className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50"
-                >
+                <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
                   <div className="flex items-center gap-3">
                     <div className="text-zinc-300">{platform.icon}</div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-zinc-200">
-                          {platform.label}
-                        </span>
+                        <span className="text-sm font-medium text-zinc-200">{platform.label}</span>
                         {connected ? (
                           <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
                             Connected
@@ -242,7 +250,9 @@ export function SettingsClient({
                     size="sm"
                     variant={connected ? 'outline' : 'default'}
                     disabled={busy || (isBsky && bskyLoading)}
-                    onClick={() => connected ? handleDisconnect(platform.id) : handleConnect(platform.id)}
+                    onClick={() =>
+                      connected ? handleDisconnect(platform.id) : handleConnect(platform.id)
+                    }
                     className={
                       connected
                         ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
@@ -302,11 +312,7 @@ export function SettingsClient({
                         disabled={bskyLoading}
                         className="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
                       >
-                        {bskyLoading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          'Connect'
-                        )}
+                        {bskyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Connect'}
                       </Button>
                       <Button
                         type="button"
@@ -347,7 +353,9 @@ export function SettingsClient({
               }`}
             >
               <div>
-                <Label className={`text-sm font-medium ${tone === t.value ? 'text-indigo-400' : 'text-zinc-200'}`}>
+                <Label
+                  className={`text-sm font-medium ${tone === t.value ? 'text-indigo-400' : 'text-zinc-200'}`}
+                >
                   {t.label}
                 </Label>
                 <p className="text-xs text-zinc-500 mt-0.5">{t.description}</p>
@@ -368,17 +376,12 @@ export function SettingsClient({
         <CardContent>
           <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
             <div>
-              <Label className="text-sm font-medium text-zinc-200">
-                Publish immediately
-              </Label>
+              <Label className="text-sm font-medium text-zinc-200">Publish immediately</Label>
               <p className="text-xs text-zinc-500 mt-0.5">
                 Posts from GitHub events will be published right away.
               </p>
             </div>
-            <Switch
-              checked={autoPublish}
-              onCheckedChange={handleAutoPublishToggle}
-            />
+            <Switch checked={autoPublish} onCheckedChange={handleAutoPublishToggle} />
           </div>
         </CardContent>
       </Card>
@@ -393,17 +396,12 @@ export function SettingsClient({
         <CardContent>
           <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
             <div>
-              <Label className="text-sm font-medium text-zinc-200">
-                Send email notifications
-              </Label>
+              <Label className="text-sm font-medium text-zinc-200">Send email notifications</Label>
               <p className="text-xs text-zinc-500 mt-0.5">
                 Get notified via email in addition to in-app notifications.
               </p>
             </div>
-            <Switch
-              checked={emailNotifications}
-              onCheckedChange={handleEmailNotificationsToggle}
-            />
+            <Switch checked={emailNotifications} onCheckedChange={handleEmailNotificationsToggle} />
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,9 @@
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Check, Circle, GitBranch, Share2, Sparkles } from 'lucide-react'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { DashboardActions } from '@/components/dashboard-actions'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -7,46 +11,67 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
-import { Check, Circle, GitBranch, Share2, Sparkles } from "lucide-react"
-import type { Metadata } from 'next'
+} from '@/components/ui/table'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { DashboardActions } from '@/components/dashboard-actions'
+import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
 const platformLabels: Record<string, string> = {
-  twitter: "X",
-  linkedin: "LinkedIn",
-  bluesky: "Bluesky",
+  twitter: 'X',
+  linkedin: 'LinkedIn',
+  bluesky: 'Bluesky',
 }
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const [{ data: repos }, { data: posts }, { count: connectionsCount }] = await Promise.all([
     supabase.from('connected_repos').select('*').eq('user_id', user!.id),
-    supabase.from('posts').select('*, connected_repos(full_name)').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(5),
-    supabase.from('platform_connections').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
+    supabase
+      .from('posts')
+      .select('*, connected_repos(full_name)')
+      .eq('user_id', user!.id)
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('platform_connections')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user!.id),
   ])
 
   const allPosts = posts ?? []
-  const drafts = allPosts.filter(p => p.status === 'draft')
-  const published = allPosts.filter(p => p.status === 'published')
+  const drafts = allPosts.filter((p) => p.status === 'draft')
+  const published = allPosts.filter((p) => p.status === 'published')
 
   // Calculate streak
-  const { data: streakPosts } = await supabase.from('posts').select('created_at').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(100)
+  const { data: streakPosts } = await supabase
+    .from('posts')
+    .select('created_at')
+    .eq('user_id', user!.id)
+    .order('created_at', { ascending: false })
+    .limit(100)
   let streak = 0
   if (streakPosts && streakPosts.length > 0) {
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    const postDays = new Set(streakPosts.map(p => { const d = new Date(p.created_at); d.setHours(0, 0, 0, 0); return d.getTime() }))
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const postDays = new Set(
+      streakPosts.map((p) => {
+        const d = new Date(p.created_at)
+        d.setHours(0, 0, 0, 0)
+        return d.getTime()
+      })
+    )
     const dayMs = 86400000
     let checkDate = today.getTime()
     if (!postDays.has(checkDate)) checkDate = today.getTime() - dayMs
-    while (postDays.has(checkDate)) { streak++; checkDate -= dayMs }
+    while (postDays.has(checkDate)) {
+      streak++
+      checkDate -= dayMs
+    }
   }
 
   const stats = [
@@ -78,16 +103,9 @@ export default async function DashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-lg bg-zinc-900/50 px-4 py-3"
-          >
-            <span className="text-xs text-zinc-500">
-              {stat.label}
-            </span>
-            <p className="text-2xl font-semibold text-zinc-100 mt-1">
-              {stat.value}
-            </p>
+          <div key={stat.label} className="rounded-lg bg-zinc-900/50 px-4 py-3">
+            <span className="text-xs text-zinc-500">{stat.label}</span>
+            <p className="text-2xl font-semibold text-zinc-100 mt-1">{stat.value}</p>
           </div>
         ))}
       </div>
@@ -104,7 +122,12 @@ export default async function DashboardPage() {
           <CardContent className="space-y-3">
             {[
               { done: hasRepos, label: 'Connect a GitHub repo', href: '/repos', icon: GitBranch },
-              { done: hasSocial, label: 'Connect a social account', href: '/settings', icon: Share2 },
+              {
+                done: hasSocial,
+                label: 'Connect a social account',
+                href: '/settings',
+                icon: Share2,
+              },
               { done: hasPosts, label: 'Generate your first post', href: '/posts', icon: Sparkles },
             ].map((step, i) => (
               <Link
@@ -117,10 +140,12 @@ export default async function DashboardPage() {
                     : 'border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800'
                 )}
               >
-                <div className={cn(
-                  'h-7 w-7 rounded-full flex items-center justify-center shrink-0',
-                  step.done ? 'bg-emerald-500/10' : 'bg-zinc-800'
-                )}>
+                <div
+                  className={cn(
+                    'h-7 w-7 rounded-full flex items-center justify-center shrink-0',
+                    step.done ? 'bg-emerald-500/10' : 'bg-zinc-800'
+                  )}
+                >
                   {step.done ? (
                     <Check className="h-3.5 w-3.5 text-emerald-400" />
                   ) : (
@@ -128,8 +153,18 @@ export default async function DashboardPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
-                  <step.icon className={cn('h-4 w-4 shrink-0', step.done ? 'text-zinc-600' : 'text-zinc-400')} />
-                  <span className={cn('text-sm', step.done ? 'text-zinc-600 line-through' : 'text-zinc-300')}>
+                  <step.icon
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      step.done ? 'text-zinc-600' : 'text-zinc-400'
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'text-sm',
+                      step.done ? 'text-zinc-600 line-through' : 'text-zinc-300'
+                    )}
+                  >
                     {step.label}
                   </span>
                 </div>
@@ -159,9 +194,7 @@ export default async function DashboardPage() {
                 <GitBranch className="h-6 w-6 text-zinc-600" />
               </div>
               <div className="text-center space-y-1">
-                <p className="text-sm font-medium text-zinc-400">
-                  No posts yet
-                </p>
+                <p className="text-sm font-medium text-zinc-400">No posts yet</p>
                 <p className="text-xs text-zinc-600">
                   Connect a repo to start generating posts from your commits.
                 </p>
@@ -181,21 +214,14 @@ export default async function DashboardPage() {
                   <TableHead className="text-zinc-500">Platforms</TableHead>
                   <TableHead className="text-zinc-500">Status</TableHead>
                   <TableHead className="text-zinc-500">Date</TableHead>
-                  <TableHead className="text-zinc-500 text-right">
-                    Actions
-                  </TableHead>
+                  <TableHead className="text-zinc-500 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {allPosts.map((post) => (
-                  <TableRow
-                    key={post.id}
-                    className="border-zinc-800 hover:bg-zinc-800/30"
-                  >
+                  <TableRow key={post.id} className="border-zinc-800 hover:bg-zinc-800/30">
                     <TableCell className="max-w-xs">
-                      <p className="text-sm text-zinc-300 line-clamp-1">
-                        {post.content}
-                      </p>
+                      <p className="text-sm text-zinc-300 line-clamp-1">{post.content}</p>
                       {post.connected_repos && (
                         <span className="text-xs text-zinc-600 font-mono">
                           {post.connected_repos.full_name}
@@ -221,14 +247,12 @@ export default async function DashboardPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          post.status === "published" ? "default" : "secondary"
-                        }
+                        variant={post.status === 'published' ? 'default' : 'secondary'}
                         className={cn(
-                          "text-[10px]",
-                          post.status === "published"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            : "bg-zinc-800 text-zinc-400 border-0"
+                          'text-[10px]',
+                          post.status === 'published'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-0'
                         )}
                       >
                         {post.status}

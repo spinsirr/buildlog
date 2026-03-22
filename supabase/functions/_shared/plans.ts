@@ -1,12 +1,12 @@
 export const PLANS = {
   free: {
-    name: "Free",
+    name: 'Free',
     posts_per_month: 20,
     repos: 1,
     platforms: 1,
   },
   pro: {
-    name: "Pro",
+    name: 'Pro',
     posts_per_month: Infinity,
     repos: Infinity,
     platforms: Infinity,

@@ -1,13 +1,13 @@
 'use client'
 
+import { LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
-import { LogOut } from 'lucide-react'
+import { NotificationBell } from '@/components/notification-bell'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
-import { NotificationBell } from '@/components/notification-bell'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 
@@ -24,10 +24,7 @@ export function DesktopSidebar({ profile }: { profile: Profile }) {
     <aside className="hidden md:flex w-60 border-r border-zinc-800/50 flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30 [view-transition-name:sidebar]">
       {/* Logo + Notifications */}
       <div className="h-14 flex items-center justify-between px-5 border-b border-zinc-800/50">
-        <Link
-          href="/dashboard"
-          className="font-semibold text-lg tracking-tight text-zinc-50"
-        >
+        <Link href="/dashboard" className="font-semibold text-lg tracking-tight text-zinc-50">
           Build<span className="text-purple-400">Log</span>
         </Link>
         <NotificationBell />

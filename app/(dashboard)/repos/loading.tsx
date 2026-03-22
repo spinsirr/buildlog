@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ReposLoading() {
   return (
@@ -12,7 +12,10 @@ export default function ReposLoading() {
       </div>
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-4 flex items-center justify-between">
+          <div
+            key={i}
+            className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-4 flex items-center justify-between"
+          >
             <div className="space-y-2">
               <Skeleton className="h-5 w-48" />
               <Skeleton className="h-3 w-32" />

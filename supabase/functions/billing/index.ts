@@ -1,43 +1,43 @@
-import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
-import { requireUser } from "../_shared/auth.ts"
-import { getStripe } from "../_shared/stripe.ts"
-import { parsePathParts } from "../_shared/http.ts"
+import { requireUser } from '../_shared/auth.ts'
+import { errorResponse, handleOptions, jsonResponse } from '../_shared/cors.ts'
+import { parsePathParts } from '../_shared/http.ts'
+import { getStripe } from '../_shared/stripe.ts'
+import { createServiceClient } from '../_shared/supabase.ts'
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
   if (optRes) return optRes
 
-  if (req.method !== "POST") {
-    return errorResponse("Method not allowed", 405, req)
+  if (req.method !== 'POST') {
+    return errorResponse('Method not allowed', 405, req)
   }
 
   const { user, error: authErr } = await requireUser(req)
   if (!user) return errorResponse(authErr!, 401, req)
 
-  const parts = parsePathParts(req, "billing")
+  const parts = parsePathParts(req, 'billing')
   const action = parts[0]
 
-  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ??
-    "http://localhost:3000"
+  const frontendUrl =
+    Deno.env.get('FRONTEND_URL') ?? Deno.env.get('APP_URL') ?? 'http://localhost:3000'
   const supabase = createServiceClient()
   const stripe = getStripe()
 
   try {
-    if (action === "checkout") {
+    if (action === 'checkout') {
       // Fetch user profile to get or create Stripe customer
       const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id, github_username")
-        .eq("id", user.id)
+        .from('profiles')
+        .select('stripe_customer_id, github_username')
+        .eq('id', user.id)
         .single()
 
       if (profileErr || !profile) {
-        console.error("[billing/checkout] failed to fetch profile", {
+        console.error('[billing/checkout] failed to fetch profile', {
           userId: user.id,
           error: profileErr,
         })
-        return errorResponse("Profile not found", 404, req)
+        return errorResponse('Profile not found', 404, req)
       }
 
       let customerId = profile.stripe_customer_id
@@ -48,36 +48,36 @@ Deno.serve(async (req) => {
           email: user.email,
           metadata: {
             user_id: user.id,
-            github_username: profile.github_username ?? "",
+            github_username: profile.github_username ?? '',
           },
         })
 
         customerId = customer.id
 
         const { error: updateErr } = await supabase
-          .from("profiles")
+          .from('profiles')
           .update({ stripe_customer_id: customerId })
-          .eq("id", user.id)
+          .eq('id', user.id)
 
         if (updateErr) {
-          console.error("[billing/checkout] failed to save stripe_customer_id", {
+          console.error('[billing/checkout] failed to save stripe_customer_id', {
             userId: user.id,
             customerId,
             error: updateErr,
           })
-          return errorResponse("Failed to save customer", 500, req)
+          return errorResponse('Failed to save customer', 500, req)
         }
       }
 
-      const priceId = Deno.env.get("STRIPE_PRO_PRICE_ID")
+      const priceId = Deno.env.get('STRIPE_PRO_PRICE_ID')
       if (!priceId) {
-        console.error("[billing/checkout] missing STRIPE_PRO_PRICE_ID env var")
-        return errorResponse("Billing not configured", 500, req)
+        console.error('[billing/checkout] missing STRIPE_PRO_PRICE_ID env var')
+        return errorResponse('Billing not configured', 500, req)
       }
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        mode: "subscription",
+        mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${frontendUrl}/settings?checkout=success`,
         cancel_url: `${frontendUrl}/settings?checkout=canceled`,
@@ -87,24 +87,24 @@ Deno.serve(async (req) => {
       })
 
       return jsonResponse({ url: session.url }, req, { status: 200 })
-    } else if (action === "portal") {
+    } else if (action === 'portal') {
       // Fetch existing Stripe customer ID
       const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id")
-        .eq("id", user.id)
+        .from('profiles')
+        .select('stripe_customer_id')
+        .eq('id', user.id)
         .single()
 
       if (profileErr || !profile) {
-        console.error("[billing/portal] failed to fetch profile", {
+        console.error('[billing/portal] failed to fetch profile', {
           userId: user.id,
           error: profileErr,
         })
-        return errorResponse("Profile not found", 404, req)
+        return errorResponse('Profile not found', 404, req)
       }
 
       if (!profile.stripe_customer_id) {
-        return errorResponse("No billing account found", 404, req)
+        return errorResponse('No billing account found', 404, req)
       }
 
       const session = await stripe.billingPortal.sessions.create({
@@ -114,15 +114,15 @@ Deno.serve(async (req) => {
 
       return jsonResponse({ url: session.url }, req, { status: 200 })
     } else {
-      return errorResponse("Unknown action", 404, req)
+      return errorResponse('Unknown action', 404, req)
     }
   } catch (err) {
-    console.error("[billing] unexpected error", {
+    console.error('[billing] unexpected error', {
       action,
       userId: user.id,
       error: String(err),
       stack: (err as Error).stack,
     })
-    return errorResponse("Internal server error", 500, req)
+    return errorResponse('Internal server error', 500, req)
   }
 })

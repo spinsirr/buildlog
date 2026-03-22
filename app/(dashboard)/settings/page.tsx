@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SettingsClient } from '@/components/settings-client'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Settings' }
 
@@ -16,8 +16,8 @@ export default async function SettingsPage() {
     console.error('Failed to load profile settings:', profileError.message)
   }
 
-  const connections = ['twitter', 'linkedin', 'bluesky'].map(platform => {
-    const row = rows?.find(r => r.platform === platform)
+  const connections = ['twitter', 'linkedin', 'bluesky'].map((platform) => {
+    const row = rows?.find((r) => r.platform === platform)
     return { platform, platform_username: row?.platform_username ?? null, connected: !!row }
   })
 
@@ -27,10 +27,5 @@ export default async function SettingsPage() {
     email_notifications: profileData?.email_notifications ?? true,
   }
 
-  return (
-    <SettingsClient
-      initialConnections={connections}
-      initialProfile={profile}
-    />
-  )
+  return <SettingsClient initialConnections={connections} initialProfile={profile} />
 }

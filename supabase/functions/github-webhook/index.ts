@@ -1,24 +1,24 @@
-import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { createServiceClient } from "../_shared/supabase.ts"
-import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
-import { generatePost } from "../_shared/ai.ts"
-import { checkLimit } from "../_shared/subscription.ts"
-import { publishToTwitter } from "../_shared/twitter.ts"
-import { publishToLinkedIn } from "../_shared/linkedin.ts"
-import { publishToBluesky } from "../_shared/bluesky.ts"
-import { notify } from "../_shared/notify.ts"
-import { checkRateLimit } from "../_shared/rate-limit.ts"
+import { generatePost } from '../_shared/ai.ts'
+import { publishToBluesky } from '../_shared/bluesky.ts'
+import { errorResponse, handleOptions, jsonResponse } from '../_shared/cors.ts'
+import { hmacSha256Hex, timingSafeEqual } from '../_shared/crypto.ts'
+import { publishToLinkedIn } from '../_shared/linkedin.ts'
+import { notify } from '../_shared/notify.ts'
+import { checkRateLimit } from '../_shared/rate-limit.ts'
+import { checkLimit } from '../_shared/subscription.ts'
+import { createServiceClient } from '../_shared/supabase.ts'
+import { publishToTwitter } from '../_shared/twitter.ts'
 
 const MAX_BODY_SIZE = 1024 * 1024 // 1MB
 
 async function verifySignature(body: string, signature: string): Promise<boolean> {
-  const secret = Deno.env.get("GITHUB_WEBHOOK_SECRET")
+  const secret = Deno.env.get('GITHUB_WEBHOOK_SECRET')
   if (!secret) {
-    console.error("[github-webhook] Missing GITHUB_WEBHOOK_SECRET")
+    console.error('[github-webhook] Missing GITHUB_WEBHOOK_SECRET')
     return false
   }
 
-  const computed = "sha256=" + await hmacSha256Hex(secret, body)
+  const computed = `sha256=${await hmacSha256Hex(secret, body)}`
   return timingSafeEqual(computed, signature)
 }
 
@@ -28,32 +28,32 @@ Deno.serve(async (req) => {
   if (optRes) return optRes
 
   // Only accept POST
-  if (req.method !== "POST") {
-    return errorResponse("Method not allowed", 405, req)
+  if (req.method !== 'POST') {
+    return errorResponse('Method not allowed', 405, req)
   }
 
-  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: "github-webhook" })
+  const rl = checkRateLimit(req, { limit: 60, windowMs: 60_000, key: 'github-webhook' })
   if (!rl.allowed) {
-    return errorResponse("Rate limit exceeded", 429, req)
+    return errorResponse('Rate limit exceeded', 429, req)
   }
 
   // Body size limit (check content-length header first)
-  const contentLength = req.headers.get("content-length")
+  const contentLength = req.headers.get('content-length')
   if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
-    return jsonResponse({ error: "Payload too large" }, req, { status: 413 })
+    return jsonResponse({ error: 'Payload too large' }, req, { status: 413 })
   }
 
   const body = await req.text()
   if (body.length > MAX_BODY_SIZE) {
-    return jsonResponse({ error: "Payload too large" }, req, { status: 413 })
+    return jsonResponse({ error: 'Payload too large' }, req, { status: 413 })
   }
 
   // Verify GitHub HMAC-SHA256 signature
-  const signature = req.headers.get("x-hub-signature-256") ?? ""
-  const event = req.headers.get("x-github-event") ?? ""
+  const signature = req.headers.get('x-hub-signature-256') ?? ''
+  const event = req.headers.get('x-github-event') ?? ''
 
-  if (!await verifySignature(body, signature)) {
-    return jsonResponse({ error: "Invalid signature" }, req, { status: 401 })
+  if (!(await verifySignature(body, signature))) {
+    return jsonResponse({ error: 'Invalid signature' }, req, { status: 401 })
   }
 
   // Top-level try/catch — always return 200 to prevent GitHub retries
@@ -61,19 +61,15 @@ Deno.serve(async (req) => {
     return await handleWebhook(req, body, event)
   } catch (err) {
     console.error(
-      "[github-webhook] Unhandled webhook error:",
-      err instanceof Error ? err.message : String(err),
+      '[github-webhook] Unhandled webhook error:',
+      err instanceof Error ? err.message : String(err)
     )
     // Return 200 to prevent GitHub from retrying and creating duplicate posts
-    return jsonResponse({ ok: true, error: "internal" }, req)
+    return jsonResponse({ ok: true, error: 'internal' }, req)
   }
 })
 
-async function handleWebhook(
-  req: Request,
-  body: string,
-  event: string,
-): Promise<Response> {
+async function handleWebhook(req: Request, body: string, event: string): Promise<Response> {
   const payload = JSON.parse(body)
   const installationId = payload.installation?.id
   const repoId = payload.repository?.id
@@ -87,9 +83,9 @@ async function handleWebhook(
 
   // Look up user by installation ID
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, tone, auto_publish")
-    .eq("github_installation_id", installationId)
+    .from('profiles')
+    .select('id, tone, auto_publish')
+    .eq('github_installation_id', installationId)
     .single()
 
   if (!profile) {
@@ -98,11 +94,11 @@ async function handleWebhook(
 
   // Verify the repo is connected and active
   const { data: repo } = await supabase
-    .from("connected_repos")
-    .select("id")
-    .eq("user_id", profile.id)
-    .eq("github_repo_id", repoId)
-    .eq("is_active", true)
+    .from('connected_repos')
+    .select('id')
+    .eq('user_id', profile.id)
+    .eq('github_repo_id', repoId)
+    .eq('is_active', true)
     .single()
 
   if (!repo) {
@@ -110,11 +106,11 @@ async function handleWebhook(
   }
 
   // Parse the event type and extract relevant data
-  let sourceType: "commit" | "pr" | "release" | null = null
+  let sourceType: 'commit' | 'pr' | 'release' | null = null
   let postData: Record<string, string | string[] | number | undefined> = {}
 
-  if (event === "push" && payload.commits?.length > 0) {
-    sourceType = "commit"
+  if (event === 'push' && payload.commits?.length > 0) {
+    sourceType = 'commit'
     const commits = payload.commits as {
       message: string
       url: string
@@ -134,7 +130,7 @@ async function handleWebhook(
       }
     } else {
       // Summarize multiple commits
-      const messages = commits.map((c) => c.message.split("\n")[0]).join("\n- ")
+      const messages = commits.map((c) => c.message.split('\n')[0]).join('\n- ')
       const allFiles = commits.flatMap((c) => [
         ...(c.added ?? []),
         ...(c.modified ?? []),
@@ -149,11 +145,11 @@ async function handleWebhook(
       }
     }
   } else if (
-    event === "pull_request" &&
-    payload.action === "closed" &&
+    event === 'pull_request' &&
+    payload.action === 'closed' &&
     payload.pull_request?.merged
   ) {
-    sourceType = "pr"
+    sourceType = 'pr'
     const pr = payload.pull_request
     postData = {
       title: pr.title,
@@ -163,8 +159,8 @@ async function handleWebhook(
       deletions: pr.deletions,
       filesChanged: pr.changed_files,
     }
-  } else if (event === "release" && payload.action === "published") {
-    sourceType = "release"
+  } else if (event === 'release' && payload.action === 'published') {
+    sourceType = 'release'
     postData = {
       title: payload.release.tag_name,
       description: payload.release.body,
@@ -178,42 +174,42 @@ async function handleWebhook(
   }
 
   // Deduplicate: check if we already processed this event
-  const deliveryId = req.headers.get("x-github-delivery")
+  const deliveryId = req.headers.get('x-github-delivery')
   let dedupeKey: string | null = null
 
   if (deliveryId) {
     dedupeKey = `github:${deliveryId}`
-  } else if (sourceType === "commit" && payload.head_commit?.id) {
+  } else if (sourceType === 'commit' && payload.head_commit?.id) {
     dedupeKey = `commit:${payload.head_commit.id}`
-  } else if (sourceType === "pr" && payload.pull_request?.id) {
+  } else if (sourceType === 'pr' && payload.pull_request?.id) {
     dedupeKey = `pr:${payload.pull_request.id}`
-  } else if (sourceType === "release" && payload.release?.id) {
+  } else if (sourceType === 'release' && payload.release?.id) {
     dedupeKey = `release:${payload.release.id}`
   }
 
   if (dedupeKey) {
     const { count } = await supabase
-      .from("posts")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", profile.id)
-      .contains("source_data", { _dedupe_key: dedupeKey })
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', profile.id)
+      .contains('source_data', { _dedupe_key: dedupeKey })
 
     if ((count ?? 0) > 0) {
-      return jsonResponse({ ok: true, skipped: "duplicate" }, req)
+      return jsonResponse({ ok: true, skipped: 'duplicate' }, req)
     }
   }
 
   // Enforce post limit
-  const { allowed } = await checkLimit(profile.id, "posts", supabase)
+  const { allowed } = await checkLimit(profile.id, 'posts', supabase)
   if (!allowed) {
-    return jsonResponse({ ok: true, skipped: "post_limit_reached" }, req)
+    return jsonResponse({ ok: true, skipped: 'post_limit_reached' }, req)
   }
 
   // Generate AI content
   const content = await generatePost({
     sourceType,
     repoName: repoFullName,
-    tone: profile.tone ?? "casual",
+    tone: profile.tone ?? 'casual',
     data: postData,
   })
 
@@ -226,53 +222,53 @@ async function handleWebhook(
   }
   if (dedupeKey) strippedData._dedupe_key = dedupeKey
 
-  if (sourceType === "commit") {
+  if (sourceType === 'commit') {
     const headCommit = payload.head_commit
     strippedData.commit_sha = headCommit?.id
     strippedData.message = postData.message
     strippedData.author = headCommit?.author?.name ?? headCommit?.author?.username
-    strippedData.branch = (payload.ref as string)?.replace("refs/heads/", "")
+    strippedData.branch = (payload.ref as string)?.replace('refs/heads/', '')
     strippedData.url = postData.url
     strippedData.files_changed = postData.filesChanged
     if (Array.isArray(postData.files)) {
       strippedData.files_summary = (postData.files as string[]).slice(0, 20)
     }
-  } else if (sourceType === "pr") {
+  } else if (sourceType === 'pr') {
     strippedData.pr_number = payload.pull_request?.number
     strippedData.title = postData.title
     strippedData.url = postData.url
     strippedData.additions = postData.additions
     strippedData.deletions = postData.deletions
     strippedData.files_changed = postData.filesChanged
-  } else if (sourceType === "release") {
+  } else if (sourceType === 'release') {
     strippedData.tag = postData.title
     strippedData.url = postData.url
   }
 
   // Create the post
   const { data: post } = await supabase
-    .from("posts")
+    .from('posts')
     .insert({
-      "user_id": profile.id,
-      "repo_id": repo.id,
+      user_id: profile.id,
+      repo_id: repo.id,
       "source_type": sourceType,
-      "source_data": strippedData,
+      source_data: strippedData,
       content,
-      status: shouldPublish ? "published" : "draft",
-      "published_at": shouldPublish ? new Date().toISOString() : null,
+      status: shouldPublish ? 'published' : 'draft',
+      published_at: shouldPublish ? new Date().toISOString() : null,
     })
-    .select("id")
+    .select('id')
     .single()
 
   if (shouldPublish && post) {
     // Check which platforms are connected
     const { data: connections } = await supabase
-      .from("platform_connections")
-      .select("platform")
-      .eq("user_id", profile.id)
+      .from('platform_connections')
+      .select('platform')
+      .eq('user_id', profile.id)
 
     const connectedPlatforms = new Set(
-      connections?.map((c: { platform: string }) => c.platform) ?? [],
+      connections?.map((c: { platform: string }) => c.platform) ?? []
     )
     const publishedPlatforms: string[] = []
     const failedPlatforms: Record<string, string> = {}
@@ -280,12 +276,12 @@ async function handleWebhook(
     let primaryPostId: string | null = null
 
     // Publish to Twitter if connected
-    if (connectedPlatforms.has("twitter")) {
+    if (connectedPlatforms.has('twitter')) {
       try {
         const { tweetId, tweetUrl } = await publishToTwitter(profile.id, content)
         primaryPostId = tweetId
         primaryPostUrl = tweetUrl
-        publishedPlatforms.push("twitter")
+        publishedPlatforms.push('twitter')
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error(`[github-webhook] Twitter publish failed for post ${post.id}: ${message}`)
@@ -294,12 +290,12 @@ async function handleWebhook(
     }
 
     // Publish to LinkedIn if connected
-    if (connectedPlatforms.has("linkedin")) {
+    if (connectedPlatforms.has('linkedin')) {
       try {
         const { postId, postUrl } = await publishToLinkedIn(profile.id, content)
         if (!primaryPostId) primaryPostId = postId
         if (!primaryPostUrl) primaryPostUrl = postUrl
-        publishedPlatforms.push("linkedin")
+        publishedPlatforms.push('linkedin')
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error(`[github-webhook] LinkedIn publish failed for post ${post.id}: ${message}`)
@@ -308,12 +304,12 @@ async function handleWebhook(
     }
 
     // Publish to Bluesky if connected
-    if (connectedPlatforms.has("bluesky")) {
+    if (connectedPlatforms.has('bluesky')) {
       try {
         const { postUri, postUrl } = await publishToBluesky(profile.id, content)
         if (!primaryPostId) primaryPostId = postUri
         if (!primaryPostUrl) primaryPostUrl = postUrl
-        publishedPlatforms.push("bluesky")
+        publishedPlatforms.push('bluesky')
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error(`[github-webhook] Bluesky publish failed for post ${post.id}: ${message}`)
@@ -325,9 +321,9 @@ async function handleWebhook(
 
     if (publishedPlatforms.length > 0) {
       // Partial or full success
-      const status = hasFailures ? "partial" : "published"
+      const status = hasFailures ? 'partial' : 'published'
       await supabase
-        .from("posts")
+        .from('posts')
         .update({
           platform_post_id: primaryPostId,
           platform_post_url: primaryPostUrl,
@@ -337,47 +333,47 @@ async function handleWebhook(
             ? { publish_results: { errors: failedPlatforms, published: publishedPlatforms } }
             : {}),
         })
-        .eq("id", post.id)
+        .eq('id', post.id)
 
       const failedNames = Object.keys(failedPlatforms)
       const notifMessage = hasFailures
-        ? `Post published to ${publishedPlatforms.join(", ")} but failed on ${
-          failedNames.join(", ")
-        } from ${sourceType} in ${repoFullName}`
-        : `Post auto-published to ${
-          publishedPlatforms.join(", ")
-        } from ${sourceType} in ${repoFullName}`
+        ? `Post published to ${publishedPlatforms.join(', ')} but failed on ${failedNames.join(
+            ', '
+          )} from ${sourceType} in ${repoFullName}`
+        : `Post auto-published to ${publishedPlatforms.join(
+            ', '
+          )} from ${sourceType} in ${repoFullName}`
 
       try {
         await notify(supabase, {
           userId: profile.id,
           message: notifMessage,
-          link: "/posts",
-          subject: hasFailures ? "Post published with errors" : "Post auto-published",
+          link: '/posts',
+          subject: hasFailures ? 'Post published with errors' : 'Post auto-published',
         })
       } catch (notifyErr) {
-        console.error("[github-webhook] notify failed:", notifyErr)
+        console.error('[github-webhook] notify failed:', notifyErr)
       }
     } else {
       // All platforms failed — revert to draft and record errors
       await supabase
-        .from("posts")
+        .from('posts')
         .update({
-          status: "draft",
+          status: 'draft',
           published_at: null,
           publish_results: { errors: failedPlatforms, published: publishedPlatforms },
         })
-        .eq("id", post.id)
+        .eq('id', post.id)
 
       try {
         await notify(supabase, {
           userId: profile.id,
           message: `Auto-publish failed for ${sourceType} in ${repoFullName}. Saved as draft.`,
-          link: "/posts",
-          subject: "Auto-publish failed",
+          link: '/posts',
+          subject: 'Auto-publish failed',
         })
       } catch (notifyErr) {
-        console.error("[github-webhook] notify failed:", notifyErr)
+        console.error('[github-webhook] notify failed:', notifyErr)
       }
     }
   } else if (post) {
@@ -386,11 +382,11 @@ async function handleWebhook(
       await notify(supabase, {
         userId: profile.id,
         message: `New draft created from ${sourceType} in ${repoFullName}`,
-        link: "/posts",
-        subject: "New draft post created",
+        link: '/posts',
+        subject: 'New draft post created',
       })
     } catch (notifyErr) {
-      console.error("[github-webhook] notify failed:", notifyErr)
+      console.error('[github-webhook] notify failed:', notifyErr)
     }
   }
 

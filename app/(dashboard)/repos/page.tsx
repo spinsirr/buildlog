@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { RepoList } from '@/components/repo-list'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Repositories' }
 
@@ -38,14 +38,12 @@ export default async function ReposPage() {
               + Add repos
             </a>
           ) : (
-            <span className="text-sm text-red-400">
-              GitHub App not configured
-            </span>
+            <span className="text-sm text-red-400">GitHub App not configured</span>
           )}
         </div>
 
         {/* Needs install */}
-        {(needsInstall || repos.length === 0) ? (
+        {needsInstall || repos.length === 0 ? (
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-10 flex flex-col items-center gap-4">
             <p className="font-semibold text-lg text-zinc-100 text-center">
               Install the BuildLog GitHub App

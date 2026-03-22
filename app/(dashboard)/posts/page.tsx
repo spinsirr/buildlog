@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { PostsClient } from '@/components/posts-client'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Posts' }
 
@@ -12,17 +12,10 @@ export default async function PostsPage() {
       .from('posts')
       .select('*, connected_repos(full_name)')
       .order('created_at', { ascending: false }),
-    supabase
-      .from('platform_connections')
-      .select('platform'),
+    supabase.from('platform_connections').select('platform'),
   ])
 
-  const connectedPlatforms = (connectionRows ?? []).map(r => r.platform)
+  const connectedPlatforms = (connectionRows ?? []).map((r) => r.platform)
 
-  return (
-    <PostsClient
-      initialPosts={posts ?? []}
-      initialConnectedPlatforms={connectedPlatforms}
-    />
-  )
+  return <PostsClient initialPosts={posts ?? []} initialConnectedPlatforms={connectedPlatforms} />
 }

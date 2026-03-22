@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
 
@@ -25,7 +25,9 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
           body: { repo_id: repo.id, full_name: repo.full_name },
         })
       }
-      setRepos(prev => prev.map(r => r.id === repo.id ? { ...r, connected: !r.connected } : r))
+      setRepos((prev) =>
+        prev.map((r) => (r.id === repo.id ? { ...r, connected: !r.connected } : r))
+      )
       router.refresh()
     } finally {
       setPending(null)
@@ -34,17 +36,17 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {repos.map(repo => (
+      {repos.map((repo) => (
         <div
           key={repo.id}
           className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center justify-between gap-4"
         >
           <div className="flex items-center gap-3 min-w-0">
-            {repo.connected && (
-              <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-            )}
+            {repo.connected && <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />}
             <div className="min-w-0">
-              <p className="font-mono text-sm font-medium text-zinc-100 truncate">{repo.full_name}</p>
+              <p className="font-mono text-sm font-medium text-zinc-100 truncate">
+                {repo.full_name}
+              </p>
               {repo.description && (
                 <p className="text-xs text-zinc-500 truncate mt-0.5">{repo.description}</p>
               )}

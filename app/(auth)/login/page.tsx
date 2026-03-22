@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { GitHubLoginButton, GoogleLoginButton, XLoginButton } from '@/components/login-buttons'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export default async function LoginPage() {
   const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (user) {
     redirect('/dashboard')
@@ -45,9 +47,7 @@ export default async function LoginPage() {
       </div>
 
       {/* Login card */}
-      <div
-        className="relative z-10 w-full max-w-sm mx-4 bg-white border-4 border-black neo-card"
-      >
+      <div className="relative z-10 w-full max-w-sm mx-4 bg-white border-4 border-black neo-card">
         {/* Card header strip */}
         <div className="bg-neo-accent border-b-4 border-black px-6 py-4 flex items-center justify-between">
           {/* Logo mark */}
@@ -79,7 +79,8 @@ export default async function LoginPage() {
             >
               <span className="inline-block bg-neo-lime border-2 border-black px-1 text-black">
                 WELCOME
-              </span><br />
+              </span>
+              <br />
               <span className="inline-block bg-neo-secondary border-2 border-black px-1 rotate-[-1deg] text-black">
                 BACK.
               </span>

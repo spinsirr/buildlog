@@ -147,8 +147,12 @@
 
 /* Shimmer animation for AI elements */
 @keyframes shimmer {
-  from { background-position: 100% center; }
-  to   { background-position: 0% center; }
+  from {
+    background-position: 100% center;
+  }
+  to {
+    background-position: 0% center;
+  }
 }
 .animate-shimmer {
   animation: shimmer var(--shimmer-duration, 2s) linear infinite;
@@ -156,22 +160,37 @@
 
 /* Neo-brutalism keyframes */
 @keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 @keyframes marquee-scroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 /* Neo-brutalism interaction utilities */
 @layer utilities {
   .neo-btn {
     box-shadow: 8px 8px 0 0 #000000;
-    transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+    transition:
+      transform 150ms ease-out,
+      box-shadow 150ms ease-out;
   }
   .neo-btn:hover {
     transform: translate(-2px, -2px);
@@ -184,7 +203,9 @@
 
   .neo-btn-sm {
     box-shadow: 4px 4px 0 0 #000000;
-    transition: transform 100ms ease-out, box-shadow 100ms ease-out;
+    transition:
+      transform 100ms ease-out,
+      box-shadow 100ms ease-out;
   }
   .neo-btn-sm:hover {
     transform: translate(-1px, -1px);
@@ -197,7 +218,9 @@
 
   .neo-card {
     box-shadow: 8px 8px 0 0 #000000;
-    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out;
   }
   .neo-card:hover {
     transform: translateY(-4px);
@@ -225,11 +248,11 @@
   .animate-spin-slow,
   .animate-float,
   .animate-marquee {
-    animation: none !important;
+    animation: none;
   }
   .neo-btn,
   .neo-btn-sm,
   .neo-card {
-    transition: none !important;
+    transition: none;
   }
 }

@@ -1,54 +1,53 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { Github, ArrowRight, Star, GitCommit, Zap, Globe } from "lucide-react";
-import { LandingNav } from "@/components/landing-nav";
+import { ArrowRight, GitCommit, Github, Globe, Star, Zap } from 'lucide-react'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { LandingNav } from '@/components/landing-nav'
 
 // ─── SEO Metadata ─────────────────────────────────────────────────────────────
-const SITE_URL = "https://buildlog.dev";
+const SITE_URL = 'https://buildlog.dev'
 
 export const metadata: Metadata = {
-  title: "BuildLog — Turn Commits into Content",
+  title: 'BuildLog — Turn Commits into Content',
   description:
-    "Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.",
+    'Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.',
   keywords: [
-    "build in public",
-    "developer tools",
-    "github automation",
-    "social media automation",
-    "AI content generation",
-    "twitter automation",
-    "linkedin automation",
-    "developer marketing",
-    "open source",
-    "commit to content",
+    'build in public',
+    'developer tools',
+    'github automation',
+    'social media automation',
+    'AI content generation',
+    'twitter automation',
+    'linkedin automation',
+    'developer marketing',
+    'open source',
+    'commit to content',
   ],
-  authors: [{ name: "BuildLog" }],
-  creator: "BuildLog",
+  authors: [{ name: 'BuildLog' }],
+  creator: 'BuildLog',
   metadataBase: new URL(SITE_URL),
-  alternates: { canonical: "/" },
+  alternates: { canonical: '/' },
   openGraph: {
-    type: "website",
-    locale: "en_US",
+    type: 'website',
+    locale: 'en_US',
     url: SITE_URL,
-    siteName: "BuildLog",
-    title: "BuildLog — Turn Commits into Content",
+    siteName: 'BuildLog',
+    title: 'BuildLog — Turn Commits into Content',
     description:
-      "Connect GitHub once. AI writes the post. Publish to Twitter/X, LinkedIn, and Bluesky from one dashboard.",
+      'Connect GitHub once. AI writes the post. Publish to Twitter/X, LinkedIn, and Bluesky from one dashboard.',
     images: [
       {
-        url: "/og-image.png",
+        url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: "BuildLog — Turn Commits into Content",
+        alt: 'BuildLog — Turn Commits into Content',
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "BuildLog — Turn Commits into Content",
-    description:
-      "Connect GitHub once. AI writes the post. Publish everywhere.",
-    images: ["/og-image.png"],
+    card: 'summary_large_image',
+    title: 'BuildLog — Turn Commits into Content',
+    description: 'Connect GitHub once. AI writes the post. Publish everywhere.',
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,
@@ -56,86 +55,75 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
     },
   },
-};
+}
 
 // ─── JSON-LD Structured Data ──────────────────────────────────────────────────
 // Static structured data — no user input, safe to inline
 const JSON_LD_DATA = JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "BuildLog",
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'BuildLog',
   description:
-    "Turn your GitHub commits into social media posts with AI. Build in public, effortlessly.",
+    'Turn your GitHub commits into social media posts with AI. Build in public, effortlessly.',
   url: SITE_URL,
-  applicationCategory: "DeveloperApplication",
-  operatingSystem: "Web",
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Web',
   offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-    description: "Free tier available",
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    description: 'Free tier available',
   },
   featureList: [
-    "GitHub integration",
-    "AI-powered content generation",
-    "Twitter/X publishing",
-    "LinkedIn publishing",
-    "Bluesky publishing",
-    "Build in public automation",
+    'GitHub integration',
+    'AI-powered content generation',
+    'Twitter/X publishing',
+    'LinkedIn publishing',
+    'Bluesky publishing',
+    'Build in public automation',
   ],
-});
+})
 
 function JsonLd() {
   // All data is static constants — no XSS risk
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON_LD_DATA }}
-    />
-  );
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD_DATA }} />
 }
 
 // ─── Logo (used in footer) ────────────────────────────────────────────────────
 function LogoMark({ size = 32 }: { size?: number }) {
-  const cell = Math.round(size * 0.42);
-  const start2 = size - cell;
+  const cell = Math.round(size * 0.42)
+  const start2 = size - cell
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      fill="none"
-      aria-hidden
-    >
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" aria-hidden>
       <rect x="0" y="0" width={cell} height={cell} fill="#000000" />
       <rect x={start2} y="0" width={cell} height={cell} fill="#FF6B6B" />
       <rect x="0" y={start2} width={cell} height={cell} fill="#FFD93D" />
       <rect x={start2} y={start2} width={cell} height={cell} fill="#000000" />
     </svg>
-  );
+  )
 }
 
 // ─── Marquee strip ────────────────────────────────────────────────────────────
 const MARQUEE_ITEMS = [
-  "Twitter · X",
-  "LinkedIn",
-  "GitHub",
-  "Build in Public",
-  "Auto-Post",
-  "Commit → Content",
-  "No Writing Required",
-];
+  'Twitter · X',
+  'LinkedIn',
+  'GitHub',
+  'Build in Public',
+  'Auto-Post',
+  'Commit → Content',
+  'No Writing Required',
+]
 
 function MarqueeStrip() {
   return (
     <div
       className="border-y-4 border-black py-4 overflow-hidden"
-      style={{ background: "#000000" }}
+      style={{ background: '#000000' }}
       aria-hidden
     >
       <div className="flex w-max animate-marquee">
@@ -143,7 +131,7 @@ function MarqueeStrip() {
           <span
             key={i}
             className="font-mono-ui text-sm font-bold uppercase tracking-[0.2em] px-6 whitespace-nowrap"
-            style={{ color: i % 2 === 0 ? "#BFFF00" : "#FFD93D" }}
+            style={{ color: i % 2 === 0 ? '#BFFF00' : '#FFD93D' }}
           >
             {item}
             <span className="mx-4 opacity-60">✦</span>
@@ -151,7 +139,7 @@ function MarqueeStrip() {
         ))}
       </div>
     </div>
-  );
+  )
 }
 
 // ─── Terminal demo ────────────────────────────────────────────────────────────
@@ -173,8 +161,7 @@ function TerminalDemo() {
             <div className="flex gap-2">
               <span className="text-[#FFD93D]">$</span>
               <span className="text-[#BFFF00]">
-                git commit{" "}
-                <span className="text-white/60">-m</span>{" "}
+                git commit <span className="text-white/60">-m</span>{' '}
                 <span className="text-white">&quot;feat: add dark mode&quot;</span>
               </span>
             </div>
@@ -186,9 +173,7 @@ function TerminalDemo() {
             </div>
             <div className="pt-2 flex items-center gap-2">
               <span className="text-[#A8E6CF]">✓</span>
-              <span className="text-[#BFFF00] opacity-80">
-                buildlog detected push
-              </span>
+              <span className="text-[#BFFF00] opacity-80">buildlog detected push</span>
             </div>
           </div>
         </div>
@@ -198,7 +183,7 @@ function TerminalDemo() {
           <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-[#BFFF00]" />
           <div
             className="border-2 border-[#BFFF00] px-3 py-2 flex-shrink-0"
-            style={{ boxShadow: "3px 3px 0 0 #BFFF00" }}
+            style={{ boxShadow: '3px 3px 0 0 #BFFF00' }}
           >
             <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-[#BFFF00]">
               AI ✦
@@ -213,9 +198,7 @@ function TerminalDemo() {
             <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
               Draft ready
             </span>
-            <span className="font-mono-ui text-xs font-bold text-black">
-              twitter · linkedin
-            </span>
+            <span className="font-mono-ui text-xs font-bold text-black">twitter · linkedin</span>
           </div>
           <div className="p-5 space-y-3">
             <p className="font-mono-ui text-sm leading-relaxed text-black">
@@ -224,13 +207,13 @@ function TerminalDemo() {
               Building features people actually ask for &gt; chasing trends.
             </p>
             <div className="flex flex-wrap gap-2">
-              {["#buildinpublic", "#webdev"].map((tag) => (
+              {['#buildinpublic', '#webdev'].map((tag) => (
                 <span
                   key={tag}
                   className="inline-block border-2 border-black px-2 py-0.5 rotate-1 font-mono-ui text-xs font-bold uppercase tracking-wider"
                   style={{
-                    background: "#C4B5FD",
-                    boxShadow: "2px 2px 0 0 #000000",
+                    background: '#C4B5FD',
+                    boxShadow: '2px 2px 0 0 #000000',
                   }}
                 >
                   {tag}
@@ -247,76 +230,73 @@ function TerminalDemo() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ─── How it works steps ───────────────────────────────────────────────────────
 const STEPS = [
   {
-    num: "01",
+    num: '01',
     Icon: GitCommit,
-    title: "Connect GitHub",
-    desc: "Link any repo with one click. We monitor pushes, PRs, and releases automatically.",
-    accent: "#FFD93D",
+    title: 'Connect GitHub',
+    desc: 'Link any repo with one click. We monitor pushes, PRs, and releases automatically.',
+    accent: '#FFD93D',
   },
   {
-    num: "02",
+    num: '02',
     Icon: Zap,
-    title: "AI writes the post",
-    desc: "Every meaningful commit becomes a ready-to-publish social update, crafted by AI.",
-    accent: "#C4B5FD",
+    title: 'AI writes the post',
+    desc: 'Every meaningful commit becomes a ready-to-publish social update, crafted by AI.',
+    accent: '#C4B5FD',
   },
   {
-    num: "03",
+    num: '03',
     Icon: Globe,
-    title: "Publish everywhere",
-    desc: "Review drafts and ship to Twitter/X and LinkedIn from one dashboard. More platforms coming soon.",
-    accent: "#FF6B6B",
+    title: 'Publish everywhere',
+    desc: 'Review drafts and ship to Twitter/X and LinkedIn from one dashboard. More platforms coming soon.',
+    accent: '#FF6B6B',
   },
-];
+]
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 const STATS = [
   {
-    num: "0s",
-    label: "to write a post",
-    sub: "AI generates it instantly",
-    accent: "#FF6B6B",
+    num: '0s',
+    label: 'to write a post',
+    sub: 'AI generates it instantly',
+    accent: '#FF6B6B',
   },
   {
-    num: "2",
-    label: "platforms supported",
-    sub: "Twitter · LinkedIn — more coming soon",
-    accent: "#FFD93D",
+    num: '2',
+    label: 'platforms supported',
+    sub: 'Twitter · LinkedIn — more coming soon',
+    accent: '#FFD93D',
   },
   {
-    num: "∞",
-    label: "posts per month",
-    sub: "unlimited on Pro plan",
-    accent: "#C4B5FD",
+    num: '∞',
+    label: 'posts per month',
+    sub: 'unlimited on Pro plan',
+    accent: '#C4B5FD',
   },
-];
+]
 
 // ─── Grid overlay (reusable) ──────────────────────────────────────────────────
-function GridOverlay({ opacity = "08" }: { opacity?: string }) {
+function GridOverlay({ opacity = '08' }: { opacity?: string }) {
   return (
     <div
       className="absolute inset-0 pointer-events-none"
       style={{
         backgroundImage: `linear-gradient(#000000${opacity} 1px, transparent 1px), linear-gradient(90deg, #000000${opacity} 1px, transparent 1px)`,
-        backgroundSize: "24px 24px",
+        backgroundSize: '24px 24px',
       }}
     />
-  );
+  )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div
-      className="min-h-screen antialiased"
-      style={{ background: "#FFFDF5", color: "#000000" }}
-    >
+    <div className="min-h-screen antialiased" style={{ background: '#FFFDF5', color: '#000000' }}>
       <JsonLd />
       <LandingNav />
 
@@ -328,9 +308,9 @@ export default function LandingPage() {
         <div
           className="absolute top-1/2 right-0 -translate-y-1/2 font-display font-black select-none pointer-events-none leading-none hidden lg:block"
           style={{
-            fontSize: "clamp(200px, 25vw, 320px)",
-            color: "transparent",
-            WebkitTextStroke: "2px rgba(0,0,0,0.04)",
+            fontSize: 'clamp(200px, 25vw, 320px)',
+            color: 'transparent',
+            WebkitTextStroke: '2px rgba(0,0,0,0.04)',
           }}
           aria-hidden
         >
@@ -342,7 +322,7 @@ export default function LandingPage() {
           <div className="mb-8 md:mb-10">
             <div
               className="inline-flex border-2 border-black px-4 py-1.5 -rotate-1 bg-[#FFD93D]"
-              style={{ boxShadow: "3px 3px 0 0 #000000" }}
+              style={{ boxShadow: '3px 3px 0 0 #000000' }}
             >
               <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em]">
                 ✦ Build in public, effortlessly
@@ -353,14 +333,14 @@ export default function LandingPage() {
           {/* Headline */}
           <h1
             className="font-display font-black uppercase tracking-tight leading-none mb-8"
-            style={{ fontSize: "clamp(52px, 10vw, 96px)" }}
+            style={{ fontSize: 'clamp(52px, 10vw, 96px)' }}
           >
             <span className="block">Turn commits</span>
             <span className="block">
-              into{" "}
+              into{' '}
               <span
                 className="inline-block border-4 border-black px-3 rotate-1 bg-[#FF6B6B]"
-                style={{ boxShadow: "6px 6px 0 0 #000000" }}
+                style={{ boxShadow: '6px 6px 0 0 #000000' }}
               >
                 content
               </span>
@@ -395,22 +375,17 @@ export default function LandingPage() {
           {/* Floating badges (desktop) */}
           <div
             className="absolute top-0 right-0 border-2 border-black px-3 py-2 rotate-3 hidden lg:block bg-[#BFFF00]"
-            style={{ boxShadow: "4px 4px 0 0 #000000" }}
+            style={{ boxShadow: '4px 4px 0 0 #000000' }}
             aria-hidden
           >
-            <div className="font-display font-black text-3xl leading-none">
-              100%
-            </div>
+            <div className="font-display font-black text-3xl leading-none">100%</div>
             <div className="font-mono-ui text-xs font-bold uppercase tracking-widest">
               automatic
             </div>
           </div>
 
           {/* Spinning star */}
-          <div
-            className="absolute bottom-0 right-12 hidden lg:block"
-            aria-hidden
-          >
+          <div className="absolute bottom-0 right-12 hidden lg:block" aria-hidden>
             <Star
               className="h-10 w-10 animate-spin-slow"
               fill="#FFD93D"
@@ -430,7 +405,7 @@ export default function LandingPage() {
           <div className="text-center mb-10">
             <div
               className="inline-flex border-2 border-[#BFFF00] px-4 py-1.5 bg-[#1A1A2E]"
-              style={{ boxShadow: "3px 3px 0 0 #BFFF00" }}
+              style={{ boxShadow: '3px 3px 0 0 #BFFF00' }}
             >
               <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-[#BFFF00]">
                 ✦ See it in action
@@ -442,12 +417,12 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ──────────────────────────────────────────────────── */}
-      <section className="py-24 px-6" style={{ background: "#FFFDF5" }}>
+      <section className="py-24 px-6" style={{ background: '#FFFDF5' }}>
         <div className="max-w-5xl mx-auto">
           <div className="mb-14">
             <div
               className="inline-flex border-2 border-black px-4 py-1.5 mb-6 -rotate-1 bg-[#C4B5FD]"
-              style={{ boxShadow: "3px 3px 0 0 #000000" }}
+              style={{ boxShadow: '3px 3px 0 0 #000000' }}
             >
               <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em]">
                 How it works
@@ -455,7 +430,7 @@ export default function LandingPage() {
             </div>
             <h2
               className="font-display font-black uppercase leading-tight"
-              style={{ fontSize: "clamp(36px, 6vw, 64px)" }}
+              style={{ fontSize: 'clamp(36px, 6vw, 64px)' }}
             >
               Three steps.
               <br />
@@ -483,7 +458,7 @@ export default function LandingPage() {
                     className="inline-flex border-2 border-black px-2.5 py-1 mb-5 rotate-1 font-mono-ui text-sm font-bold text-black"
                     style={{
                       background: accent,
-                      boxShadow: "2px 2px 0 0 #000000",
+                      boxShadow: '2px 2px 0 0 #000000',
                     }}
                   >
                     {num}
@@ -491,19 +466,11 @@ export default function LandingPage() {
 
                   {/* Icon */}
                   <div className="mb-4">
-                    <Icon
-                      className="h-8 w-8"
-                      strokeWidth={3}
-                      stroke="#000000"
-                    />
+                    <Icon className="h-8 w-8" strokeWidth={3} stroke="#000000" />
                   </div>
 
-                  <h3 className="font-display font-bold text-xl mb-3 uppercase">
-                    {title}
-                  </h3>
-                  <p className="font-mono-ui text-sm leading-relaxed opacity-70">
-                    {desc}
-                  </p>
+                  <h3 className="font-display font-bold text-xl mb-3 uppercase">{title}</h3>
+                  <p className="font-mono-ui text-sm leading-relaxed opacity-70">{desc}</p>
                 </div>
               </div>
             ))}
@@ -512,28 +479,26 @@ export default function LandingPage() {
       </section>
 
       {/* ── STATS ─────────────────────────────────────────────────────────── */}
-      <section className="border-t-4 border-black" style={{ background: "#FFFDF5" }}>
+      <section className="border-t-4 border-black" style={{ background: '#FFFDF5' }}>
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3">
           {STATS.map(({ num, label, sub, accent }, i) => (
             <div
               key={num}
               className={`border-black p-10 md:p-14 ${
-                i < 2 ? "border-b-4 md:border-b-0 md:border-r-4" : ""
+                i < 2 ? 'border-b-4 md:border-b-0 md:border-r-4' : ''
               }`}
               style={{ background: accent }}
             >
               <div
                 className="font-display font-black leading-none mb-3"
-                style={{ fontSize: "clamp(56px, 8vw, 80px)" }}
+                style={{ fontSize: 'clamp(56px, 8vw, 80px)' }}
               >
                 {num}
               </div>
               <div className="font-mono-ui text-sm font-bold uppercase tracking-wider mb-1">
                 {label}
               </div>
-              <div className="font-mono-ui text-xs opacity-60 uppercase tracking-wide">
-                {sub}
-              </div>
+              <div className="font-mono-ui text-xs opacity-60 uppercase tracking-wide">{sub}</div>
             </div>
           ))}
         </div>
@@ -542,15 +507,12 @@ export default function LandingPage() {
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       <section
         className="border-t-4 border-black py-24 px-6 relative overflow-hidden"
-        style={{ background: "#FFD93D" }}
+        style={{ background: '#FFD93D' }}
       >
         <GridOverlay opacity="06" />
 
         {/* Decorative spinning star */}
-        <div
-          className="absolute top-8 left-8 hidden lg:block opacity-40"
-          aria-hidden
-        >
+        <div className="absolute top-8 left-8 hidden lg:block opacity-40" aria-hidden>
           <Star
             className="h-12 w-12 animate-spin-slow"
             fill="#000000"
@@ -558,10 +520,7 @@ export default function LandingPage() {
             strokeWidth={1}
           />
         </div>
-        <div
-          className="absolute bottom-8 right-8 hidden lg:block opacity-30"
-          aria-hidden
-        >
+        <div className="absolute bottom-8 right-8 hidden lg:block opacity-30" aria-hidden>
           <Star
             className="h-8 w-8 animate-spin-slow"
             fill="#000000"
@@ -573,7 +532,7 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto text-center relative">
           <div
             className="inline-flex border-2 border-black px-4 py-1.5 mb-8 rotate-2 bg-[#FF6B6B]"
-            style={{ boxShadow: "3px 3px 0 0 #000000" }}
+            style={{ boxShadow: '3px 3px 0 0 #000000' }}
           >
             <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-black">
               ✦ Free to start
@@ -582,7 +541,7 @@ export default function LandingPage() {
 
           <h2
             className="font-display font-black uppercase leading-tight mb-6 text-black"
-            style={{ fontSize: "clamp(40px, 8vw, 80px)" }}
+            style={{ fontSize: 'clamp(40px, 8vw, 80px)' }}
           >
             Ship code.
             <br />
@@ -592,8 +551,7 @@ export default function LandingPage() {
           </h2>
 
           <p className="font-mono-ui text-sm md:text-base max-w-sm mx-auto mb-10 leading-relaxed opacity-70 text-black">
-            Connect your GitHub and start turning commits into content in under
-            a minute.
+            Connect your GitHub and start turning commits into content in under a minute.
           </p>
 
           <Link
@@ -606,16 +564,11 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <footer
-        className="border-t-4 border-black py-8 px-6"
-        style={{ background: "#FFFDF5" }}
-      >
+      <footer className="border-t-4 border-black py-8 px-6" style={{ background: '#FFFDF5' }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <LogoMark size={24} />
-            <span className="font-display font-bold text-lg tracking-tight">
-              buildlog
-            </span>
+            <span className="font-display font-bold text-lg tracking-tight">buildlog</span>
           </div>
           <span className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40">
             © 2025 — Open Source
@@ -623,5 +576,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-  );
+  )
 }

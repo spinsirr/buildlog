@@ -1,45 +1,45 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import Link from "next/link";
+import {
+  AtSign,
+  Check,
+  ExternalLink,
+  Eye,
+  FileText,
+  Hash,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Send,
+  Trash2,
+  X,
+} from 'lucide-react'
+import Link from 'next/link'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Pencil,
-  Send,
-  Trash2,
-  FileText,
-  Check,
-  X,
-  Loader2,
-  RefreshCw,
-  Plus,
-  ExternalLink,
-  Eye,
-  Hash,
-  AtSign,
-} from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import type { Post } from "@/lib/types";
+} from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { createClient } from '@/lib/supabase/client'
+import type { Post } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
-const supabase = createClient();
+const supabase = createClient()
 
 const platformConfig: Record<string, { label: string; color: string }> = {
-  twitter: { label: "X", color: "bg-zinc-800 text-zinc-300" },
-  linkedin: { label: "LinkedIn", color: "bg-blue-500/10 text-blue-400" },
-  bluesky: { label: "Bluesky", color: "bg-sky-500/10 text-sky-400" },
-};
+  twitter: { label: 'X', color: 'bg-zinc-800 text-zinc-300' },
+  linkedin: { label: 'LinkedIn', color: 'bg-blue-500/10 text-blue-400' },
+  bluesky: { label: 'Bluesky', color: 'bg-sky-500/10 text-sky-400' },
+}
 
 function renderPreviewContent(content: string) {
   return content.split(/(\s)/).map((word, i) => {
@@ -48,24 +48,24 @@ function renderPreviewContent(content: string) {
         <span key={i} className="text-sky-400">
           {word}
         </span>
-      );
+      )
     }
     if (word.match(/^@\w+/)) {
       return (
         <span key={i} className="text-sky-400">
           {word}
         </span>
-      );
+      )
     }
     if (word.match(/^https?:\/\//)) {
       return (
         <span key={i} className="text-sky-400 underline">
           {word.length > 23 ? `${word.slice(0, 23)}...` : word}
         </span>
-      );
+      )
     }
-    return word;
-  });
+    return word
+  })
 }
 
 function PostPreviewModal({
@@ -76,21 +76,21 @@ function PostPreviewModal({
   busy,
   connectedPlatforms,
 }: {
-  content: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirmPublish: () => void;
-  busy: boolean;
-  connectedPlatforms: string[];
+  content: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirmPublish: () => void
+  busy: boolean
+  connectedPlatforms: string[]
 }) {
-  const charCount = content.length;
-  const overLimit = charCount > 280;
-  const remaining = 280 - charCount;
+  const charCount = content.length
+  const overLimit = charCount > 280
+  const remaining = 280 - charCount
 
-  const pct = Math.min(charCount / 280, 1);
-  const radius = 10;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - pct);
+  const pct = Math.min(charCount / 280, 1)
+  const radius = 10
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference * (1 - pct)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,12 +111,12 @@ function PostPreviewModal({
             {renderPreviewContent(content)}
           </p>
           <div className="text-xs text-zinc-600">
-            {new Date().toLocaleDateString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              month: "short",
-              day: "numeric",
-              year: "numeric",
+            {new Date().toLocaleDateString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
             })}
           </div>
         </div>
@@ -140,8 +140,8 @@ function PostPreviewModal({
             {remaining <= 20 && (
               <span
                 className={cn(
-                  "text-xs font-mono",
-                  overLimit ? "text-red-400" : remaining <= 0 ? "text-red-400" : "text-amber-400"
+                  'text-xs font-mono',
+                  overLimit ? 'text-red-400' : remaining <= 0 ? 'text-red-400' : 'text-amber-400'
                 )}
               >
                 {remaining}
@@ -161,7 +161,13 @@ function PostPreviewModal({
                 cy="12"
                 r={radius}
                 fill="none"
-                stroke={overLimit ? "rgb(248 113 113)" : remaining <= 20 ? "rgb(251 191 36)" : "rgb(99 102 241)"}
+                stroke={
+                  overLimit
+                    ? 'rgb(248 113 113)'
+                    : remaining <= 20
+                      ? 'rgb(251 191 36)'
+                      : 'rgb(99 102 241)'
+                }
                 strokeWidth="2"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
@@ -173,7 +179,8 @@ function PostPreviewModal({
 
         {overLimit && (
           <div className="text-xs text-red-400 bg-red-500/10 rounded-md px-3 py-2">
-            Post exceeds the 280 character limit by {charCount - 280} characters. Edit the post before publishing.
+            Post exceeds the 280 character limit by {charCount - 280} characters. Edit the post
+            before publishing.
           </div>
         )}
 
@@ -191,19 +198,15 @@ function PostPreviewModal({
             disabled={busy || overLimit || connectedPlatforms.length === 0}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
           >
-            {busy ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Send className="h-3 w-3" />
-            )}
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             {connectedPlatforms.length === 0
-              ? "No platforms connected"
-              : `Publish to ${connectedPlatforms.map(p => platformConfig[p]?.label ?? p).join(" + ")}`}
+              ? 'No platforms connected'
+              : `Publish to ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(' + ')}`}
           </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
 
 function PostCard({
@@ -213,66 +216,64 @@ function PostCard({
   onRegenerate,
   connectedPlatforms,
 }: {
-  post: Post;
-  onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onRegenerate: (id: string) => Promise<void>;
-  connectedPlatforms: string[];
+  post: Post
+  onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onRegenerate: (id: string) => Promise<void>
+  connectedPlatforms: string[]
 }) {
-  const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.content);
-  const [busy, setBusy] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [editing, setEditing] = useState(false)
+  const [editContent, setEditContent] = useState(post.content)
+  const [busy, setBusy] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
 
   const commitHash =
-    post.source_data &&
-    typeof post.source_data === "object" &&
-    "url" in post.source_data
-      ? (post.source_data.url as string)?.split("/").pop()?.slice(0, 7)
-      : null;
+    post.source_data && typeof post.source_data === 'object' && 'url' in post.source_data
+      ? (post.source_data.url as string)?.split('/').pop()?.slice(0, 7)
+      : null
 
-  const charCount = (editing ? editContent : post.content).length;
-  const overLimit = charCount > 280;
+  const charCount = (editing ? editContent : post.content).length
+  const overLimit = charCount > 280
 
   async function handleSave() {
-    setBusy(true);
-    await onUpdate(post.id, { content: editContent });
-    setEditing(false);
-    setBusy(false);
+    setBusy(true)
+    await onUpdate(post.id, { content: editContent })
+    setEditing(false)
+    setBusy(false)
   }
 
   async function handleConfirmPublish() {
-    setBusy(true);
+    setBusy(true)
     try {
-      await onUpdate(post.id, { status: "published" });
-      setShowPreview(false);
-      toast.success("Post published", {
-        description: connectedPlatforms.map(p => platformConfig[p]?.label ?? p).join(", "),
-      });
+      await onUpdate(post.id, { status: 'published' })
+      setShowPreview(false)
+      toast.success('Post published', {
+        description: connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(', '),
+      })
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to publish");
+      toast.error(err instanceof Error ? err.message : 'Failed to publish')
     }
-    setBusy(false);
+    setBusy(false)
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this post?")) return;
-    setBusy(true);
-    await onDelete(post.id);
-    toast.success("Post deleted");
-    setBusy(false);
+    if (!confirm('Delete this post?')) return
+    setBusy(true)
+    await onDelete(post.id)
+    toast.success('Post deleted')
+    setBusy(false)
   }
 
   async function handleRegenerate() {
-    setRegenerating(true);
+    setRegenerating(true)
     try {
-      await onRegenerate(post.id);
-      toast.success("Post regenerated");
+      await onRegenerate(post.id)
+      toast.success('Post regenerated')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to regenerate");
+      toast.error(err instanceof Error ? err.message : 'Failed to regenerate')
     }
-    setRegenerating(false);
+    setRegenerating(false)
   }
 
   return (
@@ -304,8 +305,8 @@ function PostCard({
                 <button
                   type="button"
                   onClick={() => {
-                    setEditing(false);
-                    setEditContent(post.content);
+                    setEditing(false)
+                    setEditContent(post.content)
                   }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-zinc-400 text-xs font-medium hover:text-zinc-200"
                 >
@@ -315,8 +316,8 @@ function PostCard({
               </div>
               <span
                 className={cn(
-                  "text-[11px] font-mono",
-                  overLimit ? "text-red-400" : "text-zinc-600"
+                  'text-[11px] font-mono',
+                  overLimit ? 'text-red-400' : 'text-zinc-600'
                 )}
               >
                 {charCount}/280
@@ -329,7 +330,7 @@ function PostCard({
           </p>
         )}
 
-        {post.status === "published" && (
+        {post.status === 'published' && (
           <div className="flex items-center gap-3">
             {post.platform_post_url && (
               <a
@@ -348,7 +349,10 @@ function PostCard({
                   <Badge
                     key={p}
                     variant="secondary"
-                    className={cn("text-[10px] border-0", platformConfig[p]?.color ?? "bg-zinc-800 text-zinc-500")}
+                    className={cn(
+                      'text-[10px] border-0',
+                      platformConfig[p]?.color ?? 'bg-zinc-800 text-zinc-500'
+                    )}
                   >
                     {platformConfig[p]?.label ?? p}
                   </Badge>
@@ -365,35 +369,30 @@ function PostCard({
             <Badge
               variant="secondary"
               className={cn(
-                "text-[10px] border-0",
-                post.status === "published"
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : post.status === "draft"
-                    ? "bg-amber-500/10 text-amber-400"
-                    : "bg-zinc-800 text-zinc-500"
+                'text-[10px] border-0',
+                post.status === 'published'
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : post.status === 'draft'
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : 'bg-zinc-800 text-zinc-500'
               )}
             >
               {post.status}
             </Badge>
-            <Badge
-              variant="secondary"
-              className="text-[10px] border-0 bg-zinc-800 text-zinc-500"
-            >
+            <Badge variant="secondary" className="text-[10px] border-0 bg-zinc-800 text-zinc-500">
               {post.source_type}
             </Badge>
             {post.connected_repos && (
               <span className="text-[11px] text-zinc-600 font-mono">
                 {post.connected_repos.full_name}
-                {commitHash && (
-                  <span className="text-zinc-700"> @ {commitHash}</span>
-                )}
+                {commitHash && <span className="text-zinc-700"> @ {commitHash}</span>}
               </span>
             )}
             {!editing && (
               <span
                 className={cn(
-                  "text-[11px] font-mono",
-                  overLimit ? "text-red-400" : "text-zinc-600"
+                  'text-[11px] font-mono',
+                  overLimit ? 'text-red-400' : 'text-zinc-600'
                 )}
               >
                 {charCount}/280
@@ -402,7 +401,7 @@ function PostCard({
           </div>
 
           <div className="flex items-center gap-1">
-            {post.status === "draft" && post.source_type !== "manual" && (
+            {post.status === 'draft' && post.source_type !== 'manual' && (
               <button
                 type="button"
                 onClick={handleRegenerate}
@@ -428,7 +427,7 @@ function PostCard({
                 <Pencil className="h-3.5 w-3.5" />
               </button>
             )}
-            {post.status === "draft" && (
+            {post.status === 'draft' && (
               <button
                 type="button"
                 onClick={() => setShowPreview(true)}
@@ -439,7 +438,7 @@ function PostCard({
                 <Eye className="h-3.5 w-3.5" />
               </button>
             )}
-            {post.status === "draft" && (
+            {post.status === 'draft' && (
               <button
                 type="button"
                 onClick={() => setShowPreview(true)}
@@ -447,10 +446,10 @@ function PostCard({
                 className="p-1.5 rounded-md text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
                 title={
                   overLimit
-                    ? "Post exceeds 280 characters"
+                    ? 'Post exceeds 280 characters'
                     : connectedPlatforms.length === 0
-                      ? "No platforms connected"
-                      : `Publish to ${connectedPlatforms.map(p => platformConfig[p]?.label ?? p).join(" + ")}`
+                      ? 'No platforms connected'
+                      : `Publish to ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(' + ')}`
                 }
               >
                 {busy ? (
@@ -482,29 +481,29 @@ function PostCard({
         connectedPlatforms={connectedPlatforms}
       />
     </Card>
-  );
+  )
 }
 
 function NewPostForm({ onCreated }: { onCreated: () => void }) {
-  const [content, setContent] = useState("");
-  const [busy, setBusy] = useState(false);
-  const charCount = content.length;
+  const [content, setContent] = useState('')
+  const [busy, setBusy] = useState(false)
+  const charCount = content.length
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!content.trim()) return;
-    setBusy(true);
-    const { data, error } = await supabase.functions.invoke("create-post", {
+    e.preventDefault()
+    if (!content.trim()) return
+    setBusy(true)
+    const { data, error } = await supabase.functions.invoke('create-post', {
       body: { content: content.trim() },
-    });
+    })
     if (error) {
-      toast.error(data?.error || "Failed to create post");
+      toast.error(data?.error || 'Failed to create post')
     } else {
-      setContent("");
-      onCreated();
-      toast.success("Post created");
+      setContent('')
+      onCreated()
+      toast.success('Post created')
     }
-    setBusy(false);
+    setBusy(false)
   }
 
   return (
@@ -519,8 +518,8 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
       <div className="flex items-center justify-between">
         <span
           className={cn(
-            "text-[11px] font-mono",
-            charCount > 280 ? "text-red-400" : "text-zinc-600"
+            'text-[11px] font-mono',
+            charCount > 280 ? 'text-red-400' : 'text-zinc-600'
           )}
         >
           {charCount}/280
@@ -530,16 +529,12 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
           disabled={busy || !content.trim()}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
         >
-          {busy ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Plus className="h-3 w-3" />
-          )}
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
           Create Draft
         </button>
       </div>
     </form>
-  );
+  )
 }
 
 function EmptyState() {
@@ -561,88 +556,90 @@ function EmptyState() {
         Connect a repo
       </Link>
     </div>
-  );
+  )
 }
 
 export function PostsClient({
   initialPosts,
   initialConnectedPlatforms,
 }: {
-  initialPosts: Post[];
-  initialConnectedPlatforms: string[];
+  initialPosts: Post[]
+  initialConnectedPlatforms: string[]
 }) {
-  const [showNewPost, setShowNewPost] = useState(false);
-  const [posts, setPosts] = useState(initialPosts);
-  const connectedPlatforms = initialConnectedPlatforms;
+  const [showNewPost, setShowNewPost] = useState(false)
+  const [posts, setPosts] = useState(initialPosts)
+  const connectedPlatforms = initialConnectedPlatforms
 
   async function handleUpdate(id: string, updates: Record<string, unknown>) {
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)))
 
-    if (updates.status === "published") {
-      const { data, error } = await supabase.functions.invoke("publish-post", {
+    if (updates.status === 'published') {
+      const { data, error } = await supabase.functions.invoke('publish-post', {
         body: { id, content: updates.content },
-      });
+      })
       if (error || data?.error) {
-        await refreshPosts();
-        throw new Error(data?.error || "Failed to publish");
+        await refreshPosts()
+        throw new Error(data?.error || 'Failed to publish')
       }
-      await refreshPosts();
+      await refreshPosts()
     } else {
       const { error } = await supabase
-        .from("posts")
+        .from('posts')
         .update({ content: updates.content })
-        .eq("id", id);
+        .eq('id', id)
       if (error) {
-        await refreshPosts();
-        throw new Error(error.message);
+        await refreshPosts()
+        throw new Error(error.message)
       }
     }
   }
 
   async function handleDelete(id: string) {
-    setPosts(prev => prev.filter(p => p.id !== id));
-    const { error } = await supabase.from("posts").delete().eq("id", id);
+    setPosts((prev) => prev.filter((p) => p.id !== id))
+    const { error } = await supabase.from('posts').delete().eq('id', id)
     if (error) {
-      toast.error("Failed to delete post");
-      await refreshPosts();
+      toast.error('Failed to delete post')
+      await refreshPosts()
     }
   }
 
   async function handleRegenerate(id: string) {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-post/regenerate`,
       {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({ id }),
       }
-    );
+    )
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || "Failed to regenerate");
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to regenerate')
     }
-    const { post } = await res.json();
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, ...post } : p));
+    const { post } = await res.json()
+    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...post } : p)))
   }
 
   async function refreshPosts() {
     const { data } = await supabase
-      .from("posts")
-      .select("*, connected_repos(full_name)")
-      .order("created_at", { ascending: false });
-    setPosts(data ?? []);
+      .from('posts')
+      .select('*, connected_repos(full_name)')
+      .order('created_at', { ascending: false })
+    setPosts(data ?? [])
   }
 
-  const allPosts = posts;
-  const drafts = allPosts.filter((p) => p.status === "draft");
-  const published = allPosts.filter((p) => p.status === "published");
+  const allPosts = posts
+  const drafts = allPosts.filter((p) => p.status === 'draft')
+  const published = allPosts.filter((p) => p.status === 'published')
 
   function renderPosts(postList: Post[]) {
-    if (postList.length === 0) return <EmptyState />;
+    if (postList.length === 0) return <EmptyState />
     return (
       <div className="flex flex-col gap-3">
         {postList.map((post) => (
@@ -656,7 +653,7 @@ export function PostsClient({
           />
         ))}
       </div>
-    );
+    )
   }
 
   return (
@@ -681,30 +678,21 @@ export function PostsClient({
       {showNewPost && (
         <NewPostForm
           onCreated={() => {
-            refreshPosts();
-            setShowNewPost(false);
+            refreshPosts()
+            setShowNewPost(false)
           }}
         />
       )}
 
       <Tabs defaultValue="all">
         <TabsList className="bg-zinc-900 border border-zinc-800">
-          <TabsTrigger
-            value="all"
-            className="data-[state=active]:bg-zinc-800"
-          >
+          <TabsTrigger value="all" className="data-[state=active]:bg-zinc-800">
             All ({allPosts.length})
           </TabsTrigger>
-          <TabsTrigger
-            value="draft"
-            className="data-[state=active]:bg-zinc-800"
-          >
+          <TabsTrigger value="draft" className="data-[state=active]:bg-zinc-800">
             Draft ({drafts.length})
           </TabsTrigger>
-          <TabsTrigger
-            value="published"
-            className="data-[state=active]:bg-zinc-800"
-          >
+          <TabsTrigger value="published" className="data-[state=active]:bg-zinc-800">
             Published ({published.length})
           </TabsTrigger>
         </TabsList>
@@ -718,12 +706,8 @@ export function PostsClient({
         <TabsContent value="published" className="mt-4">
           {published.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <p className="text-sm text-zinc-500">
-                No published posts yet.
-              </p>
-              <p className="text-xs text-zinc-600">
-                Publish a draft to see it here.
-              </p>
+              <p className="text-sm text-zinc-500">No published posts yet.</p>
+              <p className="text-xs text-zinc-600">Publish a draft to see it here.</p>
             </div>
           ) : (
             renderPosts(published)
@@ -731,5 +715,5 @@ export function PostsClient({
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

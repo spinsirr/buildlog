@@ -1,22 +1,20 @@
-import { decrypt } from "./crypto.ts"
-import { createServiceClient } from "./supabase.ts"
+import { decrypt } from './crypto.ts'
+import { createServiceClient } from './supabase.ts'
 
-async function getCredentials(
-  userId: string,
-): Promise<{ handle: string; appPassword: string }> {
+async function getCredentials(userId: string): Promise<{ handle: string; appPassword: string }> {
   const supabase = createServiceClient()
 
   const { data: conn } = await supabase
-    .from("platform_connections")
-    .select("access_token, platform_username")
-    .eq("user_id", userId)
-    .eq("platform", "bluesky")
+    .from('platform_connections')
+    .select('access_token, platform_username')
+    .eq('user_id', userId)
+    .eq('platform', 'bluesky')
     .single()
 
-  if (!conn) throw new Error("Bluesky not connected")
+  if (!conn) throw new Error('Bluesky not connected')
 
   if (!conn.platform_username || !conn.access_token) {
-    throw new Error("Bluesky credentials missing. Please reconnect in Settings.")
+    throw new Error('Bluesky credentials missing. Please reconnect in Settings.')
   }
 
   return {
@@ -27,13 +25,13 @@ async function getCredentials(
 
 export async function publishToBluesky(
   userId: string,
-  text: string,
+  text: string
 ): Promise<{ postUri: string; postUrl: string }> {
   const { handle, appPassword } = await getCredentials(userId)
 
-  const sessionRes = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const sessionRes = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier: handle, password: appPassword }),
   })
 
@@ -44,17 +42,17 @@ export async function publishToBluesky(
 
   const session = (await sessionRes.json()) as { did: string; accessJwt: string }
 
-  const postRes = await fetch("https://bsky.social/xrpc/com.atproto.repo.createRecord", {
-    method: "POST",
+  const postRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord', {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${session.accessJwt}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       repo: session.did,
-      collection: "app.bsky.feed.post",
+      collection: 'app.bsky.feed.post',
       record: {
-        $type: "app.bsky.feed.post",
+        $type: 'app.bsky.feed.post',
         text,
         createdAt: new Date().toISOString(),
       },
@@ -67,7 +65,7 @@ export async function publishToBluesky(
   }
 
   const { uri } = (await postRes.json()) as { uri: string }
-  const rkey = uri.split("/").pop() ?? ""
+  const rkey = uri.split('/').pop() ?? ''
 
   return {
     postUri: uri,
