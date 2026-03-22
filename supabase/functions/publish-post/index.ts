@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   const errors: string[] = []
   const updates: Record<string, unknown> = {
     status: 'published',
-    published_at: new Date().toISOString(),
+    "published_at": new Date().toISOString(),
   }
 
   // Publish to each connected platform in parallel, catching errors individually

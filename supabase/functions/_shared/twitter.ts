@@ -1,3 +1,4 @@
+// deno-lint-ignore-file camelcase
 import { decrypt, encrypt, toBase64Utf8 } from './crypto.ts'
 import { createServiceClient } from './supabase.ts'
 

@@ -218,7 +218,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   // Strip GitHub payload to essential fields only before storing
   const strippedData: Record<string, unknown> = {
     repo: repoFullName,
-    source_type: sourceType,
+    "source_type": sourceType,
   }
   if (dedupeKey) strippedData._dedupe_key = dedupeKey
 
@@ -251,7 +251,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     .insert({
       user_id: profile.id,
       repo_id: repo.id,
-      source_type: sourceType,
+      "source_type": sourceType,
       source_data: strippedData,
       content,
       status: shouldPublish ? 'published' : 'draft',
