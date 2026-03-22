@@ -1,6 +1,8 @@
+'use client'
+
 import { Check, Circle, GitBranch, Share2, Sparkles } from 'lucide-react'
-import type { Metadata } from 'next'
 import Link from 'next/link'
+import useSWR from 'swr'
 import { DashboardActions } from '@/components/dashboard-actions'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,10 +14,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { Skeleton } from '@/components/ui/skeleton'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
-export const metadata: Metadata = { title: 'Dashboard' }
+const supabase = createClient()
 
 const platformLabels: Record<string, string> = {
   twitter: 'X',
@@ -23,43 +26,44 @@ const platformLabels: Record<string, string> = {
   bluesky: 'Bluesky',
 }
 
-export default async function DashboardPage() {
-  const supabase = await createServerSupabaseClient()
+async function fetchDashboardData() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
 
-  const [{ data: repos }, { data: posts }, { count: connectionsCount }] = await Promise.all([
-    supabase.from('connected_repos').select('*').eq('user_id', user!.id),
-    supabase
-      .from('posts')
-      .select('*, connected_repos(full_name)')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false })
-      .limit(5),
-    supabase
-      .from('platform_connections')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user!.id),
-  ])
+  const [{ data: repos }, { data: posts }, { count: connectionsCount }, { data: streakPosts }] =
+    await Promise.all([
+      supabase.from('connected_repos').select('*').eq('user_id', user.id),
+      supabase
+        .from('posts')
+        .select('*, connected_repos(full_name)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('platform_connections')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      supabase
+        .from('posts')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ])
 
-  const allPosts = posts ?? []
-  const drafts = allPosts.filter((p) => p.status === 'draft')
-  const published = allPosts.filter((p) => p.status === 'published')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allPosts: any[] = posts ?? []
+  const drafts = allPosts.filter((p: any) => p.status === 'draft')
+  const published = allPosts.filter((p: any) => p.status === 'published')
 
-  // Calculate streak
-  const { data: streakPosts } = await supabase
-    .from('posts')
-    .select('created_at')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
-    .limit(100)
   let streak = 0
   if (streakPosts && streakPosts.length > 0) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const postDays = new Set(
-      streakPosts.map((p) => {
+      (streakPosts as any[]).map((p: any) => {
         const d = new Date(p.created_at)
         d.setHours(0, 0, 0, 0)
         return d.getTime()
@@ -74,17 +78,73 @@ export default async function DashboardPage() {
     }
   }
 
-  const stats = [
-    { label: 'Connected Repos', value: repos?.length ?? 0 },
-    { label: 'Draft Posts', value: drafts.length },
-    { label: 'Published', value: published.length },
-    { label: 'Streak Days', value: streak },
-  ]
-  const connections = connectionsCount ?? 0
+  return {
+    stats: [
+      { label: 'Connected Repos', value: repos?.length ?? 0 },
+      { label: 'Draft Posts', value: drafts.length },
+      { label: 'Published', value: published.length },
+      { label: 'Streak Days', value: streak },
+    ],
+    connections: connectionsCount ?? 0,
+    allPosts,
+    hasRepos: (repos?.length ?? 0) > 0,
+    hasSocial: (connectionsCount ?? 0) > 0,
+    hasPosts: allPosts.length > 0,
+  }
+}
 
-  const hasRepos = (repos?.length ?? 0) > 0
-  const hasSocial = connections > 0
-  const hasPosts = allPosts.length > 0
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-7 w-28 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={`skeleton-${i}`} className="rounded-lg bg-zinc-900/50 px-4 py-3 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <div className="rounded-lg bg-zinc-900/50 p-4 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={`skeleton-${i}`} className="h-12 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ErrorState({ retry }: { retry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
+        <span className="text-red-400 text-lg">!</span>
+      </div>
+      <p className="text-sm text-zinc-400">Something went wrong loading the dashboard.</p>
+      <button
+        type="button"
+        onClick={retry}
+        className="px-4 py-2 text-sm rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+export default function DashboardPage() {
+  const { data, error, isLoading, mutate } = useSWR('dashboard-data', fetchDashboardData)
+
+  if (isLoading) return <DashboardSkeleton />
+  if (error || !data) return <ErrorState retry={() => mutate()} />
+
+  const { stats, allPosts, hasRepos, hasSocial, hasPosts } = data
   const showOnboarding = !hasRepos || !hasSocial || !hasPosts
 
   return (

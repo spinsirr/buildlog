@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/lib/types'
+import { useProfile } from '@/lib/hooks/use-profile'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,10 +19,11 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
-export function MobileSidebar({ profile }: { profile: Profile }) {
+export function MobileSidebar() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+  const { data: profile } = useProfile()
 
   async function handleLogout() {
     const supabase = createClient()
@@ -83,13 +84,13 @@ export function MobileSidebar({ profile }: { profile: Profile }) {
           <div className="px-3 py-3">
             <div className="flex items-center gap-3 px-3 py-2">
               <Avatar className="h-7 w-7">
-                <AvatarImage src={profile.github_avatar_url ?? undefined} />
+                <AvatarImage src={profile?.github_avatar_url ?? undefined} />
                 <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-                  {profile.github_username?.[0]?.toUpperCase() ?? 'U'}
+                  {profile?.github_username?.[0]?.toUpperCase() ?? 'U'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm text-zinc-400 truncate flex-1">
-                {profile.github_username ?? 'User'}
+                {profile?.github_username ?? 'User'}
               </span>
               <button
                 type="button"

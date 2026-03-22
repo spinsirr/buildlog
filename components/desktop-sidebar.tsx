@@ -9,10 +9,11 @@ import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile } from '@/lib/types'
+import { useProfile } from '@/lib/hooks/use-profile'
 
-export function DesktopSidebar({ profile }: { profile: Profile }) {
+export function DesktopSidebar() {
   const router = useRouter()
+  const { data: profile } = useProfile()
 
   async function handleLogout() {
     const supabase = createClient()
@@ -42,13 +43,13 @@ export function DesktopSidebar({ profile }: { profile: Profile }) {
       <div className="px-3 py-3">
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar className="h-7 w-7">
-            <AvatarImage src={profile.github_avatar_url ?? undefined} />
+            <AvatarImage src={profile?.github_avatar_url ?? undefined} />
             <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs">
-              {profile.github_username?.[0]?.toUpperCase() ?? 'U'}
+              {profile?.github_username?.[0]?.toUpperCase() ?? 'U'}
             </AvatarFallback>
           </Avatar>
           <span className="text-sm text-zinc-400 truncate flex-1">
-            {profile.github_username ?? 'User'}
+            {profile?.github_username ?? 'User'}
           </span>
           <button
             type="button"

@@ -1,11 +1,13 @@
-import type { Metadata } from 'next'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+'use client'
 
-export const metadata: Metadata = { title: 'Usage' }
-
+import useSWR from 'swr'
 import { Badge } from '@/components/ui/badge'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+
+const supabase = createClient()
 
 const platformLabels: Record<string, string> = {
   twitter: 'X',
@@ -56,9 +58,7 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   )
 }
 
-export default async function UsagePage() {
-  const supabase = await createServerSupabaseClient()
-
+async function fetchUsageData() {
   // Check plan
   const { data: sub, error: subError } = await supabase
     .from('subscriptions')
@@ -79,59 +79,112 @@ export default async function UsagePage() {
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
 
-  const [
-    { count: postsThisMonth },
-    { count: totalPosts },
-    { count: publishedPosts },
-    { count: draftPosts },
-    { count: repoCount },
-    { count: platformCount },
-    { data: recentPosts },
-    { data: platformBreakdown },
-  ] = await Promise.all([
+  const [{ data: allPosts }, { count: repoCount }, { count: platformCount }] = await Promise.all([
     supabase
       .from('posts')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', monthStart)
-      .lt('created_at', monthEnd),
-    supabase.from('posts').select('*', { count: 'exact', head: true }),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-    supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
+      .select('status, source_type, platforms, created_at')
+      .order('created_at', { ascending: false }),
     supabase
       .from('connected_repos')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true),
     supabase.from('platform_connections').select('*', { count: 'exact', head: true }),
-    supabase
-      .from('posts')
-      .select('source_type')
-      .order('created_at', { ascending: false })
-      .limit(30),
-    supabase.from('posts').select('platforms').eq('status', 'published'),
   ])
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const posts: any[] = allPosts ?? []
+  const publishedPosts = posts.filter((p: any) => p.status === 'published')
+  const draftPosts = posts.filter((p: any) => p.status === 'draft')
+  const postsThisMonth = posts.filter((p: any) => p.created_at >= monthStart)
+
   const platformCounts: Record<string, number> = {}
-  for (const post of platformBreakdown ?? []) {
+  for (const post of publishedPosts) {
     for (const p of (post.platforms as string[]) ?? []) {
       platformCounts[p] = (platformCounts[p] ?? 0) + 1
     }
   }
 
   const sourceCounts: Record<string, number> = {}
-  for (const post of recentPosts ?? []) {
+  for (const post of posts.slice(0, 30)) {
     sourceCounts[post.source_type] = (sourceCounts[post.source_type] ?? 0) + 1
   }
 
-  const usage = {
-    posts_this_month: postsThisMonth ?? 0,
-    total_posts: totalPosts ?? 0,
-    published_posts: publishedPosts ?? 0,
-    draft_posts: draftPosts ?? 0,
-    repos: repoCount ?? 0,
-    platforms: platformCount ?? 0,
+  return {
+    plan,
+    limits,
+    usage: {
+      posts_this_month: postsThisMonth.length,
+      total_posts: posts.length,
+      published_posts: publishedPosts.length,
+      draft_posts: draftPosts.length,
+      repos: repoCount ?? 0,
+      platforms: platformCount ?? 0,
+    },
+    platformCounts,
+    sourceCounts,
   }
+}
+
+function UsageSkeleton() {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="h-5 w-20 rounded-full" />
+      </div>
+      <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-6 space-y-5">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-lg bg-zinc-900/50 px-4 py-3 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-12" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ErrorState({ retry }: { retry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
+        <span className="text-red-400 text-lg">!</span>
+      </div>
+      <p className="text-sm text-zinc-400">Something went wrong loading usage data.</p>
+      <button
+        type="button"
+        onClick={retry}
+        className="px-4 py-2 text-sm rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+export default function UsagePage() {
+  const { data, error, isLoading, mutate } = useSWR('usage-data', fetchUsageData)
+
+  if (isLoading) return <UsageSkeleton />
+  if (error || !data) return <ErrorState retry={() => mutate()} />
+
+  const { plan, limits, usage, platformCounts, sourceCounts } = data
 
   return (
     <div className="flex flex-col gap-8">

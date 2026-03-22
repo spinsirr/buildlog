@@ -1,23 +1,81 @@
-import type { Metadata } from 'next'
-import { RepoList } from '@/components/repo-list'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+'use client'
 
-export const metadata: Metadata = { title: 'Repositories' }
+import useSWR from 'swr'
+import { RepoList } from '@/components/repo-list'
+import { Skeleton } from '@/components/ui/skeleton'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
 
 const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
 const INSTALL_URL = GITHUB_APP_NAME
   ? `https://github.com/apps/${GITHUB_APP_NAME}/installations/new`
   : null
 
-export default async function ReposPage() {
-  const supabase = await createServerSupabaseClient()
-
+async function fetchReposData() {
   const { data, error } = await supabase.functions.invoke('github-app', {
     body: { action: 'list-repos' },
   })
 
   const repos = error ? [] : (data?.repos ?? [])
   const needsInstall = error ? true : (data?.needsInstall ?? false)
+
+  return { repos, needsInstall }
+}
+
+function ReposSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-9 w-28 rounded-lg" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-4 flex items-center justify-between"
+          >
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+            <Skeleton className="h-8 w-24 rounded-md" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ErrorState({ retry }: { retry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
+        <span className="text-red-400 text-lg">!</span>
+      </div>
+      <p className="text-sm text-zinc-400">Something went wrong loading repositories.</p>
+      <button
+        type="button"
+        onClick={retry}
+        className="px-4 py-2 text-sm rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  )
+}
+
+export default function ReposPage() {
+  const { data, error, isLoading, mutate } = useSWR('repos-data', fetchReposData)
+
+  if (isLoading) return <ReposSkeleton />
+  if (error || !data) return <ErrorState retry={() => mutate()} />
+
+  const { repos, needsInstall } = data
 
   return (
     <div>
