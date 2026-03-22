@@ -54,7 +54,8 @@
       "!**/dist",
       "!**/out",
       "!**/*.css",
-      "!supabase"
+      "!supabase",
+      "!next-env.d.ts"
     ]
   }
 }
