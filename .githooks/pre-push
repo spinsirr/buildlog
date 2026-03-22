@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Ensure bun is in PATH
-export PATH="$HOME/.bun/bin:$PATH"
+export PATH="$HOME/.bun/bin:$HOME/.deno/bin:$PATH"
 
 echo "🔍 Pre-push checks..."
 
