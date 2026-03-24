@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
   const body = await safeJson<{
     action?: string
     installation_id?: number
+    repo_full_name?: string
   }>(req)
 
   const action = body?.action ?? "set-installation"
@@ -151,11 +152,14 @@ Deno.serve(async (req) => {
       // Get connected repos
       const { data: connectedRepos } = await supabase
         .from("connected_repos")
-        .select("github_repo_id")
+        .select("github_repo_id, watched_branches")
         .eq("user_id", user.id)
 
-      const connectedIds = new Set(
-        connectedRepos?.map((r: { github_repo_id: number }) => r.github_repo_id) ?? [],
+      const connectedMap = new Map(
+        connectedRepos?.map((r: { github_repo_id: number; watched_branches: string[] | null }) => [
+          r.github_repo_id,
+          r.watched_branches,
+        ]) ?? [],
       )
 
       const repos = data.repositories
@@ -164,8 +168,9 @@ Deno.serve(async (req) => {
           full_name: repo.full_name,
           private: repo.private,
           description: repo.description,
-          connected: connectedIds.has(repo.id),
+          connected: connectedMap.has(repo.id),
           pushed_at: repo.pushed_at,
+          watched_branches: connectedMap.get(repo.id) ?? null,
         }))
         .sort((a, b) => {
           if (!a.pushed_at) return 1
@@ -180,6 +185,49 @@ Deno.serve(async (req) => {
         stack: (err as Error).stack,
       })
       return errorResponse(`Failed to list repos: ${(err as Error).message}`, 500, req)
+    }
+  }
+
+  if (action === "list-branches") {
+    if (!body?.repo_full_name) {
+      return errorResponse("Missing repo_full_name", 400, req)
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("github_installation_id")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.github_installation_id) {
+      return errorResponse("No GitHub installation", 400, req)
+    }
+
+    try {
+      const token = await getInstallationToken(profile.github_installation_id)
+      const res = await fetch(
+        `https://api.github.com/repos/${body.repo_full_name}/branches?per_page=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        },
+      )
+
+      if (!res.ok) {
+        const errText = await res.text()
+        return errorResponse(`GitHub API error: ${res.status} ${errText}`, 502, req)
+      }
+
+      const branches = (await res.json()) as { name: string; protected: boolean }[]
+      return jsonResponse(
+        { branches: branches.map((b) => ({ name: b.name, protected: b.protected })) },
+        req,
+      )
+    } catch (err) {
+      return errorResponse(`Failed to list branches: ${(err as Error).message}`, 500, req)
     }
   }
 

@@ -39,6 +39,25 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true }, req)
   }
 
+  if (req.method === "PATCH") {
+    const body = await safeJson<{ repo_id?: number; watched_branches?: string[] | null }>(req)
+    if (!body?.repo_id) {
+      return errorResponse("Missing repo_id", 400, req)
+    }
+
+    // null or empty array = watch all branches
+    const branches = body.watched_branches?.length ? body.watched_branches : null
+
+    const { error } = await supabase
+      .from("connected_repos")
+      .update({ watched_branches: branches })
+      .eq("user_id", user.id)
+      .eq("github_repo_id", body.repo_id)
+
+    if (error) return errorResponse(error.message, 500, req)
+    return jsonResponse({ ok: true }, req)
+  }
+
   if (req.method === "DELETE") {
     const body = await safeJson<{ repo_id?: number }>(req)
     if (!body?.repo_id) {
