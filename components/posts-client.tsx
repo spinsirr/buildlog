@@ -11,6 +11,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Send,
   Trash2,
   X,
@@ -571,6 +572,7 @@ export function PostsClient({
   const { session } = useAuth()
   const [showNewPost, setShowNewPost] = useState(false)
   const [posts, setPosts] = useState(initialPosts)
+  const [search, setSearch] = useState('')
   const connectedPlatforms = initialConnectedPlatforms
 
   async function handleUpdate(id: string, updates: Record<string, unknown>) {
@@ -638,7 +640,14 @@ export function PostsClient({
     setPosts(data ?? [])
   }
 
-  const allPosts = posts
+  const filtered = search.trim()
+    ? posts.filter(
+        (p) =>
+          p.content.toLowerCase().includes(search.toLowerCase()) ||
+          p.connected_repos?.full_name.toLowerCase().includes(search.toLowerCase())
+      )
+    : posts
+  const allPosts = filtered
   const drafts = allPosts.filter((p) => p.status === 'draft')
   const published = allPosts.filter((p) => p.status === 'published')
 
@@ -677,6 +686,17 @@ export function PostsClient({
           <Plus className="h-3.5 w-3.5" />
           New Post
         </button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+        <input
+          type="text"
+          placeholder="Search posts..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+        />
       </div>
 
       {showNewPost && (

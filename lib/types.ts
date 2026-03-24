@@ -42,4 +42,5 @@ export type Repo = {
   private: boolean
   description: string | null
   connected: boolean
+  pushed_at: string | null
 }

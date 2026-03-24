@@ -144,6 +144,7 @@ Deno.serve(async (req) => {
           full_name: string
           private: boolean
           description: string | null
+          pushed_at: string | null
         }[]
       }
 
@@ -157,13 +158,20 @@ Deno.serve(async (req) => {
         connectedRepos?.map((r: { github_repo_id: number }) => r.github_repo_id) ?? [],
       )
 
-      const repos = data.repositories.map((repo) => ({
-        id: repo.id,
-        full_name: repo.full_name,
-        private: repo.private,
-        description: repo.description,
-        connected: connectedIds.has(repo.id),
-      }))
+      const repos = data.repositories
+        .map((repo) => ({
+          id: repo.id,
+          full_name: repo.full_name,
+          private: repo.private,
+          description: repo.description,
+          connected: connectedIds.has(repo.id),
+          pushed_at: repo.pushed_at,
+        }))
+        .sort((a, b) => {
+          if (!a.pushed_at) return 1
+          if (!b.pushed_at) return -1
+          return new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime()
+        })
 
       return jsonResponse({ repos, needsInstall: false }, req)
     } catch (err) {

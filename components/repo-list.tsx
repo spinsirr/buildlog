@@ -5,6 +5,20 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
 
+function timeAgo(date: string | null): string | null {
+  if (!date) return null
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  const months = Math.floor(days / 30)
+  return `${months}mo ago`
+}
+
 export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
@@ -46,9 +60,16 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
               <p className="font-mono text-sm font-medium text-zinc-100 truncate">
                 {repo.full_name}
               </p>
-              {repo.description && (
-                <p className="text-xs text-zinc-500 truncate mt-0.5">{repo.description}</p>
-              )}
+              <div className="flex items-center gap-2 mt-0.5">
+                {repo.description && (
+                  <p className="text-xs text-zinc-500 truncate">{repo.description}</p>
+                )}
+                {repo.pushed_at && (
+                  <span className="text-[10px] text-zinc-600 shrink-0">
+                    {timeAgo(repo.pushed_at)}
+                  </span>
+                )}
+              </div>
             </div>
             {repo.private && (
               <span className="text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 shrink-0">
