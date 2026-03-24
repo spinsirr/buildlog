@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       update.watched_branches = body.watched_branches?.length ? body.watched_branches : null
     }
     if ("watched_events" in (body ?? {})) {
-      const validEvents = ["push", "pull_request", "release"]
+      const validEvents = ["push", "pull_request", "release", "create_tag"]
       const events = body.watched_events?.filter((e) => validEvents.includes(e))
       update.watched_events = events?.length ? events : null
     }

@@ -117,7 +117,11 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     "pull_request": "pull_request",
     "release": "release",
   }
-  const mappedEvent = eventTypeMap[event]
+  // create events with ref_type=tag map to create_tag
+  let mappedEvent = eventTypeMap[event]
+  if (event === "create" && payload.ref_type === "tag") {
+    mappedEvent = "create_tag"
+  }
   if (mappedEvent && repo.watched_events?.length) {
     if (!repo.watched_events.includes(mappedEvent)) {
       return jsonResponse({ ok: true, skipped: "event_not_watched" }, req)
@@ -125,7 +129,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   }
 
   // Parse the event type and extract relevant data
-  let sourceType: "commit" | "pr" | "release" | null = null
+  let sourceType: "commit" | "pr" | "release" | "tag" | null = null
   let postData: Record<string, string | string[] | number | undefined> = {}
 
   if (event === "push" && payload.commits?.length > 0) {
@@ -185,6 +189,12 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       description: payload.release.body,
       url: payload.release.html_url,
     }
+  } else if (event === "create" && payload.ref_type === "tag") {
+    sourceType = "tag"
+    postData = {
+      title: payload.ref,
+      url: `https://github.com/${repoFullName}/releases/tag/${payload.ref}`,
+    }
   }
 
   // If it's not an event type we handle, acknowledge and return
@@ -204,6 +214,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     dedupeKey = `pr:${payload.pull_request.id}`
   } else if (sourceType === "release" && payload.release?.id) {
     dedupeKey = `release:${payload.release.id}`
+  } else if (sourceType === "tag" && payload.ref) {
+    dedupeKey = `tag:${repoFullName}:${payload.ref}`
   }
 
   if (dedupeKey) {
@@ -261,6 +273,9 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     strippedData.files_changed = postData.filesChanged
   } else if (sourceType === "release") {
     strippedData.tag = postData.title
+    strippedData.url = postData.url
+  } else if (sourceType === "tag") {
+    strippedData.tag_name = postData.title
     strippedData.url = postData.url
   }
 

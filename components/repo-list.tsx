@@ -20,9 +20,9 @@ function timeAgo(date: string | null): string | null {
 }
 
 const EVENT_TYPES = [
-  { id: 'push', label: 'Pushes', description: 'Commits pushed to a branch' },
   { id: 'pull_request', label: 'Pull Requests', description: 'PRs merged into a branch' },
   { id: 'release', label: 'Releases', description: 'New releases published' },
+  { id: 'create_tag', label: 'Tags', description: 'New tags pushed' },
 ] as const
 
 function EventPicker({

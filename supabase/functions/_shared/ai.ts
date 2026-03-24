@@ -3,7 +3,7 @@ import { getLog } from "./logger.ts"
 const log = getLog("ai")
 
 interface GeneratePostInput {
-  sourceType: "commit" | "pr" | "release"
+  sourceType: "commit" | "pr" | "release" | "tag"
   repoName: string
   tone?: "casual" | "professional" | "technical"
   data: {
@@ -204,11 +204,13 @@ export async function generatePost(input: GeneratePostInput): Promise<string> {
       ? `\nPR description: ${input.data.description.slice(0, 500)}`
       : ""
     context = `PR merged in ${input.repoName}: "${input.data.title}"${desc}${diffContext}`
-  } else {
+  } else if (input.sourceType === "release") {
     const desc = input.data.description
       ? `\nRelease notes: ${input.data.description.slice(0, 500)}`
       : ""
     context = `New release in ${input.repoName}: ${input.data.title}${desc}${diffContext}`
+  } else {
+    context = `New tag in ${input.repoName}: ${input.data.title}${diffContext}`
   }
 
   const examples = toneExamples[tone]
