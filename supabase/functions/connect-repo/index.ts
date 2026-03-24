@@ -40,17 +40,33 @@ Deno.serve(async (req) => {
   }
 
   if (req.method === "PATCH") {
-    const body = await safeJson<{ repo_id?: number; watched_branches?: string[] | null }>(req)
+    const body = await safeJson<{
+      repo_id?: number
+      watched_branches?: string[] | null
+      watched_events?: string[] | null
+    }>(req)
     if (!body?.repo_id) {
       return errorResponse("Missing repo_id", 400, req)
     }
 
-    // null or empty array = watch all branches
-    const branches = body.watched_branches?.length ? body.watched_branches : null
+    // Build update payload — only include fields that were sent
+    const update: Record<string, unknown> = {}
+    if ("watched_branches" in (body ?? {})) {
+      update.watched_branches = body.watched_branches?.length ? body.watched_branches : null
+    }
+    if ("watched_events" in (body ?? {})) {
+      const validEvents = ["push", "pull_request", "release"]
+      const events = body.watched_events?.filter((e) => validEvents.includes(e))
+      update.watched_events = events?.length ? events : null
+    }
+
+    if (Object.keys(update).length === 0) {
+      return errorResponse("No fields to update", 400, req)
+    }
 
     const { error } = await supabase
       .from("connected_repos")
-      .update({ watched_branches: branches })
+      .update(update)
       .eq("user_id", user.id)
       .eq("github_repo_id", body.repo_id)
 

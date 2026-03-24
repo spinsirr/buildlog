@@ -19,6 +19,99 @@ function timeAgo(date: string | null): string | null {
   return `${months}mo ago`
 }
 
+const EVENT_TYPES = [
+  { id: 'push', label: 'Pushes', description: 'Commits pushed to a branch' },
+  { id: 'pull_request', label: 'Pull Requests', description: 'PRs merged into a branch' },
+  { id: 'release', label: 'Releases', description: 'New releases published' },
+] as const
+
+function EventPicker({
+  repo,
+  onUpdate,
+}: {
+  repo: Repo
+  onUpdate: (events: string[] | null) => void
+}) {
+  const supabase = useMemo(() => createClient(), [])
+  const [selected, setSelected] = useState<Set<string>>(new Set(repo.watched_events ?? []))
+  const [saving, setSaving] = useState(false)
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const save = async () => {
+    setSaving(true)
+    const watched = selected.size > 0 ? [...selected] : null
+    try {
+      await supabase.functions.invoke('connect-repo', {
+        method: 'PATCH',
+        body: { repo_id: repo.id, watched_events: watched },
+      })
+      onUpdate(watched)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const savedSet = new Set(repo.watched_events ?? [])
+  const hasChanges = selected.size !== savedSet.size || [...selected].some((e) => !savedSet.has(e))
+
+  return (
+    <div className="mt-3 pt-3 border-t border-zinc-800">
+      <p className="text-xs text-zinc-400 mb-2">
+        Watched events{' '}
+        <span className="text-zinc-600">
+          {repo.watched_events?.length ? `(${repo.watched_events.length} selected)` : '(all)'}
+        </span>
+      </p>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {EVENT_TYPES.map((evt) => (
+          <button
+            key={evt.id}
+            type="button"
+            onClick={() => toggle(evt.id)}
+            title={evt.description}
+            className={`text-xs px-2 py-1 rounded-md border transition-colors ${
+              selected.has(evt.id)
+                ? 'bg-zinc-100 text-zinc-900 border-zinc-100'
+                : 'bg-transparent text-zinc-500 border-zinc-700 hover:border-zinc-500'
+            }`}
+          >
+            {evt.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        {selected.size > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Clear (watch all)
+          </button>
+        )}
+        {hasChanges && (
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="text-xs px-3 py-1 rounded-md bg-zinc-100 text-zinc-900 hover:bg-white transition-colors disabled:opacity-50 ml-auto"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 type Branch = { name: string; protected: boolean }
 
 function BranchPicker({
@@ -171,6 +264,7 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
                 ...r,
                 connected: !r.connected,
                 watched_branches: r.connected ? null : r.watched_branches,
+                watched_events: r.connected ? null : r.watched_events,
               }
             : r
         )
@@ -185,6 +279,10 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
     setRepos((prev) =>
       prev.map((r) => (r.id === repoId ? { ...r, watched_branches: branches } : r))
     )
+  }
+
+  function handleEventUpdate(repoId: number, events: string[] | null) {
+    setRepos((prev) => prev.map((r) => (r.id === repoId ? { ...r, watched_events: events } : r)))
   }
 
   return (
@@ -230,10 +328,13 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
           </div>
 
           {repo.connected && (
-            <BranchPicker
-              repo={repo}
-              onUpdate={(branches) => handleBranchUpdate(repo.id, branches)}
-            />
+            <>
+              <EventPicker repo={repo} onUpdate={(events) => handleEventUpdate(repo.id, events)} />
+              <BranchPicker
+                repo={repo}
+                onUpdate={(branches) => handleBranchUpdate(repo.id, branches)}
+              />
+            </>
           )}
         </div>
       ))}

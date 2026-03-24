@@ -92,7 +92,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   // Verify the repo is connected and active
   const { data: repo } = await supabase
     .from("connected_repos")
-    .select("id, watched_branches")
+    .select("id, watched_branches, watched_events")
     .eq("user_id", profile.id)
     .eq("github_repo_id", repoId)
     .eq("is_active", true)
@@ -107,6 +107,20 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     const branch = (payload.ref as string)?.replace("refs/heads/", "")
     if (branch && !repo.watched_branches.includes(branch)) {
       return jsonResponse({ ok: true, skipped: "branch_not_watched" }, req)
+    }
+  }
+
+  // Event type filtering
+  // Map GitHub event names to our stored event identifiers
+  const eventTypeMap: Record<string, string> = {
+    "push": "push",
+    "pull_request": "pull_request",
+    "release": "release",
+  }
+  const mappedEvent = eventTypeMap[event]
+  if (mappedEvent && repo.watched_events?.length) {
+    if (!repo.watched_events.includes(mappedEvent)) {
+      return jsonResponse({ ok: true, skipped: "event_not_watched" }, req)
     }
   }
 

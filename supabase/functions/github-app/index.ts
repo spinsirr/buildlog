@@ -152,14 +152,20 @@ Deno.serve(async (req) => {
       // Get connected repos
       const { data: connectedRepos } = await supabase
         .from("connected_repos")
-        .select("github_repo_id, watched_branches")
+        .select("github_repo_id, watched_branches, watched_events")
         .eq("user_id", user.id)
 
       const connectedMap = new Map(
-        connectedRepos?.map((r: { github_repo_id: number; watched_branches: string[] | null }) => [
-          r.github_repo_id,
-          r.watched_branches,
-        ]) ?? [],
+        connectedRepos?.map(
+          (r: {
+            github_repo_id: number
+            watched_branches: string[] | null
+            watched_events: string[] | null
+          }) => [r.github_repo_id, {
+            watched_branches: r.watched_branches,
+            watched_events: r.watched_events,
+          }],
+        ) ?? [],
       )
 
       const repos = data.repositories
@@ -170,7 +176,8 @@ Deno.serve(async (req) => {
           description: repo.description,
           connected: connectedMap.has(repo.id),
           pushed_at: repo.pushed_at,
-          watched_branches: connectedMap.get(repo.id) ?? null,
+          watched_branches: connectedMap.get(repo.id)?.watched_branches ?? null,
+          watched_events: connectedMap.get(repo.id)?.watched_events ?? null,
         }))
         .sort((a, b) => {
           if (!a.pushed_at) return 1

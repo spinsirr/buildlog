@@ -44,4 +44,5 @@ export type Repo = {
   connected: boolean
   pushed_at: string | null
   watched_branches: string[] | null
+  watched_events: string[] | null
 }
