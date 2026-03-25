@@ -3,37 +3,16 @@
 import { Flame } from 'lucide-react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
-
-const supabase = createClient()
+import { calculateStreak } from '@/lib/utils'
 
 async function fetchStreak() {
+  const supabase = createClient()
   const { data } = await supabase
     .from('posts')
     .select('created_at')
     .order('created_at', { ascending: false })
     .limit(100)
-  const streakPosts = data as { created_at: string }[] | null
-
-  let streak = 0
-  if (streakPosts && streakPosts.length > 0) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const postDays = new Set(
-      streakPosts.map((p) => {
-        const d = new Date(p.created_at)
-        d.setHours(0, 0, 0, 0)
-        return d.getTime()
-      })
-    )
-    const dayMs = 86400000
-    let checkDate = today.getTime()
-    if (!postDays.has(checkDate)) checkDate = today.getTime() - dayMs
-    while (postDays.has(checkDate)) {
-      streak++
-      checkDate -= dayMs
-    }
-  }
-  return streak
+  return calculateStreak((data as { created_at: string }[]) ?? [])
 }
 
 export function StreakCounter() {

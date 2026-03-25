@@ -3,7 +3,7 @@ import { PLANS } from '../supabase/functions/_shared/plans'
 
 describe('PLANS', () => {
   it('free plan has finite limits', () => {
-    expect(PLANS.free.posts_per_month).toBe(20)
+    expect(PLANS.free.posts_per_month).toBe(10)
     expect(PLANS.free.repos).toBe(1)
     expect(PLANS.free.platforms).toBe(1)
   })

@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
-export default function ReposLoading() {
+export function ReposSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -27,3 +27,5 @@ export default function ReposLoading() {
     </div>
   )
 }
+
+export default ReposSkeleton

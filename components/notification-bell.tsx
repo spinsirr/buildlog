@@ -5,22 +5,10 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/lib/types'
-import { cn } from '@/lib/utils'
-
-const supabase = createClient()
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  return `${days}d`
-}
+import { cn, timeAgo } from '@/lib/utils'
 
 async function fetchNotifications() {
+  const supabase = createClient()
   const { data } = await supabase
     .from('notifications')
     .select('*')
@@ -44,11 +32,13 @@ export function NotificationBell() {
   const notifications = data?.notifications ?? []
 
   async function markAllRead() {
+    const supabase = createClient()
     await supabase.from('notifications').update({ read: true }).eq('read', false)
     mutate()
   }
 
   async function markRead(id: string) {
+    const supabase = createClient()
     await supabase.from('notifications').update({ read: true }).eq('id', id)
     mutate()
   }

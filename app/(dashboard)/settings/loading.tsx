@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
-export default function SettingsLoading() {
+export function SettingsSkeleton() {
   return (
     <div className="flex flex-col gap-8">
       <Skeleton className="h-8 w-28" />
@@ -37,3 +37,5 @@ export default function SettingsLoading() {
     </div>
   )
 }
+
+export default SettingsSkeleton

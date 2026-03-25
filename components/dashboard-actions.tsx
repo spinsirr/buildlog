@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const supabase = createClient()
-
 export function DashboardActions({ postId }: { postId: string }) {
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
@@ -15,6 +13,7 @@ export function DashboardActions({ postId }: { postId: string }) {
     if (!confirm('Delete this post?')) return
     setDeleting(true)
     try {
+      const supabase = createClient()
       await supabase.from('posts').delete().eq('id', postId)
       router.refresh()
     } finally {

@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
-export default function UsageLoading() {
+export function UsageSkeleton() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
@@ -33,3 +33,5 @@ export default function UsageLoading() {
     </div>
   )
 }
+
+export default UsageSkeleton

@@ -64,7 +64,6 @@ export const metadata: Metadata = {
     'twitter automation',
     'linkedin automation',
     'developer marketing',
-    'open source',
     'commit to content',
   ],
   referrer: 'origin-when-cross-origin',

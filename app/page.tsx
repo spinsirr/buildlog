@@ -637,7 +637,7 @@ export default function LandingPage() {
             <span className="font-display font-bold text-lg tracking-tight">buildlog</span>
           </div>
           <span className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40">
-            © 2025 — Open Source
+            © 2025 buildlog
           </span>
         </div>
       </footer>

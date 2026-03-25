@@ -5,12 +5,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/posts', label: 'Posts', icon: FileText },
-  { href: '/repos', label: 'Repos', icon: GitFork },
-  { href: '/usage', label: 'Usage', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings },
+export const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, id: 'onborda-nav-dashboard' },
+  { href: '/posts', label: 'Posts', icon: FileText, id: 'onborda-nav-posts' },
+  { href: '/repos', label: 'Repos', icon: GitFork, id: 'onborda-nav-repos' },
+  { href: '/usage', label: 'Usage', icon: BarChart3, id: 'onborda-nav-usage' },
+  { href: '/settings', label: 'Settings', icon: Settings, id: 'onborda-nav-settings' },
 ]
 
 export function SidebarNav() {
@@ -21,6 +21,7 @@ export function SidebarNav() {
       {navItems.map((item) => (
         <Link
           key={item.href}
+          id={item.id}
           href={item.href}
           className={cn(
             'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',

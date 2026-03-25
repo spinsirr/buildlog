@@ -1,23 +1,17 @@
 'use client'
 
-import { FileText, GitFork, LayoutDashboard, LogOut, Menu, Settings } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { NotificationBell } from '@/components/notification-bell'
+import { navItems } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { useProfile } from '@/lib/hooks/use-profile'
 import { createClient } from '@/lib/supabase/client'
-
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/posts', label: 'Posts', icon: FileText },
-  { href: '/repos', label: 'Repos', icon: GitFork },
-  { href: '/settings', label: 'Settings', icon: Settings },
-]
 
 export function MobileSidebar() {
   const [open, setOpen] = useState(false)
