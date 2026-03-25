@@ -2,9 +2,8 @@
 
 import { createClient } from '@/lib/supabase/client'
 
-const supabase = createClient()
-
 function handleOAuth(provider: 'github' | 'google' | 'twitter') {
+  const supabase = createClient()
   supabase.auth.signInWithOAuth({
     provider,
     options: { redirectTo: `${window.location.origin}/auth/callback` },

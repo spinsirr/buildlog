@@ -1,19 +1,14 @@
 'use client'
 
 import useSWR from 'swr'
+import { ErrorState } from '@/components/error-state'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { PLANS } from '@/lib/plans'
+import { platformLabels } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-
-const supabase = createClient()
-
-const platformLabels: Record<string, string> = {
-  twitter: 'X',
-  linkedin: 'LinkedIn',
-  bluesky: 'Bluesky',
-}
+import { UsageSkeleton } from './loading'
 
 const sourceLabels: Record<string, string> = {
   commit: 'Commits',
@@ -59,6 +54,7 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 }
 
 async function fetchUsageData() {
+  const supabase = createClient()
   // Check plan
   const { data: sub, error: subError } = await supabase
     .from('subscriptions')
@@ -70,12 +66,7 @@ async function fetchUsageData() {
   }
 
   const plan = sub?.status === 'active' ? 'pro' : 'free'
-
-  const PLANS = {
-    free: { posts_per_month: 20, repos: 1, platforms: 1 },
-    pro: { posts_per_month: Infinity, repos: Infinity, platforms: Infinity },
-  }
-  const limits = PLANS[plan as keyof typeof PLANS]
+  const limits = PLANS[plan]
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
@@ -128,58 +119,6 @@ async function fetchUsageData() {
     platformCounts,
     sourceCounts,
   }
-}
-
-function UsageSkeleton() {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-5 w-20 rounded-full" />
-      </div>
-      <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-6 space-y-5">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="flex justify-between">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-16" />
-            </div>
-            <Skeleton className="h-2 w-full rounded-full" />
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg bg-zinc-900/50 px-4 py-3 space-y-2">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-8 w-12" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ErrorState({ retry }: { retry: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4">
-      <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center">
-        <span className="text-red-400 text-lg">!</span>
-      </div>
-      <p className="text-sm text-zinc-400">Something went wrong loading usage data.</p>
-      <button
-        type="button"
-        onClick={retry}
-        className="px-4 py-2 text-sm rounded-md bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition-colors"
-      >
-        Try again
-      </button>
-    </div>
-  )
 }
 
 export default function UsagePage() {

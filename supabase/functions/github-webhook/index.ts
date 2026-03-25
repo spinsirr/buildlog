@@ -1,13 +1,11 @@
 import { generatePost } from "../_shared/ai.ts"
-import { publishToBluesky } from "../_shared/bluesky.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
-import { publishToLinkedIn } from "../_shared/linkedin.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
+import { fetchPlatformsAndPublish } from "../_shared/publish.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
-import { publishToTwitter } from "../_shared/twitter.ts"
 
 await setupLogger()
 const log = getLog("github-webhook")
@@ -295,101 +293,14 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     .single()
 
   if (shouldPublish && post) {
-    // Check which platforms are connected
-    const { data: connections } = await supabase
-      .from("platform_connections")
-      .select("platform")
-      .eq("user_id", profile.id)
+    const result = await fetchPlatformsAndPublish(supabase, profile.id, post.id, content)
+    const hasFailures = Object.keys(result.errors).length > 0
 
-    const connectedPlatforms = new Set(
-      connections?.map((c: { platform: string }) => c.platform) ?? [],
-    )
-    const publishedPlatforms: string[] = []
-    const failedPlatforms: Record<string, string> = {}
-    let primaryPostUrl: string | null = null
-    let primaryPostId: string | null = null
-
-    // Publish to Twitter if connected
-    if (connectedPlatforms.has("twitter")) {
-      try {
-        const { tweetId, tweetUrl } = await publishToTwitter(profile.id, content)
-        primaryPostId = tweetId
-        primaryPostUrl = tweetUrl
-        publishedPlatforms.push("twitter")
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        log.error("Twitter publish failed for post {postId}: {error}", {
-          postId: post.id,
-          error: message,
-        })
-        failedPlatforms.twitter = message
-      }
-    }
-
-    // Publish to LinkedIn if connected
-    if (connectedPlatforms.has("linkedin")) {
-      try {
-        const { postId, postUrl } = await publishToLinkedIn(profile.id, content)
-        if (!primaryPostId) primaryPostId = postId
-        if (!primaryPostUrl) primaryPostUrl = postUrl
-        publishedPlatforms.push("linkedin")
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        log.error("LinkedIn publish failed for post {postId}: {error}", {
-          postId: post.id,
-          error: message,
-        })
-        failedPlatforms.linkedin = message
-      }
-    }
-
-    // Publish to Bluesky if connected
-    if (connectedPlatforms.has("bluesky")) {
-      try {
-        const { postUri, postUrl } = await publishToBluesky(profile.id, content)
-        if (!primaryPostId) primaryPostId = postUri
-        if (!primaryPostUrl) primaryPostUrl = postUrl
-        publishedPlatforms.push("bluesky")
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        log.error("Bluesky publish failed for post {postId}: {error}", {
-          postId: post.id,
-          error: message,
-        })
-        failedPlatforms.bluesky = message
-      }
-    }
-
-    const hasFailures = Object.keys(failedPlatforms).length > 0
-
-    if (publishedPlatforms.length > 0) {
-      // Partial or full success
-      const status = hasFailures ? "partial" : "published"
-      await supabase
-        .from("posts")
-        .update({
-          platform_post_id: primaryPostId,
-          platform_post_url: primaryPostUrl,
-          platforms: publishedPlatforms,
-          status,
-          ...(hasFailures
-            ? { publish_results: { errors: failedPlatforms, published: publishedPlatforms } }
-            : {}),
-        })
-        .eq("id", post.id)
-
-      const failedNames = Object.keys(failedPlatforms)
+    if (result.publishedPlatforms.length > 0) {
+      const failedNames = Object.keys(result.errors)
       const notifMessage = hasFailures
-        ? `Post published to ${publishedPlatforms.join(", ")} but failed on ${
-          failedNames.join(
-            ", ",
-          )
-        } from ${sourceType} in ${repoFullName}`
-        : `Post auto-published to ${
-          publishedPlatforms.join(
-            ", ",
-          )
-        } from ${sourceType} in ${repoFullName}`
+        ? `Post published to ${result.publishedPlatforms.join(", ")} but failed on ${failedNames.join(", ")} from ${sourceType} in ${repoFullName}`
+        : `Post auto-published to ${result.publishedPlatforms.join(", ")} from ${sourceType} in ${repoFullName}`
 
       try {
         await notify(supabase, {
@@ -402,16 +313,6 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         log.error("notify failed: {error}", { error: String(notifyErr) })
       }
     } else {
-      // All platforms failed — revert to draft and record errors
-      await supabase
-        .from("posts")
-        .update({
-          status: "draft",
-          published_at: null,
-          publish_results: { errors: failedPlatforms, published: publishedPlatforms },
-        })
-        .eq("id", post.id)
-
       try {
         await notify(supabase, {
           userId: profile.id,

@@ -391,11 +391,10 @@ Deno.serve(async (req) => {
   const method = req.method
 
   try {
-    // Bluesky — credential-based, not OAuth
+    // Credential-based platforms (not OAuth)
     if (platform === "bluesky" && method === "POST" && !action) {
       return await blueskyConnect(req)
     }
-
     // Generic OAuth — look up provider config
     const provider = OAUTH_PROVIDERS[platform]
     if (!provider) return errorResponse("Unknown platform", 404, req)

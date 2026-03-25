@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { generatePost } from "../_shared/ai.ts"
+import { generatePost, generateXhsPost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { parsePathParts, safeJson } from "../_shared/http.ts"
@@ -24,8 +24,12 @@ Deno.serve(async (req) => {
 
   const parts = parsePathParts(req, "generate-post")
   const isRegenerate = parts[0] === "regenerate"
+  const isXhsCopy = parts[0] === "xhs-copy"
 
   try {
+    if (isXhsCopy) {
+      return await handleXhsCopy(req, user.id, supabase)
+    }
     if (isRegenerate) {
       return await handleRegenerate(req, user.id, supabase)
     }
@@ -188,4 +192,60 @@ async function handleRegenerate(
   }
 
   return jsonResponse({ post: updatedPost }, req, { status: 200 })
+}
+
+async function handleXhsCopy(
+  req: Request,
+  userId: string,
+  supabase: SupabaseClient,
+): Promise<Response> {
+  const body = await safeJson<{ id: string }>(req)
+
+  if (!body?.id) {
+    return errorResponse("Missing required field: id", 400, req)
+  }
+
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("id, user_id, source_type, source_data, repo_id")
+    .eq("id", body.id)
+    .single()
+
+  if (fetchError || !post) {
+    return errorResponse("Post not found", 404, req)
+  }
+
+  if (post.user_id !== userId) {
+    return errorResponse("Post not found", 404, req)
+  }
+
+  let repoName = "unknown/repo"
+  if (post.repo_id) {
+    const { data: repo } = await supabase
+      .from("connected_repos")
+      .select("full_name")
+      .eq("id", post.repo_id)
+      .single()
+
+    if (repo?.full_name) {
+      repoName = repo.full_name
+    }
+  }
+
+  const content = await generateXhsPost({
+    sourceType: post.source_type as "commit" | "pr" | "release" | "tag",
+    repoName,
+    data: (post.source_data ?? {}) as {
+      message?: string
+      title?: string
+      description?: string
+      files?: string[]
+      url?: string
+      additions?: number
+      deletions?: number
+      filesChanged?: number
+    },
+  })
+
+  return jsonResponse({ content }, req, { status: 200 })
 }

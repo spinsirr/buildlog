@@ -153,7 +153,11 @@ function isTransient(err: unknown): boolean {
   return false
 }
 
-async function callGemini(system: string, prompt: string): Promise<string> {
+async function callGemini(
+  system: string,
+  prompt: string,
+  opts?: { maxOutputTokens?: number; temperature?: number },
+): Promise<string> {
   const apiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_API_KEY")
   if (!apiKey) {
     throw new Error("Missing GEMINI_API_KEY (or GOOGLE_API_KEY)")
@@ -174,9 +178,9 @@ async function callGemini(system: string, prompt: string): Promise<string> {
       },
     ],
     generationConfig: {
-      temperature: 0.8,
+      temperature: opts?.temperature ?? 0.8,
       topP: 0.95,
-      maxOutputTokens: 220,
+      maxOutputTokens: opts?.maxOutputTokens ?? 220,
     },
   })
 
@@ -189,6 +193,65 @@ async function callGemini(system: string, prompt: string): Promise<string> {
     }
     throw err
   }
+}
+
+export async function generateXhsPost(input: GeneratePostInput): Promise<string> {
+  const changeType = classifyChange(input)
+  const diffContext = buildDiffContext(input)
+
+  let context: string
+  if (input.sourceType === "commit") {
+    context = `Commit in ${input.repoName}: "${input.data.message}"${diffContext}`
+  } else if (input.sourceType === "pr") {
+    const desc = input.data.description
+      ? `\nPR description: ${input.data.description.slice(0, 500)}`
+      : ""
+    context = `PR merged in ${input.repoName}: "${input.data.title}"${desc}${diffContext}`
+  } else if (input.sourceType === "release") {
+    const desc = input.data.description
+      ? `\nRelease notes: ${input.data.description.slice(0, 500)}`
+      : ""
+    context = `New release in ${input.repoName}: ${input.data.title}${desc}${diffContext}`
+  } else {
+    context = `New tag in ${input.repoName}: ${input.data.title}${diffContext}`
+  }
+
+  const changeTypeHints: Record<string, string> = {
+    bugfix: "这是一个Bug修复，强调解决了什么问题以及修复过程中的心得。",
+    feature: "这是一个新功能，突出用户现在可以做什么。",
+    refactor: "这是代码重构，强调代码质量和开发体验的提升。",
+    testing: "这是测试相关的更新，强调代码质量和可靠性。",
+    docs: "这是文档更新，强调好文档的价值。",
+    performance: "这是性能优化，突出具体的性能提升数据。",
+    ui: "这是UI/设计变更，描述视觉或用户体验的改善。",
+    devops: "这是DevOps/CI变更，强调部署或基础设施的改进。",
+    general: "描述构建、修改或发布了什么。",
+  }
+
+  const system = `你是一个专业的小红书技术博主，擅长用小红书风格写开发者的 build-in-public 内容。
+
+规则：
+- 字数控制在 300-800 字符
+- 第一行是标题，用 emoji 开头，简洁有力
+- 正文分段，每段用 emoji 作为小标题或要点标记
+- 语气真诚、接地气，像在跟朋友分享开发日常
+- 适当使用 emoji 装饰（5-10个），但不要堆砌
+- 结尾加 3-5 个小红书话题标签，格式为 #话题#
+- 常用话题：#程序员日常# #独立开发# #开源项目# #技术分享# #BuildInPublic#
+- 可以加一些个人感想、踩坑经验、学到的东西
+- 不要包含 URL 链接
+- 不要用 Markdown 格式
+- 只输出文案内容，不要其他说明
+
+上下文提示：
+${changeTypeHints[changeType]}
+
+输出纯文本文案。`
+
+  const prompt = `为以下开发动态生成一篇小红书文案：\n${context}`
+
+  const result = (await callGemini(system, prompt, { maxOutputTokens: 600, temperature: 0.85 })).trim()
+  return result
 }
 
 export async function generatePost(input: GeneratePostInput): Promise<string> {

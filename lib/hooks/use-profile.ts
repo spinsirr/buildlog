@@ -4,9 +4,8 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 
-const supabase = createClient()
-
 async function fetchProfile(): Promise<Profile> {
+  const supabase = createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

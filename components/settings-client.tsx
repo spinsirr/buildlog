@@ -9,43 +9,29 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { callEdgeFunction } from '@/lib/edge-function'
+import { PLATFORM_IDS, platformConfig } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
 import type { Connection, ProfileSettings } from '@/lib/types'
 
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-const PLATFORMS = [
-  {
-    id: 'twitter',
-    label: 'X (Twitter)',
-    description: 'Post build updates to your X timeline',
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'linkedin',
-    label: 'LinkedIn',
-    description: 'Share build updates with your professional network',
-    icon: (
-      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
-        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-      </svg>
-    ),
-  },
-  {
-    id: 'bluesky',
-    label: 'Bluesky',
-    description: 'Post build updates to the Bluesky network',
-    icon: (
-      <svg viewBox="0 0 600 530" className="h-5 w-5 fill-current" aria-hidden="true">
-        <path d="m135.72 44.03c66.496 49.921 138.02 151.14 164.28 205.46 26.262-54.316 97.782-155.54 164.28-205.46 47.98-36.021 125.72-63.892 125.72 24.795 0 17.712-10.155 148.79-16.111 170.07-20.703 73.984-96.144 92.854-163.25 81.433 117.3 19.964 147.14 86.092 82.697 152.22-122.39 125.59-175.91-31.511-189.63-71.766-2.514-7.3797-3.6904-10.832-3.7077-7.8964-0.0174-2.9357-1.1937 0.51669-3.7077 7.8964-13.714 40.255-67.233 197.36-189.63 71.766-64.444-66.128-34.605-132.26 82.697-152.22-67.108 11.421-142.55-7.4491-163.25-81.433-5.9562-21.282-16.111-152.36-16.111-170.07 0-88.687 77.742-60.816 125.72-24.795z" />
-      </svg>
-    ),
-  },
-]
+const PLATFORMS = PLATFORM_IDS.map((id) => ({
+  id,
+  label: platformConfig[id].label,
+  description: platformConfig[id].description,
+  icon: id === 'twitter' ? (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  ) : id === 'linkedin' ? (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 600 530" className="h-5 w-5 fill-current" aria-hidden="true">
+      <path d="m135.72 44.03c66.496 49.921 138.02 151.14 164.28 205.46 26.262-54.316 97.782-155.54 164.28-205.46 47.98-36.021 125.72-63.892 125.72 24.795 0 17.712-10.155 148.79-16.111 170.07-20.703 73.984-96.144 92.854-163.25 81.433 117.3 19.964 147.14 86.092 82.697 152.22-122.39 125.59-175.91-31.511-189.63-71.766-2.514-7.3797-3.6904-10.832-3.7077-7.8964-0.0174-2.9357-1.1937 0.51669-3.7077 7.8964-13.714 40.255-67.233 197.36-189.63 71.766-64.444-66.128-34.605-132.26 82.697-152.22-67.108 11.421-142.55-7.4491-163.25-81.433-5.9562-21.282-16.111-152.36-16.111-170.07 0-88.687 77.742-60.816 125.72-24.795z" />
+    </svg>
+  ),
+}))
 
 const TONES = [
   { value: 'casual', label: 'Casual', description: 'Friendly and conversational' },
@@ -150,30 +136,17 @@ export function SettingsClient({
     }
     setActionPlatform(platform)
     startTransition(async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/${platform}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            apikey: ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ return_url: window.location.origin }),
-        }
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? 'Failed to connect platform')
+      const result = await callEdgeFunction<{ url?: string }>('social-auth', {
+        path: platform,
+        body: { return_url: window.location.origin },
+      })
+      if (!result.ok) {
+        toast.error(result.error ?? 'Failed to connect platform')
         setActionPlatform(null)
         return
       }
-      if (data.url) {
-        window.location.href = data.url
+      if (result.data.url) {
+        window.location.href = result.data.url
       }
       setActionPlatform(null)
     })
@@ -183,25 +156,12 @@ export function SettingsClient({
     e.preventDefault()
     setBskyLoading(true)
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-auth/bluesky`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            apikey: ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ handle: bskyHandle, appPassword: bskyPassword }),
-        }
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? 'Failed to connect Bluesky')
+      const result = await callEdgeFunction<{ ok: boolean; username?: string }>('social-auth', {
+        path: 'bluesky',
+        body: { handle: bskyHandle, appPassword: bskyPassword },
+      })
+      if (!result.ok) {
+        toast.error(result.error ?? 'Failed to connect Bluesky')
         return
       }
       setShowBskyForm(false)
@@ -221,21 +181,7 @@ export function SettingsClient({
   function handleDisconnect(platform: string) {
     setActionPlatform(platform)
     startTransition(async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
-      await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/social-disconnect/${platform}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            apikey: ANON_KEY,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
+      await callEdgeFunction('social-disconnect', { path: platform })
       setConnections((prev) =>
         prev.map((c) =>
           c.platform === platform ? { ...c, connected: false, platform_username: null } : c
@@ -383,6 +329,7 @@ export function SettingsClient({
                     </div>
                   </form>
                 )}
+
               </div>
             )
           })}
