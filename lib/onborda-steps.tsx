@@ -13,7 +13,9 @@ export const tours: Tour[] = [
         icon: <>&#128075;</>,
         title: 'Welcome to BuildLog',
         content: (
-          <>Turn your GitHub commits into social posts. Let&apos;s get you set up in 3 quick steps.</>
+          <>
+            Turn your GitHub commits into social posts. Let&apos;s get you set up in 3 quick steps.
+          </>
         ),
         selector: '#onborda-stats',
         side: 'bottom',
@@ -25,7 +27,10 @@ export const tours: Tour[] = [
         icon: <>&#128279;</>,
         title: 'Connect a repo',
         content: (
-          <>First, connect a GitHub repo. BuildLog watches your commits and generates posts from them.</>
+          <>
+            First, connect a GitHub repo. BuildLog watches your commits and generates posts from
+            them.
+          </>
         ),
         selector: '#onborda-connect-repo',
         side: 'bottom',
@@ -37,7 +42,10 @@ export const tours: Tour[] = [
         icon: <>&#128225;</>,
         title: 'Link your socials',
         content: (
-          <>Head to Settings to connect Twitter/X, LinkedIn, or Bluesky &mdash; wherever you build in public.</>
+          <>
+            Head to Settings to connect Twitter/X, LinkedIn, or Bluesky &mdash; wherever you build
+            in public.
+          </>
         ),
         selector: '#onborda-nav-settings',
         side: 'right',
@@ -49,7 +57,10 @@ export const tours: Tour[] = [
         icon: <>&#10024;</>,
         title: 'Generate posts',
         content: (
-          <>Once connected, go to Posts to generate AI-written content from your commits and publish it.</>
+          <>
+            Once connected, go to Posts to generate AI-written content from your commits and publish
+            it.
+          </>
         ),
         selector: '#onborda-nav-posts',
         side: 'right',

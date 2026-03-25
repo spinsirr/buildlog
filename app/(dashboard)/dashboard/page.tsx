@@ -8,10 +8,10 @@ import useSWR from 'swr'
 import { DashboardPostsTable } from '@/components/dashboard-posts-table'
 import { DashboardStats } from '@/components/dashboard-stats'
 import { ErrorState } from '@/components/error-state'
-import { DashboardSkeleton } from './loading'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { calculateStreak } from '@/lib/utils'
+import { DashboardSkeleton } from './loading'
 
 export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), [])

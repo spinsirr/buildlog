@@ -250,7 +250,8 @@ ${changeTypeHints[changeType]}
 
   const prompt = `为以下开发动态生成一篇小红书文案：\n${context}`
 
-  const result = (await callGemini(system, prompt, { maxOutputTokens: 600, temperature: 0.85 })).trim()
+  const result = (await callGemini(system, prompt, { maxOutputTokens: 600, temperature: 0.85 }))
+    .trim()
   return result
 }
 

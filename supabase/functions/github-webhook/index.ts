@@ -299,8 +299,12 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     if (result.publishedPlatforms.length > 0) {
       const failedNames = Object.keys(result.errors)
       const notifMessage = hasFailures
-        ? `Post published to ${result.publishedPlatforms.join(", ")} but failed on ${failedNames.join(", ")} from ${sourceType} in ${repoFullName}`
-        : `Post auto-published to ${result.publishedPlatforms.join(", ")} from ${sourceType} in ${repoFullName}`
+        ? `Post published to ${result.publishedPlatforms.join(", ")} but failed on ${
+          failedNames.join(", ")
+        } from ${sourceType} in ${repoFullName}`
+        : `Post auto-published to ${
+          result.publishedPlatforms.join(", ")
+        } from ${sourceType} in ${repoFullName}`
 
       try {
         await notify(supabase, {

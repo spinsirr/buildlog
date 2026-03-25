@@ -1,8 +1,4 @@
-export function DashboardStats({
-  stats,
-}: {
-  stats: { label: string; value: number }[]
-}) {
+export function DashboardStats({ stats }: { stats: { label: string; value: number }[] }) {
   return (
     <div id="onborda-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {stats.map((stat) => (

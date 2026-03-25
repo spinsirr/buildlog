@@ -6,8 +6,8 @@ import useSWR from 'swr'
 import { ErrorState } from '@/components/error-state'
 import { RepoList } from '@/components/repo-list'
 import { createClient } from '@/lib/supabase/client'
-import { ReposSkeleton } from './loading'
 import type { Repo } from '@/lib/types'
+import { ReposSkeleton } from './loading'
 
 const GITHUB_APP_NAME = process.env.NEXT_PUBLIC_GITHUB_APP_NAME
 

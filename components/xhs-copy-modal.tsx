@@ -69,11 +69,7 @@ export function XhsCopyModal({
             disabled={loading || !content}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-500 disabled:opacity-50 transition-colors"
           >
-            {copied ? (
-              <Check className="h-3 w-3" />
-            ) : (
-              <ClipboardCopy className="h-3 w-3" />
-            )}
+            {copied ? <Check className="h-3 w-3" /> : <ClipboardCopy className="h-3 w-3" />}
             {copied ? '已复制' : '复制文案'}
           </button>
         </DialogFooter>

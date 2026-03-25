@@ -1,16 +1,10 @@
 'use client'
 
+import { X } from 'lucide-react'
 import type { CardComponentProps } from 'onborda'
 import { useOnborda } from 'onborda'
-import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function OnbordaCard({
   step,
@@ -43,9 +37,7 @@ export function OnbordaCard({
           </button>
         </div>
       </CardHeader>
-      <CardContent className="text-sm text-zinc-400 pb-3">
-        {step.content}
-      </CardContent>
+      <CardContent className="text-sm text-zinc-400 pb-3">{step.content}</CardContent>
       <CardFooter className="pt-0">
         <div className="flex justify-between w-full gap-2">
           {currentStep !== 0 && (
