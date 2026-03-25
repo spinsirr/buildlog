@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 
-function handleOAuth(provider: 'github' | 'google' | 'twitter') {
+function handleOAuth(provider: 'github' | 'google' | 'x') {
   const supabase = createClient()
   supabase.auth.signInWithOAuth({
     provider,
@@ -61,7 +61,7 @@ export function XLoginButton() {
   return (
     <button
       type="button"
-      onClick={() => handleOAuth('twitter')}
+      onClick={() => handleOAuth('x')}
       className="w-full flex items-center justify-center gap-3 bg-zinc-700 text-white border-4 border-black font-mono font-bold text-sm uppercase tracking-widest py-4 cursor-pointer neo-btn focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
       style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
     >
