@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Loader2 } from 'lucide-react'
+import { Check, CreditCard, Loader2, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { callEdgeFunction } from '@/lib/edge-function'
 import { PLATFORM_IDS, platformConfig } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
+import { PLANS, type Plan } from '@/lib/plans'
 import type { Connection, ProfileSettings } from '@/lib/types'
 
 const PLATFORMS = PLATFORM_IDS.map((id) => ({
@@ -43,9 +44,11 @@ const TONES = [
 export function SettingsClient({
   initialConnections,
   initialProfile,
+  initialPlan,
 }: {
   initialConnections: Connection[]
   initialProfile: ProfileSettings
+  initialPlan: Plan
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -54,14 +57,21 @@ export function SettingsClient({
   const [connections, setConnections] = useState(initialConnections)
 
   // Handle OAuth redirect results (?connected=twitter or ?error=twitter_denied)
+  // and Stripe checkout results (?checkout=success or ?checkout=canceled)
   useEffect(() => {
     const connected = searchParams.get('connected')
     const error = searchParams.get('error')
+    const checkout = searchParams.get('checkout')
 
-    if (connected) {
+    if (checkout === 'success') {
+      toast.success('Welcome to Pro! Your subscription is now active.')
+      router.replace('/settings', { scroll: false })
+    } else if (checkout === 'canceled') {
+      toast('Checkout canceled — no changes made.')
+      router.replace('/settings', { scroll: false })
+    } else if (connected) {
       const label = PLATFORMS.find((p) => p.id === connected)?.label ?? connected
       toast.success(`${label} connected successfully`)
-      // Refetch connections from DB to show the new connection
       supabase
         .from('platform_connections')
         .select('platform, platform_username')
@@ -87,13 +97,98 @@ export function SettingsClient({
       router.replace('/settings', { scroll: false })
     }
   }, [searchParams, router, supabase])
+
+  // Handle linkIdentity redirect — capture provider token and save to platform_connections
+  useEffect(() => {
+    const linking = localStorage.getItem('buildlog_linking')
+    if (!linking) return
+
+    let handled = false
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event: string, session: { provider_token?: string | null; provider_refresh_token?: string | null } | null) => {
+      if (handled || !session?.provider_token) return
+      handled = true
+      localStorage.removeItem('buildlog_linking')
+
+      const providerName = linking === 'linkedin' ? 'linkedin_oidc' : linking
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      const identity = user?.identities?.find(
+        (i: { provider: string }) => i.provider === providerName
+      )
+      const identityData = (identity?.identity_data ?? {}) as Record<string, string>
+
+      const result = await callEdgeFunction<{ ok: boolean; username?: string }>('social-auth', {
+        path: `${linking}/link`,
+        body: {
+          provider_token: session.provider_token,
+          provider_refresh_token: session.provider_refresh_token,
+          platform_user_id: identity?.id ?? '',
+          platform_username:
+            identityData.user_name ??
+            identityData.preferred_username ??
+            identityData.name ??
+            '',
+        },
+      })
+
+      if (result.ok) {
+        const label = PLATFORMS.find((p) => p.id === linking)?.label ?? linking
+        toast.success(`${label} connected successfully`)
+        setConnections((prev) =>
+          prev.map((c) =>
+            c.platform === linking
+              ? { ...c, connected: true, platform_username: result.data?.username ?? '' }
+              : c
+          )
+        )
+      } else {
+        toast.error('Failed to save connection. Please try again.')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
   const [profile, setProfile] = useState(initialProfile)
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
+  const [billingLoading, setBillingLoading] = useState(false)
   const [showBskyForm, setShowBskyForm] = useState(false)
   const [bskyHandle, setBskyHandle] = useState('')
   const [bskyPassword, setBskyPassword] = useState('')
   const [bskyLoading, setBskyLoading] = useState(false)
+
+  async function handleUpgrade() {
+    setBillingLoading(true)
+    try {
+      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'checkout' })
+      if (!result.ok) {
+        toast.error(result.error ?? 'Failed to start checkout')
+        return
+      }
+      window.location.href = result.data.url
+    } finally {
+      setBillingLoading(false)
+    }
+  }
+
+  async function handleManageSubscription() {
+    setBillingLoading(true)
+    try {
+      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'portal' })
+      if (!result.ok) {
+        toast.error(result.error ?? 'Failed to open billing portal')
+        return
+      }
+      window.location.href = result.data.url
+    } finally {
+      setBillingLoading(false)
+    }
+  }
 
   async function handleAutoPublishToggle(checked: boolean) {
     setProfile((prev) => ({ ...prev, auto_publish: checked }))
@@ -136,21 +231,30 @@ export function SettingsClient({
       return
     }
     setActionPlatform(platform)
-    startTransition(async () => {
-      const result = await callEdgeFunction<{ url?: string }>('social-auth', {
-        path: platform,
-        body: { return_url: window.location.origin },
+
+    const providerName = platform === 'linkedin' ? 'linkedin_oidc' : platform
+    const scopes =
+      platform === 'twitter'
+        ? 'tweet.read tweet.write users.read offline.access'
+        : 'openid profile email w_member_social'
+
+    localStorage.setItem('buildlog_linking', platform)
+
+    supabase.auth
+      .linkIdentity({
+        provider: providerName as 'twitter' | 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/settings`,
+          scopes,
+        },
       })
-      if (!result.ok) {
-        toast.error(result.error ?? 'Failed to connect platform')
-        setActionPlatform(null)
-        return
-      }
-      if (result.data.url) {
-        window.location.href = result.data.url
-      }
-      setActionPlatform(null)
-    })
+      .then(({ error }: { error: { message: string } | null }) => {
+        if (error) {
+          localStorage.removeItem('buildlog_linking')
+          toast.error(error.message)
+          setActionPlatform(null)
+        }
+      })
   }
 
   async function handleBskySubmit(e: React.FormEvent) {
@@ -197,9 +301,66 @@ export function SettingsClient({
   const getConnection = (id: string) => connections.find((c) => c.platform === id)
   const { tone, auto_publish: autoPublish, email_notifications: emailNotifications } = profile
 
+  const isPro = initialPlan === 'pro'
+  const limits = PLANS[initialPlan]
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-2xl font-bold text-zinc-50">Settings</h1>
+
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-zinc-50">Plan & Billing</CardTitle>
+              <CardDescription className="text-zinc-500">
+                {isPro
+                  ? 'You\u2019re on the Pro plan. Unlimited everything.'
+                  : `Free plan \u2014 ${limits.posts_per_month} posts/mo, ${limits.repos} repo, ${limits.platforms} platform.`}
+              </CardDescription>
+            </div>
+            <Badge
+              className={
+                isPro
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                  : 'bg-zinc-800 text-zinc-400 border-0'
+              }
+            >
+              {isPro ? 'Pro' : 'Free'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isPro ? (
+            <Button
+              variant="outline"
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              disabled={billingLoading}
+              onClick={handleManageSubscription}
+            >
+              {billingLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CreditCard className="h-4 w-4 mr-2" />
+              )}
+              Manage Subscription
+            </Button>
+          ) : (
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+              disabled={billingLoading}
+              onClick={handleUpgrade}
+            >
+              {billingLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Upgrade to Pro
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>

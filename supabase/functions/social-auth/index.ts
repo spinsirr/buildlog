@@ -378,6 +378,66 @@ async function blueskyConnect(req: Request): Promise<Response> {
 }
 
 // ---------------------------------------------------------------------------
+// Save token from Supabase linkIdentity flow
+// ---------------------------------------------------------------------------
+
+async function saveLinkedToken(req: Request, platform: string): Promise<Response> {
+  const { user, error } = await requireUser(req)
+  if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
+
+  const limit = await checkLimit(user.id, "platforms")
+  if (!limit.allowed) {
+    return errorResponse(
+      `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
+      403,
+      req,
+    )
+  }
+
+  const body = await safeJson<{
+    provider_token: string
+    provider_refresh_token?: string
+    platform_user_id: string
+    platform_username: string
+  }>(req)
+
+  if (!body?.provider_token || !body?.platform_user_id) {
+    return errorResponse("Missing required fields", 400, req)
+  }
+
+  const supabase = createServiceClient()
+  const encryptedAccessToken = await encrypt(body.provider_token)
+
+  const upsertData: Record<string, unknown> = {
+    user_id: user.id,
+    platform,
+    access_token: encryptedAccessToken,
+    platform_user_id: body.platform_user_id,
+    platform_username: body.platform_username ?? "",
+    last_refresh_at: null,
+    refresh_failures: 0,
+  }
+
+  if (body.provider_refresh_token) {
+    upsertData.refresh_token = await encrypt(body.provider_refresh_token)
+  }
+
+  const { error: upsertError } = await supabase
+    .from("platform_connections")
+    .upsert(upsertData, { onConflict: "user_id,platform" })
+
+  if (upsertError) {
+    log.error("{platform} link-save failed: {error}", {
+      platform,
+      error: upsertError.message,
+    })
+    return errorResponse("Failed to save connection", 500, req)
+  }
+
+  return jsonResponse({ ok: true, username: body.platform_username }, req)
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -395,6 +455,11 @@ Deno.serve(async (req) => {
     if (platform === "bluesky" && method === "POST" && !action) {
       return await blueskyConnect(req)
     }
+    // Save token from linkIdentity flow (any platform)
+    if (method === "POST" && action === "link") {
+      return await saveLinkedToken(req, platform)
+    }
+
     // Generic OAuth — look up provider config
     const provider = OAUTH_PROVIDERS[platform]
     if (!provider) return errorResponse("Unknown platform", 404, req)

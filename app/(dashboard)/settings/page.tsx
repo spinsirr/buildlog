@@ -10,10 +10,12 @@ import { SettingsSkeleton } from './loading'
 function useSettingsData() {
   const supabase = useMemo(() => createClient(), [])
   return useSWR('settings-data', async () => {
-    const [{ data: rows }, { data: profileData, error: profileError }] = await Promise.all([
-      supabase.from('platform_connections').select('platform, platform_username'),
-      supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
-    ])
+    const [{ data: rows }, { data: profileData, error: profileError }, { data: sub }] =
+      await Promise.all([
+        supabase.from('platform_connections').select('platform, platform_username'),
+        supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
+        supabase.from('subscriptions').select('status').single(),
+      ])
 
     if (profileError) {
       console.error('Failed to load profile settings:', profileError.message)
@@ -32,7 +34,9 @@ function useSettingsData() {
       email_notifications: profileData?.email_notifications ?? true,
     }
 
-    return { connections, profile }
+    const plan: 'free' | 'pro' = sub?.status === 'active' ? 'pro' : 'free'
+
+    return { connections, profile, plan }
   })
 }
 
@@ -42,5 +46,11 @@ export default function SettingsPage() {
   if (isLoading) return <SettingsSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />
 
-  return <SettingsClient initialConnections={data.connections} initialProfile={data.profile} />
+  return (
+    <SettingsClient
+      initialConnections={data.connections}
+      initialProfile={data.profile}
+      initialPlan={data.plan}
+    />
+  )
 }
