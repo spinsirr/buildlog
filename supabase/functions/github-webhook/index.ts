@@ -64,9 +64,54 @@ Deno.serve(async (req) => {
   }
 })
 
+async function handleInstallationEvent(
+  payload: Record<string, unknown>,
+  installationId: number,
+  req: Request,
+): Promise<Response> {
+  const supabase = createServiceClient()
+  const action = payload.action as string
+  const sender = payload.sender as { id?: number } | undefined
+
+  if (action === "created" && sender?.id) {
+    // Auto-link: find user by github_user_id and save installation_id
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("github_user_id", sender.id)
+      .single()
+
+    if (profile) {
+      await supabase
+        .from("profiles")
+        .update({ github_installation_id: installationId })
+        .eq("id", profile.id)
+      log.info("webhook: linked installation {installationId} for user {userId}", {
+        installationId,
+        userId: profile.id,
+      })
+    }
+  } else if (action === "deleted") {
+    // Clear installation_id when app is uninstalled
+    await supabase
+      .from("profiles")
+      .update({ github_installation_id: null })
+      .eq("github_installation_id", installationId)
+    log.info("webhook: cleared installation {installationId} on uninstall", { installationId })
+  }
+
+  return jsonResponse({ ok: true }, req)
+}
+
 async function handleWebhook(req: Request, body: string, event: string): Promise<Response> {
   const payload = JSON.parse(body)
   const installationId = payload.installation?.id
+
+  // Handle installation lifecycle (no repository context)
+  if (event === "installation" && installationId) {
+    return handleInstallationEvent(payload, installationId, req)
+  }
+
   const repoId = payload.repository?.id
   const repoFullName = payload.repository?.full_name
 

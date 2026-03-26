@@ -6,12 +6,11 @@ import { getLog, setupLogger } from "../_shared/logger.ts"
 await setupLogger()
 const log = getLog("github-app")
 
-async function getInstallationToken(installationId: number): Promise<string> {
+async function generateAppJwt(): Promise<string> {
   const appId = Deno.env.get("GITHUB_APP_ID")
   const privateKey = Deno.env.get("GITHUB_APP_PRIVATE_KEY")
   if (!appId || !privateKey) throw new Error("Missing GITHUB_APP_ID or GITHUB_APP_PRIVATE_KEY")
 
-  // Create JWT for GitHub App auth
   const now = Math.floor(Date.now() / 1000)
   const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }))
     .replace(/\+/g, "-")
@@ -22,7 +21,6 @@ async function getInstallationToken(installationId: number): Promise<string> {
     .replace(/\//g, "_")
     .replace(/=/g, "")
 
-  // Import private key and sign
   const pemContent = privateKey
     .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, "")
@@ -43,9 +41,11 @@ async function getInstallationToken(installationId: number): Promise<string> {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=/g, "")
-  const jwt = `${header}.${payload}.${sig}`
+  return `${header}.${payload}.${sig}`
+}
 
-  // Exchange JWT for installation token
+async function getInstallationToken(installationId: number): Promise<string> {
+  const jwt = await generateAppJwt()
   const res = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
     {
@@ -91,9 +91,19 @@ Deno.serve(async (req) => {
       return errorResponse("Missing installation_id", 400, req)
     }
 
+    // Also save github_user_id for webhook-based auto-linking
+    const ghIdentity = user.identities?.find(
+      (i: { provider: string }) => i.provider === "github",
+    )
+    const updateData: Record<string, unknown> = { github_installation_id: body.installation_id }
+    if (ghIdentity?.identity_data?.sub) {
+      const ghUserId = parseInt(ghIdentity.identity_data.sub, 10)
+      if (!isNaN(ghUserId)) updateData.github_user_id = ghUserId
+    }
+
     const { error } = await supabase
       .from("profiles")
-      .update({ github_installation_id: body.installation_id })
+      .update(updateData)
       .eq("id", user.id)
 
     if (error) return errorResponse(error.message, 500, req)
@@ -114,15 +124,57 @@ Deno.serve(async (req) => {
       error: profileErr?.message,
     })
 
-    if (!profile?.github_installation_id) {
+    let installationId = profile?.github_installation_id as number | null
+
+    // Auto-detect: if user already installed the app but we missed the callback
+    if (!installationId) {
+      const ghIdentity = user.identities?.find(
+        (i: { provider: string }) => i.provider === "github",
+      )
+      if (ghIdentity) {
+        try {
+          const jwt = await generateAppJwt()
+          const detectRes = await fetch("https://api.github.com/app/installations", {
+            headers: {
+              Authorization: `Bearer ${jwt}`,
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          })
+          if (detectRes.ok && ghIdentity.identity_data?.sub) {
+            const ghUserId = parseInt(ghIdentity.identity_data.sub, 10)
+            const installations = (await detectRes.json()) as {
+              id: number
+              account: { id: number }
+            }[]
+            const match = installations.find((i) => i.account?.id === ghUserId)
+            if (match) {
+              installationId = match.id
+              await supabase
+                .from("profiles")
+                .update({ github_installation_id: match.id, github_user_id: ghUserId })
+                .eq("id", user.id)
+              log.info("auto-detected installation {id} for user {userId}", {
+                id: match.id,
+                userId: user.id,
+              })
+            }
+          }
+        } catch (err) {
+          log.error("auto-detect failed: {error}", { error: (err as Error).message })
+        }
+      }
+    }
+
+    if (!installationId) {
       return jsonResponse({ repos: [], needsInstall: true }, req)
     }
 
     try {
       log.info("getting installation token for {installationId}", {
-        installationId: profile.github_installation_id,
+        installationId,
       })
-      const token = await getInstallationToken(profile.github_installation_id)
+      const token = await getInstallationToken(installationId)
       log.info("got installation token OK")
 
       const res = await fetch("https://api.github.com/installation/repositories?per_page=100", {

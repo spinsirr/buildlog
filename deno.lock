@@ -1,18 +1,29 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@logtape/logtape@*": "2.0.2"
+    "jsr:@logtape/logtape@*": "2.0.2",
+    "jsr:@logtape/logtape@0.11": "0.11.1"
   },
   "jsr": {
+    "@logtape/logtape@0.11.1": {
+      "integrity": "5c121cdea625e7a310c895b9a8d953218a7c5454731e3a7068b5b57db2c53194"
+    },
     "@logtape/logtape@2.0.2": {
       "integrity": "546fcd514e66f2b841c6f261fa3a3d905b52d876dc1bba8ffe1a087d9275c4c9"
     }
+  },
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.99.3"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.99.3": "043625cad1798d7e165a9cfcea145ac7d309c34786e5558023fecbcf565abfc7"
   },
   "workspace": {
     "packageJson": {
       "dependencies": [
         "npm:@base-ui/react@^1.3.0",
         "npm:@biomejs/biome@^2.4.8",
+        "npm:@radix-ui/react-portal@^1.1.10",
         "npm:@radix-ui/react-use-controllable-state@^1.2.2",
         "npm:@rive-app/react-webgl2@^4.27.2",
         "npm:@streamdown/cjk@^1.0.3",
@@ -25,7 +36,6 @@
         "npm:@types/node@^20.19.37",
         "npm:@types/react-dom@^19.2.3",
         "npm:@types/react@^19.2.14",
-        "npm:@xyflow/react@^12.10.1",
         "npm:ansi-to-react@^6.2.6",
         "npm:class-variance-authority@~0.7.1",
         "npm:clsx@^2.1.1",
@@ -34,10 +44,12 @@
         "npm:eslint-config-next@16.1.7",
         "npm:eslint-plugin-vercel-ai-security@^1.3.5",
         "npm:eslint@^9.39.4",
+        "npm:framer-motion@^12.38.0",
         "npm:lucide-react@0.577",
         "npm:media-chrome@^4.18.2",
         "npm:nanoid@^5.1.7",
         "npm:next@16.1.7",
+        "npm:onborda@^1.2.5",
         "npm:react-dom@19.2.3",
         "npm:react-jsx-parser@^2.4.1",
         "npm:react@19.2.3",
