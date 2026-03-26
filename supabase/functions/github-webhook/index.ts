@@ -84,7 +84,7 @@ async function handleInstallationEvent(
     if (profile) {
       await supabase
         .from("profiles")
-        .update({ github_installation_id: installationId })
+        .update({ "github_installation_id": installationId })
         .eq("id", profile.id)
       log.info("webhook: linked installation {installationId} for user {userId}", {
         installationId,
@@ -95,7 +95,7 @@ async function handleInstallationEvent(
     // Clear installation_id when app is uninstalled
     await supabase
       .from("profiles")
-      .update({ github_installation_id: null })
+      .update({ "github_installation_id": null })
       .eq("github_installation_id", installationId)
     log.info("webhook: cleared installation {installationId} on uninstall", { installationId })
   }

@@ -95,10 +95,10 @@ Deno.serve(async (req) => {
     const ghIdentity = user.identities?.find(
       (i: { provider: string }) => i.provider === "github",
     )
-    const updateData: Record<string, unknown> = { github_installation_id: body.installation_id }
+    const updateData: Record<string, unknown> = { "github_installation_id": body.installation_id }
     if (ghIdentity?.identity_data?.sub) {
       const ghUserId = parseInt(ghIdentity.identity_data.sub, 10)
-      if (!isNaN(ghUserId)) updateData.github_user_id = ghUserId
+      if (!isNaN(ghUserId)) updateData["github_user_id"] = ghUserId
     }
 
     const { error } = await supabase
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
               installationId = match.id
               await supabase
                 .from("profiles")
-                .update({ github_installation_id: match.id, github_user_id: ghUserId })
+                .update({ "github_installation_id": match.id, "github_user_id": ghUserId })
                 .eq("id", user.id)
               log.info("auto-detected installation {id} for user {userId}", {
                 id: match.id,
