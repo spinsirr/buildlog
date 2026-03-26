@@ -1,5 +1,10 @@
 import { redirect } from 'next/navigation'
-import { GitHubLoginButton, GoogleLoginButton, XLoginButton, LinkedInLoginButton } from '@/components/login-buttons'
+import {
+  GitHubLoginButton,
+  GoogleLoginButton,
+  LinkedInLoginButton,
+  XLoginButton,
+} from '@/components/login-buttons'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export default async function LoginPage() {

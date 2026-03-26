@@ -10,9 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { callEdgeFunction } from '@/lib/edge-function'
+import { PLANS, type Plan } from '@/lib/plans'
 import { PLATFORM_IDS, platformConfig } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
-import { PLANS, type Plan } from '@/lib/plans'
 import type { Connection, ProfileSettings } from '@/lib/types'
 
 const PLATFORMS = PLATFORM_IDS.map((id) => ({
@@ -107,48 +107,50 @@ export function SettingsClient({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event: string, session: { provider_token?: string | null; provider_refresh_token?: string | null } | null) => {
-      if (handled || !session?.provider_token) return
-      handled = true
-      localStorage.removeItem('buildlog_linking')
+    } = supabase.auth.onAuthStateChange(
+      async (
+        _event: string,
+        session: { provider_token?: string | null; provider_refresh_token?: string | null } | null
+      ) => {
+        if (handled || !session?.provider_token) return
+        handled = true
+        localStorage.removeItem('buildlog_linking')
 
-      const providerName = linking === 'linkedin' ? 'linkedin_oidc' : linking
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      const identity = user?.identities?.find(
-        (i: { provider: string }) => i.provider === providerName
-      )
-      const identityData = (identity?.identity_data ?? {}) as Record<string, string>
-
-      const result = await callEdgeFunction<{ ok: boolean; username?: string }>('social-auth', {
-        path: `${linking}/link`,
-        body: {
-          provider_token: session.provider_token,
-          provider_refresh_token: session.provider_refresh_token,
-          platform_user_id: identity?.id ?? '',
-          platform_username:
-            identityData.user_name ??
-            identityData.preferred_username ??
-            identityData.name ??
-            '',
-        },
-      })
-
-      if (result.ok) {
-        const label = PLATFORMS.find((p) => p.id === linking)?.label ?? linking
-        toast.success(`${label} connected successfully`)
-        setConnections((prev) =>
-          prev.map((c) =>
-            c.platform === linking
-              ? { ...c, connected: true, platform_username: result.data?.username ?? '' }
-              : c
-          )
+        const providerName = linking === 'linkedin' ? 'linkedin_oidc' : linking
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        const identity = user?.identities?.find(
+          (i: { provider: string }) => i.provider === providerName
         )
-      } else {
-        toast.error('Failed to save connection. Please try again.')
+        const identityData = (identity?.identity_data ?? {}) as Record<string, string>
+
+        const result = await callEdgeFunction<{ ok: boolean; username?: string }>('social-auth', {
+          path: `${linking}/link`,
+          body: {
+            provider_token: session.provider_token,
+            provider_refresh_token: session.provider_refresh_token,
+            platform_user_id: identity?.id ?? '',
+            platform_username:
+              identityData.user_name ?? identityData.preferred_username ?? identityData.name ?? '',
+          },
+        })
+
+        if (result.ok) {
+          const label = PLATFORMS.find((p) => p.id === linking)?.label ?? linking
+          toast.success(`${label} connected successfully`)
+          setConnections((prev) =>
+            prev.map((c) =>
+              c.platform === linking
+                ? { ...c, connected: true, platform_username: result.data?.username ?? '' }
+                : c
+            )
+          )
+        } else {
+          toast.error('Failed to save connection. Please try again.')
+        }
       }
-    })
+    )
 
     return () => subscription.unsubscribe()
   }, [supabase])
