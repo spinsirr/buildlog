@@ -1,23 +1,16 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import { useAuth } from '@/components/auth-provider'
 import { DesktopSidebar } from '@/components/desktop-sidebar'
 import { MobileSidebar } from '@/components/mobile-sidebar'
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
-  const router = useRouter()
 
-  useEffect(() => {
-    if (!loading && !session) {
-      router.replace('/login')
-    }
-  }, [loading, session, router])
-
-  if (loading || !session) return null
+  if (loading || !session) {
+    return <div className="min-h-screen bg-zinc-950" />
+  }
 
   return (
     <motion.div
