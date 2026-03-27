@@ -234,16 +234,24 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   async function toggle(repo: Repo) {
     setPending(repo.id)
     try {
-      if (repo.connected) {
-        await supabase.functions.invoke('connect-repo', {
-          method: 'DELETE',
-          body: { repo_id: repo.id },
-        })
-      } else {
-        await supabase.functions.invoke('connect-repo', {
-          body: { repo_id: repo.id, full_name: repo.full_name },
-        })
+      const { error } = repo.connected
+        ? await supabase.functions.invoke('connect-repo', {
+            method: 'DELETE',
+            body: { repo_id: repo.id },
+          })
+        : await supabase.functions.invoke('connect-repo', {
+            body: { repo_id: repo.id, full_name: repo.full_name },
+          })
+
+      if (error) {
+        alert(
+          repo.connected
+            ? 'Failed to disconnect repo.'
+            : 'Free plan is limited to 1 repo. Upgrade to Pro for unlimited.'
+        )
+        return
       }
+
       setRepos((prev) =>
         prev.map((r) =>
           r.id === repo.id
