@@ -4,7 +4,6 @@ import { FileText, Loader2, Plus, Search } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { useAuth } from '@/components/auth-provider'
 import { PostCard } from '@/components/post-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
@@ -101,7 +100,6 @@ export function PostsClient({
   initialConnectedPlatforms: string[]
 }) {
   const supabase = useMemo(() => createClient(), [])
-  const { session } = useAuth()
   const [showNewPost, setShowNewPost] = useState(false)
   const [posts, setPosts] = useState(initialPosts)
   const [search, setSearch] = useState('')

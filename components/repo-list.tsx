@@ -229,7 +229,6 @@ function BranchPicker({
 
 export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
   const [repos, setRepos] = useState(initialRepos)
   const [pending, setPending] = useState<number | null>(null)
 

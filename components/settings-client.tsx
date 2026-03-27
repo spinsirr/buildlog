@@ -2,7 +2,7 @@
 
 import { Check, CreditCard, Loader2, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -98,6 +98,29 @@ export function SettingsClient({
     }
   }, [searchParams, router, supabase])
 
+  const [profile, setProfile] = useState(initialProfile)
+  const [actionPlatform, setActionPlatform] = useState<string | null>(null)
+  const [savingTone, setSavingTone] = useState(false)
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [showBskyForm, setShowBskyForm] = useState(false)
+  const [bskyHandle, setBskyHandle] = useState('')
+  const [bskyPassword, setBskyPassword] = useState('')
+  const [bskyLoading, setBskyLoading] = useState(false)
+
+  const handleUpgrade = useCallback(async () => {
+    setBillingLoading(true)
+    try {
+      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'checkout' })
+      if (!result.ok) {
+        toast.error(result.error ?? 'Failed to start checkout')
+        return
+      }
+      window.location.href = result.data.url
+    } finally {
+      setBillingLoading(false)
+    }
+  }, [])
+
   // Handle linkIdentity redirect — capture provider token and save to platform_connections
   useEffect(() => {
     const linking = localStorage.getItem('buildlog_linking')
@@ -157,30 +180,7 @@ export function SettingsClient({
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase])
-
-  const [profile, setProfile] = useState(initialProfile)
-  const [actionPlatform, setActionPlatform] = useState<string | null>(null)
-  const [savingTone, setSavingTone] = useState(false)
-  const [billingLoading, setBillingLoading] = useState(false)
-  const [showBskyForm, setShowBskyForm] = useState(false)
-  const [bskyHandle, setBskyHandle] = useState('')
-  const [bskyPassword, setBskyPassword] = useState('')
-  const [bskyLoading, setBskyLoading] = useState(false)
-
-  async function handleUpgrade() {
-    setBillingLoading(true)
-    try {
-      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'checkout' })
-      if (!result.ok) {
-        toast.error(result.error ?? 'Failed to start checkout')
-        return
-      }
-      window.location.href = result.data.url
-    } finally {
-      setBillingLoading(false)
-    }
-  }
+  }, [supabase, handleUpgrade])
 
   async function handleManageSubscription() {
     setBillingLoading(true)

@@ -131,7 +131,11 @@ async function oauthInitiate(
   const limit = await checkLimit(user.id, "platforms")
   if (!limit.allowed) {
     return jsonResponse(
-      { error: `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`, code: "plan_limit" },
+      {
+        error:
+          `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
+        code: "plan_limit",
+      },
       req,
       { status: 403 },
     )
@@ -327,7 +331,11 @@ async function blueskyConnect(req: Request): Promise<Response> {
   const limit = await checkLimit(user.id, "platforms")
   if (!limit.allowed) {
     return jsonResponse(
-      { error: `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`, code: "plan_limit" },
+      {
+        error:
+          `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
+        code: "plan_limit",
+      },
       req,
       { status: 403 },
     )
@@ -388,7 +396,11 @@ async function saveLinkedToken(req: Request, platform: string): Promise<Response
   const limit = await checkLimit(user.id, "platforms")
   if (!limit.allowed) {
     return jsonResponse(
-      { error: `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`, code: "plan_limit" },
+      {
+        error:
+          `Platform limit reached (${limit.count}/${limit.limit}). Upgrade to Pro for unlimited platforms.`,
+        code: "plan_limit",
+      },
       req,
       { status: 403 },
     )
