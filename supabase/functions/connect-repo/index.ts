@@ -13,10 +13,10 @@ Deno.serve(async (req) => {
   if (req.method === "POST") {
     const { allowed, limit } = await checkLimit(user.id, "repos")
     if (!allowed) {
-      return errorResponse(
-        `Free plan is limited to ${limit} repo. Upgrade to Pro for unlimited repos.`,
-        403,
+      return jsonResponse(
+        { error: `Free plan is limited to ${limit} repo. Upgrade to Pro for unlimited repos.`, code: "plan_limit" },
         req,
+        { status: 403 },
       )
     }
 

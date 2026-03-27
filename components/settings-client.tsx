@@ -146,8 +146,12 @@ export function SettingsClient({
                 : c
             )
           )
+        } else if (result.code === 'plan_limit') {
+          toast.error(result.error, {
+            action: { label: 'Upgrade', onClick: () => handleUpgrade() },
+          })
         } else {
-          toast.error('Failed to save connection. Please try again.')
+          toast.error(result.error || 'Failed to save connection. Please try again.')
         }
       }
     )
@@ -268,7 +272,13 @@ export function SettingsClient({
         body: { handle: bskyHandle, appPassword: bskyPassword },
       })
       if (!result.ok) {
-        toast.error(result.error ?? 'Failed to connect Bluesky')
+        if (result.code === 'plan_limit') {
+          toast.error(result.error, {
+            action: { label: 'Upgrade', onClick: () => handleUpgrade() },
+          })
+        } else {
+          toast.error(result.error ?? 'Failed to connect Bluesky')
+        }
         return
       }
       setShowBskyForm(false)

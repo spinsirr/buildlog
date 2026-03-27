@@ -16,10 +16,10 @@ Deno.serve(async (req) => {
 
   const { allowed } = await checkLimit(user.id, "posts", supabase)
   if (!allowed) {
-    return errorResponse(
-      "Monthly post limit reached. Upgrade to Pro for unlimited posts.",
-      403,
+    return jsonResponse(
+      { error: "Monthly post limit reached. Upgrade to Pro for unlimited posts.", code: "plan_limit" },
       req,
+      { status: 403 },
     )
   }
 

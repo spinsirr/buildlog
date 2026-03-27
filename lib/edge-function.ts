@@ -14,7 +14,7 @@ export async function callEdgeFunction<T = unknown>(
     body?: unknown
     path?: string
   }
-): Promise<{ data: T; ok: true } | { error: string; ok: false }> {
+): Promise<{ data: T; ok: true } | { error: string; code?: string; ok: false }> {
   const supabase = createClient()
   const {
     data: { session },
@@ -36,7 +36,7 @@ export async function callEdgeFunction<T = unknown>(
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    return { error: data.error ?? `Request failed (${res.status})`, ok: false }
+    return { error: data.error ?? `Request failed (${res.status})`, code: data.code, ok: false }
   }
 
   return { data: data as T, ok: true }

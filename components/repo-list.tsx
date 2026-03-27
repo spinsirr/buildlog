@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { callEdgeFunction } from '@/lib/edge-function'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
 import { timeAgo } from '@/lib/utils'
@@ -234,21 +236,23 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   async function toggle(repo: Repo) {
     setPending(repo.id)
     try {
-      const { error } = repo.connected
-        ? await supabase.functions.invoke('connect-repo', {
+      const result = repo.connected
+        ? await callEdgeFunction('connect-repo', {
             method: 'DELETE',
             body: { repo_id: repo.id },
           })
-        : await supabase.functions.invoke('connect-repo', {
+        : await callEdgeFunction('connect-repo', {
             body: { repo_id: repo.id, full_name: repo.full_name },
           })
 
-      if (error) {
-        alert(
-          repo.connected
-            ? 'Failed to disconnect repo.'
-            : 'Free plan is limited to 1 repo. Upgrade to Pro for unlimited.'
-        )
+      if (!result.ok) {
+        if (result.code === 'plan_limit') {
+          toast.error(result.error, {
+            action: { label: 'Upgrade', onClick: () => router.push('/settings') },
+          })
+        } else {
+          toast.error(result.error || 'Something went wrong')
+        }
         return
       }
 

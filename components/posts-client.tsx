@@ -25,7 +25,13 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
       body: { content: content.trim() },
     })
     if (!result.ok) {
-      toast.error(result.error || 'Failed to create post')
+      if (result.code === 'plan_limit') {
+        toast.error(result.error, {
+          action: { label: 'Upgrade', onClick: () => (window.location.href = '/settings') },
+        })
+      } else {
+        toast.error(result.error || 'Failed to create post')
+      }
     } else {
       setContent('')
       onCreated()

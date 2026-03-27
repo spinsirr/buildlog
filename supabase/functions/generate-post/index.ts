@@ -68,10 +68,10 @@ async function handleGenerate(
 
   const { allowed, plan, count, limit } = await checkLimit(userId, "posts", supabase)
   if (!allowed) {
-    return errorResponse(
-      `Post limit reached (${count}/${limit} this month on ${plan} plan)`,
-      403,
+    return jsonResponse(
+      { error: `Post limit reached (${count}/${limit} this month on ${plan} plan)`, code: "plan_limit" },
       req,
+      { status: 403 },
     )
   }
 
