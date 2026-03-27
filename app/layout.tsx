@@ -21,6 +21,7 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   weight: ['700'],
   display: 'swap',
+  preload: false,
 })
 
 const ibmPlexMono = IBM_Plex_Mono({

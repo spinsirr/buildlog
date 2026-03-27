@@ -18,10 +18,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ backgroundColor: '#FFFDF5' }}
-    >
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-neo-cream">
       {/* Grid overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -35,7 +32,7 @@ export default async function LoginPage() {
 
       {/* Decorative floating badge — top left */}
       <div
-        className="absolute top-10 left-8 hidden md:flex items-center gap-2 bg-neo-secondary border-2 border-black px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-widest rotate-[-2deg]"
+        className="absolute top-10 left-8 hidden md:flex items-center gap-2 bg-neo-secondary border-2 border-black px-3 py-1.5 font-mono-ui text-xs font-bold uppercase tracking-widest rotate-[-2deg]"
         style={{ boxShadow: '3px 3px 0 0 #000' }}
         aria-hidden
       >
@@ -44,8 +41,8 @@ export default async function LoginPage() {
 
       {/* Decorative floating badge — bottom right */}
       <div
-        className="absolute bottom-10 right-8 hidden md:flex items-center gap-2 bg-neo-secondary border-2 border-black px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-widest rotate-[2deg]"
-        style={{ boxShadow: '3px 3px 0 0 #000', fontFamily: 'var(--font-ibm-plex-mono)' }}
+        className="absolute bottom-10 right-8 hidden md:flex items-center gap-2 bg-neo-secondary border-2 border-black px-3 py-1.5 font-mono-ui text-xs font-bold uppercase tracking-widest rotate-[2deg]"
+        style={{ boxShadow: '3px 3px 0 0 #000' }}
         aria-hidden
       >
         SHIP CODE. GET NOTICED. ↗
@@ -70,7 +67,7 @@ export default async function LoginPage() {
               buildlog
             </span>
           </div>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest bg-black text-white px-2 py-0.5">
+          <span className="font-mono-ui text-xs font-bold uppercase tracking-widest bg-black text-white px-2 py-0.5">
             v1.0
           </span>
         </div>
@@ -90,10 +87,7 @@ export default async function LoginPage() {
                 BACK.
               </span>
             </h1>
-            <p
-              className="font-mono text-sm text-black font-bold uppercase tracking-wide"
-              style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
-            >
+            <p className="font-mono-ui text-sm text-black font-bold uppercase tracking-wide">
               Turn commits into content.
             </p>
           </div>
@@ -108,20 +102,14 @@ export default async function LoginPage() {
             <LinkedInLoginButton />
           </div>
 
-          <p
-            className="text-center font-mono text-xs text-black font-bold uppercase tracking-wider"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
-          >
+          <p className="text-center font-mono-ui text-xs text-black font-bold uppercase tracking-wider">
             No password required
           </p>
         </div>
 
         {/* Card footer */}
         <div className="border-t-4 border-black px-6 py-3 bg-neo-muted/20 flex items-center justify-between">
-          <span
-            className="font-mono text-xs font-bold uppercase tracking-widest text-black"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
-          >
+          <span className="font-mono-ui text-xs font-bold uppercase tracking-widest text-black">
             buildlog.ink
           </span>
           <div className="flex gap-1" aria-hidden>

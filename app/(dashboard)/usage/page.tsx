@@ -3,7 +3,7 @@
 import useSWR from 'swr'
 import { ErrorState } from '@/components/error-state'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PLANS } from '@/lib/plans'
 import { platformLabels } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
@@ -35,7 +35,7 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
         >
           {used}
           {isUnlimited ? '' : ` / ${limit}`}
-          {isUnlimited && <span className="text-zinc-600 ml-1">unlimited</span>}
+          {isUnlimited && <span className="text-zinc-500 ml-1">unlimited</span>}
         </span>
       </div>
       {!isUnlimited && (
@@ -43,7 +43,7 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
           <div
             className={cn(
               'h-full rounded-full transition-all',
-              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-indigo-500'
+              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-purple-500'
             )}
             style={{ width: `${pct}%` }}
           />
@@ -131,14 +131,14 @@ export default function UsagePage() {
   const { plan, limits, usage, platformCounts, sourceCounts } = data
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-50">Usage</h1>
+        <h1 className="text-2xl font-semibold text-zinc-50">Usage</h1>
         <Badge
           className={cn(
             'text-xs',
             plan === 'pro'
-              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+              ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
               : 'bg-zinc-800 text-zinc-400 border-0'
           )}
         >
@@ -150,9 +150,6 @@ export default function UsagePage() {
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-zinc-50 text-base">Plan Limits</CardTitle>
-          <CardDescription className="text-zinc-500">
-            Current billing period usage against your plan limits.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <UsageBar
@@ -165,34 +162,44 @@ export default function UsagePage() {
         </CardContent>
       </Card>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Posts', value: usage.total_posts },
-          { label: 'Published', value: usage.published_posts },
-          { label: 'Drafts', value: usage.draft_posts },
-          { label: 'This Month', value: usage.posts_this_month },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-lg bg-zinc-900/50 px-4 py-3">
-            <span className="text-xs text-zinc-500">{stat.label}</span>
-            <p className="text-2xl font-semibold text-zinc-100 mt-1">{stat.value}</p>
-          </div>
-        ))}
+      {/* Stats — inline, no generic card grid */}
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-semibold text-zinc-50 tabular-nums">
+            {usage.total_posts}
+          </span>
+          <span className="text-xs text-zinc-500 font-mono-ui">total</span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-medium text-zinc-300 tabular-nums">
+            {usage.published_posts}
+          </span>
+          <span className="text-xs text-zinc-500 font-mono-ui">published</span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-medium text-zinc-300 tabular-nums">
+            {usage.draft_posts}
+          </span>
+          <span className="text-xs text-zinc-500 font-mono-ui">drafts</span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-medium text-zinc-300 tabular-nums">
+            {usage.posts_this_month}
+          </span>
+          <span className="text-xs text-zinc-500 font-mono-ui">this month</span>
+        </div>
       </div>
 
       {/* Breakdowns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Platform breakdown */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-zinc-50 text-base">By Platform</CardTitle>
-            <CardDescription className="text-zinc-500">
-              Published posts per platform.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {Object.keys(platformCounts).length === 0 ? (
-              <p className="text-sm text-zinc-600 py-4 text-center">No published posts yet</p>
+              <p className="text-sm text-zinc-500 py-4 text-center">No published posts yet</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(platformCounts)
@@ -206,13 +213,13 @@ export default function UsagePage() {
                           <span className="text-sm text-zinc-300">
                             {platformLabels[platform] ?? platform}
                           </span>
-                          <span className="text-xs text-zinc-500 font-mono">
+                          <span className="text-xs text-zinc-400 font-mono">
                             {count} ({pct}%)
                           </span>
                         </div>
                         <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-indigo-500/70"
+                            className="h-full rounded-full bg-purple-500/70"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -228,13 +235,10 @@ export default function UsagePage() {
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-zinc-50 text-base">By Source</CardTitle>
-            <CardDescription className="text-zinc-500">
-              Posts generated from each event type.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {Object.keys(sourceCounts).length === 0 ? (
-              <p className="text-sm text-zinc-600 py-4 text-center">No posts yet</p>
+              <p className="text-sm text-zinc-500 py-4 text-center">No posts yet</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(sourceCounts)
@@ -248,7 +252,7 @@ export default function UsagePage() {
                           <span className="text-sm text-zinc-300">
                             {sourceLabels[source] ?? source}
                           </span>
-                          <span className="text-xs text-zinc-500 font-mono">
+                          <span className="text-xs text-zinc-400 font-mono">
                             {count} ({pct}%)
                           </span>
                         </div>

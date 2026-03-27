@@ -89,17 +89,17 @@ export default function DashboardPage() {
   const { stats, allPosts } = data
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-zinc-50">Dashboard</h1>
+          <h1 className="text-2xl font-semibold text-zinc-50">Dashboard</h1>
           {showOnboarding && (
             <button
               type="button"
               onClick={() => startOnborda('onboarding')}
               className="text-zinc-500 hover:text-zinc-300 transition-colors"
-              title="Take a tour"
+              aria-label="Take a tour"
             >
               <HelpCircle className="h-4 w-4" />
             </button>
@@ -108,7 +108,7 @@ export default function DashboardPage() {
         <Link
           id="onborda-connect-repo"
           href="/repos"
-          className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[0.8rem] font-medium transition-colors"
+          className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
         >
           Connect repo
         </Link>

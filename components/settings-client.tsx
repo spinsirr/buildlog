@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { callEdgeFunction } from '@/lib/edge-function'
@@ -93,7 +93,7 @@ export function SettingsClient({
     } else if (error) {
       const platform = error.split('_')[0]
       const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
-      toast.error(`Failed to connect ${label}: ${error}`)
+      toast.error('Connection failed', { description: `Failed to connect ${label}: ${error}` })
       router.replace('/settings', { scroll: false })
     }
   }, [searchParams, router, supabase])
@@ -112,7 +112,7 @@ export function SettingsClient({
     try {
       const result = await callEdgeFunction<{ url: string }>('billing', { path: 'checkout' })
       if (!result.ok) {
-        toast.error(result.error ?? 'Failed to start checkout')
+        toast.error('Checkout failed', { description: result.error ?? 'Failed to start checkout' })
         return
       }
       window.location.href = result.data.url
@@ -126,7 +126,9 @@ export function SettingsClient({
     try {
       const result = await callEdgeFunction<{ url: string }>('billing', { path: 'portal' })
       if (!result.ok) {
-        toast.error(result.error ?? 'Failed to open billing portal')
+        toast.error('Billing portal failed', {
+          description: result.error ?? 'Failed to open billing portal',
+        })
         return
       }
       window.location.href = result.data.url
@@ -148,7 +150,7 @@ export function SettingsClient({
         .eq('id', user.id)
       if (error) {
         setProfile((p) => ({ ...p, auto_publish: prev }))
-        toast.error('Failed to update auto-publish setting')
+        toast.error('Update failed', { description: 'Failed to update auto-publish setting' })
       }
     }
   }
@@ -166,7 +168,7 @@ export function SettingsClient({
         .eq('id', user.id)
       if (error) {
         setProfile((p) => ({ ...p, email_notifications: prev }))
-        toast.error('Failed to update notification setting')
+        toast.error('Update failed', { description: 'Failed to update notification setting' })
       }
     }
   }
@@ -200,11 +202,14 @@ export function SettingsClient({
 
     if (!result.ok) {
       if (result.code === 'plan_limit') {
-        toast.error(result.error, {
+        toast.error('Platform limit reached', {
+          description: result.error,
           action: { label: 'Upgrade', onClick: () => handleUpgrade() },
         })
       } else {
-        toast.error(result.error ?? 'Failed to start connection')
+        toast.error('Connection failed', {
+          description: result.error ?? 'Failed to start connection',
+        })
       }
       setActionPlatform(null)
       return
@@ -223,11 +228,14 @@ export function SettingsClient({
       })
       if (!result.ok) {
         if (result.code === 'plan_limit') {
-          toast.error(result.error, {
+          toast.error('Platform limit reached', {
+            description: result.error,
             action: { label: 'Upgrade', onClick: () => handleUpgrade() },
           })
         } else {
-          toast.error(result.error ?? 'Failed to connect Bluesky')
+          toast.error('Connection failed', {
+            description: result.error ?? 'Failed to connect Bluesky',
+          })
         }
         return
       }
@@ -267,24 +275,29 @@ export function SettingsClient({
   const limits = PLANS[initialPlan]
 
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-bold text-zinc-50">Settings</h1>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-zinc-50">Settings</h1>
+        <p className="text-sm text-zinc-400 mt-1">
+          Manage your plan, connected platforms, and post preferences.
+        </p>
+      </div>
 
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-zinc-50">Plan & Billing</CardTitle>
-              <CardDescription className="text-zinc-500">
+              <p className="text-sm text-zinc-400 mt-1">
                 {isPro
-                  ? 'You\u2019re on the Pro plan. Unlimited everything.'
-                  : `Free plan \u2014 ${limits.posts_per_month} posts/mo, ${limits.repos} repo, ${limits.platforms} platform.`}
-              </CardDescription>
+                  ? 'Pro plan — unlimited everything.'
+                  : `Free — ${limits.posts_per_month} posts/mo, ${limits.repos} repo, ${limits.platforms} platform.`}
+              </p>
             </div>
             <Badge
               className={
                 isPro
-                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
                   : 'bg-zinc-800 text-zinc-400 border-0'
               }
             >
@@ -309,7 +322,7 @@ export function SettingsClient({
             </Button>
           ) : (
             <Button
-              className="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+              className="bg-purple-600 hover:bg-purple-500 text-white border-0"
               disabled={billingLoading}
               onClick={handleUpgrade}
             >
@@ -327,9 +340,6 @@ export function SettingsClient({
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-zinc-50">Connected Platforms</CardTitle>
-          <CardDescription className="text-zinc-500">
-            Connect your social accounts to publish build updates automatically.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {PLATFORMS.map((platform) => {
@@ -351,12 +361,12 @@ export function SettingsClient({
                             Connected
                           </Badge>
                         ) : (
-                          <Badge className="bg-zinc-800 text-zinc-500 border-0 text-[10px]">
+                          <Badge className="bg-zinc-800 text-zinc-400 border-0 text-[10px]">
                             Not connected
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">
+                      <p className="text-xs text-zinc-400 mt-0.5">
                         {connected && conn?.platform_username
                           ? `@${conn.platform_username}`
                           : platform.description}
@@ -374,7 +384,7 @@ export function SettingsClient({
                     className={
                       connected
                         ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
-                        : 'bg-indigo-600 hover:bg-indigo-500 text-white border-0'
+                        : 'bg-purple-600 hover:bg-purple-500 text-white border-0'
                     }
                   >
                     {busy ? (
@@ -390,7 +400,7 @@ export function SettingsClient({
                 {isBsky && showBskyForm && !connected && (
                   <form
                     onSubmit={handleBskySubmit}
-                    className="ml-8 p-4 rounded-lg border border-zinc-800 bg-zinc-900/50 space-y-3"
+                    className="ml-4 sm:ml-8 p-4 rounded-lg border border-zinc-800 bg-zinc-900/50 space-y-3"
                   >
                     <div className="space-y-2">
                       <label htmlFor="bsky-handle" className="text-xs font-medium text-zinc-300">
@@ -403,7 +413,7 @@ export function SettingsClient({
                         value={bskyHandle}
                         onChange={(e) => setBskyHandle(e.target.value)}
                         required
-                        className="w-full px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full min-w-0 px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
                     <div className="space-y-2">
@@ -417,7 +427,7 @@ export function SettingsClient({
                         value={bskyPassword}
                         onChange={(e) => setBskyPassword(e.target.value)}
                         required
-                        className="w-full px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full min-w-0 px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
                     <p className="text-[11px] text-zinc-500">
@@ -426,7 +436,7 @@ export function SettingsClient({
                         href="https://bsky.app/settings/app-passwords"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-indigo-400 hover:text-indigo-300 underline"
+                        className="text-purple-400 hover:text-purple-300 underline"
                       >
                         App Password
                       </a>{' '}
@@ -437,7 +447,7 @@ export function SettingsClient({
                         type="submit"
                         size="sm"
                         disabled={bskyLoading}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+                        className="bg-purple-600 hover:bg-purple-500 text-white border-0"
                       >
                         {bskyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Connect'}
                       </Button>
@@ -462,9 +472,6 @@ export function SettingsClient({
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
           <CardTitle className="text-zinc-50">Post Tone</CardTitle>
-          <CardDescription className="text-zinc-500">
-            Choose the voice for your generated posts.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {TONES.map((t) => (
@@ -475,19 +482,19 @@ export function SettingsClient({
               onClick={() => handleToneChange(t.value)}
               className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors text-left ${
                 tone === t.value
-                  ? 'border-indigo-500/50 bg-indigo-500/5'
+                  ? 'border-purple-500/50 bg-purple-500/5'
                   : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50'
               }`}
             >
               <div>
                 <Label
-                  className={`text-sm font-medium ${tone === t.value ? 'text-indigo-400' : 'text-zinc-200'}`}
+                  className={`text-sm font-medium ${tone === t.value ? 'text-purple-400' : 'text-zinc-200'}`}
                 >
                   {t.label}
                 </Label>
-                <p className="text-xs text-zinc-500 mt-0.5">{t.description}</p>
+                <p className="text-xs text-zinc-400 mt-0.5">{t.description}</p>
               </div>
-              {tone === t.value && <Check className="h-4 w-4 text-indigo-400 shrink-0" />}
+              {tone === t.value && <Check className="h-4 w-4 text-purple-400 shrink-0" />}
             </button>
           ))}
         </CardContent>
@@ -495,37 +502,23 @@ export function SettingsClient({
 
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>
-          <CardTitle className="text-zinc-50">Auto-Publish</CardTitle>
-          <CardDescription className="text-zinc-500">
-            Automatically publish posts when generated from webhooks instead of saving as drafts.
-          </CardDescription>
+          <CardTitle className="text-zinc-50">Preferences</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
+        <CardContent className="space-y-0 divide-y divide-zinc-800">
+          <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
             <div>
-              <Label className="text-sm font-medium text-zinc-200">Publish immediately</Label>
+              <Label className="text-sm font-medium text-zinc-200">Auto-publish</Label>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Posts from GitHub events will be published right away.
+                Publish posts from GitHub events immediately.
               </p>
             </div>
             <Switch checked={autoPublish} onCheckedChange={handleAutoPublishToggle} />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-zinc-50">Email Notifications</CardTitle>
-          <CardDescription className="text-zinc-500">
-            Receive email alerts when posts are published or drafts are created.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900/50">
+          <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
             <div>
-              <Label className="text-sm font-medium text-zinc-200">Send email notifications</Label>
+              <Label className="text-sm font-medium text-zinc-200">Email notifications</Label>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Get notified via email in addition to in-app notifications.
+                Get notified when posts are published or drafts are created.
               </p>
             </div>
             <Switch checked={emailNotifications} onCheckedChange={handleEmailNotificationsToggle} />

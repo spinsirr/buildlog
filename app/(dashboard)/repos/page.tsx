@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { ErrorState } from '@/components/error-state'
 import { RepoList } from '@/components/repo-list'
+import { buttonVariants } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
 import { ReposSkeleton } from './loading'
@@ -93,7 +94,10 @@ function ReposContent() {
           {GITHUB_APP_NAME ? (
             <a
               href={getInstallUrl()!}
-              className="bg-zinc-100 text-zinc-900 font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors text-sm text-center shrink-0"
+              className={buttonVariants({
+                size: 'sm',
+                className: 'shrink-0 bg-zinc-100 text-zinc-900 hover:bg-white border-0',
+              })}
             >
               + Add repos
             </a>
@@ -114,7 +118,9 @@ function ReposContent() {
             {GITHUB_APP_NAME ? (
               <a
                 href={getInstallUrl()!}
-                className="bg-zinc-100 text-zinc-900 font-medium px-5 py-2.5 rounded-lg hover:bg-white transition-colors text-sm"
+                className={buttonVariants({
+                  className: 'bg-zinc-100 text-zinc-900 hover:bg-white border-0',
+                })}
               >
                 Install GitHub App
               </a>

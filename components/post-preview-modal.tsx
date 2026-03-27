@@ -80,7 +80,7 @@ export function PostPreviewModal({
           <p className="text-[15px] text-zinc-200 leading-relaxed whitespace-pre-wrap">
             {renderPreviewContent(content)}
           </p>
-          <div className="text-xs text-zinc-600">
+          <div className="text-xs text-zinc-500">
             {new Date().toLocaleDateString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
@@ -117,13 +117,19 @@ export function PostPreviewModal({
                 {remaining}
               </span>
             )}
-            <svg width="24" height="24" viewBox="0 0 24 24" className="-rotate-90">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              className="-rotate-90"
+              aria-hidden="true"
+            >
               <circle
                 cx="12"
                 cy="12"
                 r={radius}
                 fill="none"
-                stroke="rgb(63 63 70)"
+                className="stroke-zinc-700"
                 strokeWidth="2"
               />
               <circle
@@ -131,13 +137,13 @@ export function PostPreviewModal({
                 cy="12"
                 r={radius}
                 fill="none"
-                stroke={
+                className={cn(
                   overLimit
-                    ? 'rgb(248 113 113)'
+                    ? 'stroke-red-400'
                     : remaining <= 20
-                      ? 'rgb(251 191 36)'
-                      : 'rgb(99 102 241)'
-                }
+                      ? 'stroke-amber-400'
+                      : 'stroke-indigo-400'
+                )}
                 strokeWidth="2"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
@@ -166,7 +172,7 @@ export function PostPreviewModal({
             type="button"
             onClick={onConfirmPublish}
             disabled={busy || overLimit || connectedPlatforms.length === 0}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-purple-600 text-white text-xs font-medium hover:bg-purple-500 disabled:opacity-50 transition-colors"
           >
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             {connectedPlatforms.length === 0

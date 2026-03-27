@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { PostCard } from '@/components/post-card'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
 import { createClient } from '@/lib/supabase/client'
@@ -25,11 +26,12 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
     })
     if (!result.ok) {
       if (result.code === 'plan_limit') {
-        toast.error(result.error, {
+        toast.error('Post limit reached', {
+          description: result.error,
           action: { label: 'Upgrade', onClick: () => (window.location.href = '/settings') },
         })
       } else {
-        toast.error(result.error || 'Failed to create post')
+        toast.error('Create failed', { description: result.error || 'Failed to create post' })
       }
     } else {
       setContent('')
@@ -46,26 +48,31 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
         onChange={(e) => setContent(e.target.value)}
         placeholder="Write a build update..."
         aria-label="Write a build update"
-        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 resize-none focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600"
+        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 resize-none focus:outline-none focus:border-zinc-600 placeholder:text-zinc-500"
         rows={3}
       />
       <div className="flex items-center justify-between">
         <span
           className={cn(
             'text-[11px] font-mono',
-            charCount > 280 ? 'text-red-400' : 'text-zinc-600'
+            charCount > 280 ? 'text-red-400' : 'text-zinc-500'
           )}
         >
           {charCount}/280
         </span>
-        <button
+        <Button
           type="submit"
+          size="sm"
           disabled={busy || !content.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+          className="bg-purple-600 hover:bg-purple-500 text-white border-0"
         >
-          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
           Create Draft
-        </button>
+        </Button>
       </div>
     </form>
   )
@@ -75,17 +82,21 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-4">
       <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center">
-        <FileText className="h-6 w-6 text-zinc-600" />
+        <FileText className="h-6 w-6 text-zinc-500" />
       </div>
       <div className="text-center space-y-1">
         <p className="text-sm font-medium text-zinc-400">No posts yet</p>
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-zinc-500">
           Connect a repo and start committing, or write a post manually.
         </p>
       </div>
       <Link
         href="/repos"
-        className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 text-[0.8rem] font-medium transition-colors"
+        className={buttonVariants({
+          variant: 'outline',
+          size: 'sm',
+          className: 'border-zinc-700 text-zinc-300',
+        })}
       >
         Connect a repo
       </Link>
@@ -140,7 +151,7 @@ export function PostsClient({
     setPosts((prev) => prev.filter((p) => p.id !== id))
     const { error } = await supabase.from('posts').delete().eq('id', id)
     if (error) {
-      toast.error('Failed to delete post')
+      toast.error('Delete failed', { description: error.message })
       await refreshPosts()
     }
   }
@@ -205,19 +216,19 @@ export function PostsClient({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-50">Posts</h1>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h1 className="text-2xl font-semibold text-zinc-50">Posts</h1>
+          <p className="text-sm text-zinc-400 mt-1">
             Review AI-generated drafts and publish to your platforms.
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          size="sm"
           onClick={() => setShowNewPost((v) => !v)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 transition-colors"
+          className="bg-purple-600 hover:bg-purple-500 text-white border-0"
         >
           <Plus className="h-3.5 w-3.5" />
           New Post
-        </button>
+        </Button>
       </div>
 
       <div className="relative">
@@ -225,9 +236,10 @@ export function PostsClient({
         <input
           type="text"
           placeholder="Search posts..."
+          aria-label="Search posts"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600"
         />
       </div>
 
@@ -263,7 +275,7 @@ export function PostsClient({
           {published.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
               <p className="text-sm text-zinc-500">No published posts yet.</p>
-              <p className="text-xs text-zinc-600">Publish a draft to see it here.</p>
+              <p className="text-xs text-zinc-500">Publish a draft to see it here.</p>
             </div>
           ) : (
             renderPosts(published)

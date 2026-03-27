@@ -30,21 +30,14 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
       </div>
       <div className="rounded-lg bg-zinc-900/50 overflow-x-auto">
         {posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center">
-              <GitBranch className="h-6 w-6 text-zinc-600" />
-            </div>
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-zinc-400">No posts yet</p>
-              <p className="text-xs text-zinc-600">
-                Connect a repo to start generating posts from your commits.
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <p className="text-sm text-zinc-400">No posts yet</p>
             <Link
               href="/repos"
-              className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 text-[0.8rem] font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-zinc-700 text-zinc-300 hover:bg-zinc-800 text-sm font-medium transition-colors"
             >
-              Connect your first repo
+              <GitBranch className="h-3.5 w-3.5" />
+              Connect a repo
             </Link>
           </div>
         ) : (
@@ -52,9 +45,9 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
             <TableHeader>
               <TableRow className="border-zinc-800 hover:bg-transparent">
                 <TableHead className="text-zinc-500">Post</TableHead>
-                <TableHead className="text-zinc-500">Platforms</TableHead>
+                <TableHead className="hidden md:table-cell text-zinc-500">Platforms</TableHead>
                 <TableHead className="text-zinc-500">Status</TableHead>
-                <TableHead className="text-zinc-500">Date</TableHead>
+                <TableHead className="hidden md:table-cell text-zinc-500">Date</TableHead>
                 <TableHead className="text-zinc-500 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -64,12 +57,12 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
                   <TableCell className="max-w-xs">
                     <p className="text-sm text-zinc-300 line-clamp-1">{post.content}</p>
                     {post.connected_repos && (
-                      <span className="text-xs text-zinc-600 font-mono">
+                      <span className="text-xs text-zinc-500 font-mono-ui">
                         {post.connected_repos.full_name}
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <div className="flex gap-1">
                       {post.platforms?.length ? (
                         post.platforms.map((p: string) => (
@@ -82,7 +75,7 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-xs text-zinc-600">--</span>
+                        <span className="text-xs text-zinc-500">--</span>
                       )}
                     </div>
                   </TableCell>
@@ -99,7 +92,7 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
                       {post.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-zinc-500 font-mono">
+                  <TableCell className="hidden md:table-cell text-xs text-zinc-500 font-mono-ui">
                     {new Date(post.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">

@@ -32,7 +32,7 @@ export function MobileSidebar() {
           render={
             <button
               type="button"
-              className="p-2 -ml-2 text-zinc-400 hover:text-zinc-50 transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2 text-zinc-400 hover:text-zinc-50 transition-colors"
               aria-label="Open navigation menu"
             />
           }

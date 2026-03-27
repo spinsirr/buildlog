@@ -17,7 +17,7 @@ export function SidebarNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="flex-1 px-3 py-4 space-y-1">
+    <nav aria-label="Dashboard" className="flex-1 px-3 py-4 space-y-1">
       {navItems.map((item) => (
         <Link
           key={item.href}

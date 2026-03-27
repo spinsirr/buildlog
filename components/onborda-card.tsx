@@ -30,6 +30,7 @@ export function OnbordaCard({
           </div>
           <button
             type="button"
+            aria-label="Close tour"
             onClick={() => closeOnborda()}
             className="text-zinc-500 hover:text-zinc-300 transition-colors -mt-1 -mr-1"
           >
@@ -55,7 +56,7 @@ export function OnbordaCard({
               <Button
                 size="sm"
                 onClick={() => nextStep()}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white h-7 text-xs"
+                className="bg-purple-600 hover:bg-purple-500 text-white h-7 text-xs"
               >
                 Next
               </Button>
@@ -63,7 +64,7 @@ export function OnbordaCard({
               <Button
                 size="sm"
                 onClick={() => closeOnborda()}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white h-7 text-xs"
+                className="bg-purple-600 hover:bg-purple-500 text-white h-7 text-xs"
               >
                 Get started
               </Button>
