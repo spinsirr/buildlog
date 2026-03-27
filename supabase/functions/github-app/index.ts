@@ -6,10 +6,26 @@ import { getLog, setupLogger } from "../_shared/logger.ts"
 await setupLogger()
 const log = getLog("github-app")
 
+function decodePemFromEnv(): string {
+  const raw = Deno.env.get("GITHUB_APP_PRIVATE_KEY") ?? ""
+  // If it starts with "-----BEGIN", it's a raw PEM (possibly with literal \n)
+  if (raw.startsWith("-----BEGIN")) {
+    return raw.replace(/\\n/g, "\n")
+  }
+  // Otherwise assume it's the entire PEM base64-encoded (safe for env var transport)
+  return new TextDecoder().decode(
+    Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)),
+  )
+}
+
 async function generateAppJwt(): Promise<string> {
   const appId = Deno.env.get("GITHUB_APP_ID")
-  const privateKey = Deno.env.get("GITHUB_APP_PRIVATE_KEY")
-  if (!appId || !privateKey) throw new Error("Missing GITHUB_APP_ID or GITHUB_APP_PRIVATE_KEY")
+  if (!appId) throw new Error("Missing GITHUB_APP_ID")
+
+  const pem = decodePemFromEnv()
+  if (!pem || !pem.includes("PRIVATE KEY")) {
+    throw new Error("GITHUB_APP_PRIVATE_KEY missing or invalid after decode")
+  }
 
   const now = Math.floor(Date.now() / 1000)
   const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }))
@@ -21,9 +37,7 @@ async function generateAppJwt(): Promise<string> {
     .replace(/\//g, "_")
     .replace(/=/g, "")
 
-  // Handle both real newlines and literal \n in env var
-  const normalizedKey = privateKey.replace(/\\n/g, "\n")
-  const pemContent = normalizedKey
+  const pemContent = pem
     .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/\s/g, "")

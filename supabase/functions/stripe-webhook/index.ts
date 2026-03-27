@@ -32,23 +32,24 @@ Deno.serve(async (req) => {
 
   const supabase = createServiceClient()
 
-  // Idempotency: check if this event was already processed
-  const { count: existingCount } = await supabase
+  // Idempotency: atomic upsert with ignoreDuplicates on the event_id unique constraint.
+  // PostgREST translates this to INSERT ... ON CONFLICT DO NOTHING.
+  // If the row already exists the insert is a no-op and count will be 0, so we skip processing.
+  const { count: insertedCount } = await supabase
     .from("webhook_events")
-    .select("*", { count: "exact", head: true })
-    .eq("event_id", event.id)
+    .upsert(
+      {
+        event_id: event.id,
+        event_type: event.type,
+        source: "stripe",
+        processed_at: new Date().toISOString(),
+      },
+      { onConflict: "event_id", ignoreDuplicates: true, count: "exact" },
+    )
 
-  if ((existingCount ?? 0) > 0) {
+  if ((insertedCount ?? 0) === 0) {
     return jsonResponse({ received: true, skipped: "duplicate" }, req, { status: 200 })
   }
-
-  // Record this event before processing
-  await supabase.from("webhook_events").insert({
-    event_id: event.id,
-    event_type: event.type,
-    source: "stripe",
-    processed_at: new Date().toISOString(),
-  })
 
   try {
     switch (event.type) {
@@ -134,6 +135,44 @@ Deno.serve(async (req) => {
             userId,
             subscriptionId: subscription.id,
             error: String(error),
+          })
+        }
+        break
+      }
+
+      case "invoice.payment_failed": {
+        // Payment failed — mark the subscription as past_due (or whatever Stripe reports)
+        const invoice = event.data.object
+        const failedSubId = invoice.subscription as string | null
+
+        if (!failedSubId) {
+          log.error("invoice.payment_failed: no subscription on invoice", { invoiceId: invoice.id })
+          break
+        }
+
+        // Retrieve the subscription from Stripe to get the current status
+        const failedSub = await getStripe().subscriptions.retrieve(failedSubId)
+        const failedStatus = failedSub.status ?? "past_due"
+
+        const { error } = await supabase
+          .from("subscriptions")
+          .update({
+            status: failedStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("stripe_subscription_id", failedSubId)
+
+        if (error) {
+          log.error("invoice.payment_failed: failed to update subscription status", {
+            subscriptionId: failedSubId,
+            status: failedStatus,
+            error: String(error),
+          })
+        } else {
+          log.info("invoice.payment_failed: subscription marked as {status}", {
+            subscriptionId: failedSubId,
+            status: failedStatus,
+            invoiceId: invoice.id,
           })
         }
         break

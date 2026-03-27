@@ -2,7 +2,8 @@
   "version": "5",
   "specifiers": {
     "jsr:@logtape/logtape@*": "2.0.2",
-    "jsr:@logtape/logtape@0.11": "0.11.1"
+    "jsr:@logtape/logtape@0.11": "0.11.1",
+    "jsr:@std/dotenv@*": "0.225.6"
   },
   "jsr": {
     "@logtape/logtape@0.11.1": {
@@ -10,6 +11,9 @@
     },
     "@logtape/logtape@2.0.2": {
       "integrity": "546fcd514e66f2b841c6f261fa3a3d905b52d876dc1bba8ffe1a087d9275c4c9"
+    },
+    "@std/dotenv@0.225.6": {
+      "integrity": "1d6f9db72f565bd26790fa034c26e45ecb260b5245417be76c2279e5734c421b"
     }
   },
   "redirects": {

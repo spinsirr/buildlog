@@ -77,12 +77,15 @@ Deno.serve(async (req) => {
         return errorResponse("Billing not configured", 500, req)
       }
 
+      // Set metadata at both session level (for checkout.session.completed) and
+      // subscription_data level (for subscription lifecycle events).
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "subscription",
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${frontendUrl}/settings?checkout=success`,
         cancel_url: `${frontendUrl}/settings?checkout=canceled`,
+        metadata: { user_id: user.id },
         subscription_data: {
           metadata: { user_id: user.id },
         },
