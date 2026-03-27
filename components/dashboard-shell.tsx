@@ -9,7 +9,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth()
 
   if (loading || !session) {
-    return <div className="min-h-screen bg-zinc-950" />
+    return (
+      <div className="min-h-screen bg-zinc-950" aria-busy="true">
+        <span className="sr-only">Loading...</span>
+      </div>
+    )
   }
 
   return (

@@ -19,7 +19,13 @@ export async function callEdgeFunction<T = unknown>(
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  if (!session) return { error: 'Not authenticated', ok: false }
+  if (!session?.access_token) return { error: 'Not authenticated', ok: false }
+
+  // Verify the user server-side (getSession reads from local storage without validation)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated', ok: false }
 
   const pathSuffix = options?.path ? `/${options.path}` : ''
   const url = `${SUPABASE_URL}/functions/v1/${name}${pathSuffix}`

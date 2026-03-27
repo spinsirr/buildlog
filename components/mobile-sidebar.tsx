@@ -33,6 +33,7 @@ export function MobileSidebar() {
             <button
               type="button"
               className="p-2 -ml-2 text-zinc-400 hover:text-zinc-50 transition-colors"
+              aria-label="Open navigation menu"
             />
           }
         >
@@ -57,6 +58,7 @@ export function MobileSidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
+                aria-current={pathname === item.href ? 'page' : undefined}
                 className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                   pathname === item.href
                     ? 'text-zinc-50 bg-zinc-800/50'
@@ -90,7 +92,7 @@ export function MobileSidebar() {
                 type="button"
                 onClick={handleLogout}
                 className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                title="Sign out"
+                aria-label="Sign out"
               >
                 <LogOut className="h-4 w-4" />
               </button>

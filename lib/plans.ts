@@ -1,3 +1,4 @@
+// CANONICAL COPY: supabase/functions/_shared/plans.ts — keep both files in sync
 export const PLANS = {
   free: {
     name: 'Free',

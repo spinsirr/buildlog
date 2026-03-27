@@ -322,7 +322,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     strippedData.url = postData.url
   }
 
-  // Create the post
+  // Create the post as draft first — only mark published after platforms succeed
   const { data: post } = await supabase
     .from("posts")
     .insert({
@@ -331,8 +331,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       "source_type": sourceType,
       source_data: strippedData,
       content,
-      status: shouldPublish ? "published" : "draft",
-      published_at: shouldPublish ? new Date().toISOString() : null,
+      status: "draft",
+      published_at: null,
     })
     .select("id")
     .single()
@@ -342,6 +342,12 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     const hasFailures = Object.keys(result.errors).length > 0
 
     if (result.publishedPlatforms.length > 0) {
+      // At least one platform succeeded — mark as published
+      await supabase
+        .from("posts")
+        .update({ status: "published", published_at: new Date().toISOString() })
+        .eq("id", post.id)
+
       const failedNames = Object.keys(result.errors)
       const notifMessage = hasFailures
         ? `Post published to ${result.publishedPlatforms.join(", ")} but failed on ${
@@ -362,6 +368,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         log.error("notify failed: {error}", { error: String(notifyErr) })
       }
     } else {
+      // All platforms failed — stays as draft
       try {
         await notify(supabase, {
           userId: profile.id,

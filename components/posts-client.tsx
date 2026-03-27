@@ -2,7 +2,7 @@
 
 import { FileText, Loader2, Plus, Search } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { PostCard } from '@/components/post-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -45,6 +45,7 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Write a build update..."
+        aria-label="Write a build update"
         className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 resize-none focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600"
         rows={3}
       />
@@ -100,23 +101,29 @@ export function PostsClient({
   initialConnectedPlatforms: string[]
 }) {
   const supabase = useMemo(() => createClient(), [])
+  const publishingRef = useRef(false)
   const [showNewPost, setShowNewPost] = useState(false)
   const [posts, setPosts] = useState(initialPosts)
   const [search, setSearch] = useState('')
   const connectedPlatforms = initialConnectedPlatforms
 
   async function handleUpdate(id: string, updates: Record<string, unknown>) {
-    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)))
-
     if (updates.status === 'published') {
-      const result = await callEdgeFunction<{ error?: string }>('publish-post', {
-        body: { id, content: updates.content },
-      })
-      if (!result.ok) {
+      if (publishingRef.current) return
+      publishingRef.current = true
+      try {
+        setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)))
+        const result = await callEdgeFunction<{ error?: string }>('publish-post', {
+          body: { id, content: updates.content },
+        })
+        if (!result.ok) {
+          await refreshPosts()
+          throw new Error(result.error || 'Failed to publish')
+        }
         await refreshPosts()
-        throw new Error(result.error || 'Failed to publish')
+      } finally {
+        publishingRef.current = false
       }
-      await refreshPosts()
     } else {
       const { error } = await supabase
         .from('posts')

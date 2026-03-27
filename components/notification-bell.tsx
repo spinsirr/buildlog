@@ -1,7 +1,8 @@
 'use client'
 
 import { Bell } from 'lucide-react'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import type { Notification } from '@/lib/types'
@@ -20,6 +21,8 @@ async function fetchNotifications() {
 }
 
 export function NotificationBell() {
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
   const { data, mutate } = useSWR<{
     notifications: Notification[]
@@ -31,14 +34,26 @@ export function NotificationBell() {
   const unreadCount = data?.unreadCount ?? 0
   const notifications = data?.notifications ?? []
 
+  const handleEscapeKey = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) {
+        setOpen(false)
+      }
+    },
+    [open]
+  )
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscapeKey)
+    return () => document.removeEventListener('keydown', handleEscapeKey)
+  }, [handleEscapeKey])
+
   async function markAllRead() {
-    const supabase = createClient()
     await supabase.from('notifications').update({ read: true }).eq('read', false)
     mutate()
   }
 
   async function markRead(id: string) {
-    const supabase = createClient()
     await supabase.from('notifications').update({ read: true }).eq('id', id)
     mutate()
   }
@@ -49,7 +64,7 @@ export function NotificationBell() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 rounded-md text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50 transition-colors"
-        title="Notifications"
+        aria-label="Notifications"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
@@ -63,7 +78,11 @@ export function NotificationBell() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
 
           {/* Dropdown */}
-          <div className="absolute right-0 top-full mt-1 w-72 z-50 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl">
+          <div
+            role="menu"
+            aria-label="Notifications"
+            className="absolute right-0 top-full mt-1 w-72 z-50 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl"
+          >
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
               <span className="text-xs font-medium text-zinc-300">
                 Notifications
@@ -90,9 +109,10 @@ export function NotificationBell() {
                   <button
                     key={n.id}
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       if (!n.read) markRead(n.id)
-                      if (n.link) window.location.href = n.link
+                      if (n.link) router.push(n.link)
                       setOpen(false)
                     }}
                     className={cn(

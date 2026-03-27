@@ -121,66 +121,6 @@ export function SettingsClient({
     }
   }, [])
 
-  // Handle linkIdentity redirect — capture provider token and save to platform_connections
-  useEffect(() => {
-    const linking = localStorage.getItem('buildlog_linking')
-    if (!linking) return
-
-    let handled = false
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (
-        _event: string,
-        session: { provider_token?: string | null; provider_refresh_token?: string | null } | null
-      ) => {
-        if (handled || !session?.provider_token) return
-        handled = true
-        localStorage.removeItem('buildlog_linking')
-
-        const providerName = linking === 'linkedin' ? 'linkedin_oidc' : linking
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        const identity = user?.identities?.find(
-          (i: { provider: string }) => i.provider === providerName
-        )
-        const identityData = (identity?.identity_data ?? {}) as Record<string, string>
-
-        const result = await callEdgeFunction<{ ok: boolean; username?: string }>('social-auth', {
-          path: `${linking}/link`,
-          body: {
-            provider_token: session.provider_token,
-            provider_refresh_token: session.provider_refresh_token,
-            platform_user_id: identity?.id ?? '',
-            platform_username:
-              identityData.user_name ?? identityData.preferred_username ?? identityData.name ?? '',
-          },
-        })
-
-        if (result.ok) {
-          const label = PLATFORMS.find((p) => p.id === linking)?.label ?? linking
-          toast.success(`${label} connected successfully`)
-          setConnections((prev) =>
-            prev.map((c) =>
-              c.platform === linking
-                ? { ...c, connected: true, platform_username: result.data?.username ?? '' }
-                : c
-            )
-          )
-        } else if (result.code === 'plan_limit') {
-          toast.error(result.error, {
-            action: { label: 'Upgrade', onClick: () => handleUpgrade() },
-          })
-        } else {
-          toast.error(result.error || 'Failed to save connection. Please try again.')
-        }
-      }
-    )
-
-    return () => subscription.unsubscribe()
-  }, [supabase, handleUpgrade])
 
   async function handleManageSubscription() {
     setBillingLoading(true)
@@ -197,22 +137,32 @@ export function SettingsClient({
   }
 
   async function handleAutoPublishToggle(checked: boolean) {
-    setProfile((prev) => ({ ...prev, auto_publish: checked }))
+    const prev = profile.auto_publish
+    setProfile((p) => ({ ...p, auto_publish: checked }))
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('profiles').update({ auto_publish: checked }).eq('id', user.id)
+      const { error } = await supabase.from('profiles').update({ auto_publish: checked }).eq('id', user.id)
+      if (error) {
+        setProfile((p) => ({ ...p, auto_publish: prev }))
+        toast.error('Failed to update auto-publish setting')
+      }
     }
   }
 
   async function handleEmailNotificationsToggle(checked: boolean) {
-    setProfile((prev) => ({ ...prev, email_notifications: checked }))
+    const prev = profile.email_notifications
+    setProfile((p) => ({ ...p, email_notifications: checked }))
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('profiles').update({ email_notifications: checked }).eq('id', user.id)
+      const { error } = await supabase.from('profiles').update({ email_notifications: checked }).eq('id', user.id)
+      if (error) {
+        setProfile((p) => ({ ...p, email_notifications: prev }))
+        toast.error('Failed to update notification setting')
+      }
     }
   }
 
@@ -231,36 +181,31 @@ export function SettingsClient({
     }
   }
 
-  function handleConnect(platform: string) {
+  async function handleConnect(platform: string) {
     if (platform === 'bluesky') {
       setShowBskyForm(true)
       return
     }
     setActionPlatform(platform)
 
-    const providerName = platform === 'linkedin' ? 'linkedin_oidc' : platform
-    const scopes =
-      platform === 'twitter'
-        ? 'tweet.read tweet.write users.read offline.access'
-        : 'openid profile email w_member_social'
+    const result = await callEdgeFunction<{ url: string }>('social-auth', {
+      path: platform,
+      body: { return_url: window.location.origin },
+    })
 
-    localStorage.setItem('buildlog_linking', platform)
+    if (!result.ok) {
+      if (result.code === 'plan_limit') {
+        toast.error(result.error, {
+          action: { label: 'Upgrade', onClick: () => handleUpgrade() },
+        })
+      } else {
+        toast.error(result.error ?? 'Failed to start connection')
+      }
+      setActionPlatform(null)
+      return
+    }
 
-    supabase.auth
-      .linkIdentity({
-        provider: providerName as 'twitter' | 'linkedin_oidc',
-        options: {
-          redirectTo: `${window.location.origin}/settings`,
-          scopes,
-        },
-      })
-      .then(({ error }: { error: { message: string } | null }) => {
-        if (error) {
-          localStorage.removeItem('buildlog_linking')
-          toast.error(error.message)
-          setActionPlatform(null)
-        }
-      })
+    window.location.href = result.data.url
   }
 
   async function handleBskySubmit(e: React.FormEvent) {

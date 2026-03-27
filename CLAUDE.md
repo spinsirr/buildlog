@@ -26,7 +26,8 @@ Vercel (Next.js 16)
 ├── Server Components — pages fetch data via server-side Supabase client
 ├── Dashboard layout — server-side auth check (redirect if not logged in)
 ├── Client Components — only for interactive leaves (buttons, forms, modals)
-└── No API routes, no proxy.ts, no middleware
+├── proxy.ts — redirects unauthed users from /dashboard to /login
+└── No API routes, no middleware
 
 Supabase Edge Functions (Deno runtime)
 ├── github-webhook — GitHub push/PR/release → AI post generation
@@ -60,4 +61,5 @@ Supabase Edge Functions (Deno runtime)
 - DB writes / external API calls go through Edge Functions via `supabase.functions.invoke()`
 - For Edge Functions with path routing, use raw `fetch()` to `NEXT_PUBLIC_SUPABASE_URL/functions/v1/<name>/<path>`
 - Edge Function shared utilities live in `supabase/functions/_shared/`
-- No proxy.ts, no middleware, no API routes
+- proxy.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
+- No middleware, no API routes

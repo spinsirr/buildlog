@@ -23,6 +23,7 @@ export function SidebarNav() {
           key={item.href}
           id={item.id}
           href={item.href}
+          aria-current={pathname === item.href ? 'page' : undefined}
           className={cn(
             'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
             pathname === item.href

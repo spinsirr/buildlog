@@ -75,7 +75,8 @@ async function fetchUsageData() {
     supabase
       .from('posts')
       .select('status, source_type, platforms, created_at')
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .limit(500),
     supabase
       .from('connected_repos')
       .select('*', { count: 'exact', head: true })

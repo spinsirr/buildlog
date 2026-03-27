@@ -2,6 +2,7 @@ import { ArrowRight, GitCommit, Github, Globe, Star, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LandingNav } from '@/components/landing-nav'
+import { LogoMark } from '@/components/logo-mark'
 
 // ─── SEO Metadata ─────────────────────────────────────────────────────────────
 const SITE_URL = 'https://buildlog.ink'
@@ -97,27 +98,6 @@ function JsonLd() {
   )
 }
 
-// ─── Logo (used in footer) ────────────────────────────────────────────────────
-function LogoMark({ size = 32 }: { size?: number }) {
-  const cell = Math.round(size * 0.42)
-  const start2 = size - cell
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      fill="none"
-      aria-hidden="true"
-      role="img"
-    >
-      <rect x="0" y="0" width={cell} height={cell} fill="#000000" />
-      <rect x={start2} y="0" width={cell} height={cell} fill="#FF6B6B" />
-      <rect x="0" y={start2} width={cell} height={cell} fill="#FFD93D" />
-      <rect x={start2} y={start2} width={cell} height={cell} fill="#000000" />
-    </svg>
-  )
-}
-
 // ─── Marquee strip ────────────────────────────────────────────────────────────
 const MARQUEE_ITEMS = [
   'Twitter · X',
@@ -131,17 +111,12 @@ const MARQUEE_ITEMS = [
 
 function MarqueeStrip() {
   return (
-    <div
-      className="border-y-4 border-black py-4 overflow-hidden"
-      style={{ background: '#000000' }}
-      aria-hidden="true"
-    >
+    <div className="border-y-4 border-black py-4 overflow-hidden bg-black" aria-hidden="true">
       <div className="flex w-max animate-marquee">
         {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
           <span
             key={i}
-            className="font-mono-ui text-sm font-bold uppercase tracking-[0.2em] px-6 whitespace-nowrap"
-            style={{ color: i % 2 === 0 ? '#BFFF00' : '#FFD93D' }}
+            className={`font-mono-ui text-sm font-bold uppercase tracking-[0.2em] px-6 whitespace-nowrap ${i % 2 === 0 ? 'text-neo-lime' : 'text-neo-secondary'}`}
           >
             {item}
             <span className="mx-4 opacity-60">✦</span>
@@ -159,45 +134,45 @@ function TerminalDemo() {
       <div className="grid grid-cols-1 md:grid-cols-[1fr_100px_1fr] gap-4 md:gap-6 items-center">
         {/* Commit terminal */}
         <article
-          className="border-4 border-black neo-terminal bg-[#1A1A2E]"
+          className="border-4 border-black neo-terminal bg-neo-dark"
           aria-label="Example: a git commit triggers BuildLog"
         >
           <div className="flex items-center gap-2 px-4 py-3 border-b-4 border-black">
             <div
-              className="w-3 h-3 rounded-full bg-[#FF6B6B] border-2 border-black"
+              className="w-3 h-3 rounded-full bg-neo-accent border-2 border-black"
               aria-hidden="true"
             />
             <div
-              className="w-3 h-3 rounded-full bg-[#FFD93D] border-2 border-black"
+              className="w-3 h-3 rounded-full bg-neo-secondary border-2 border-black"
               aria-hidden="true"
             />
             <div
-              className="w-3 h-3 rounded-full bg-[#A8E6CF] border-2 border-black"
+              className="w-3 h-3 rounded-full bg-neo-mint border-2 border-black"
               aria-hidden="true"
             />
-            <span className="ml-2 font-code text-xs text-[#BFFF00] tracking-widest uppercase">
+            <span className="ml-2 font-code text-xs text-neo-lime tracking-widest uppercase">
               terminal
             </span>
           </div>
           <div className="p-5 font-code text-sm space-y-2">
             <div className="flex gap-2">
-              <span className="text-[#FFD93D]">$</span>
-              <span className="text-[#BFFF00]">
+              <span className="text-neo-secondary">$</span>
+              <span className="text-neo-lime">
                 git commit <span className="text-white/60">-m</span>{' '}
                 <span className="text-white">&quot;feat: add dark mode&quot;</span>
               </span>
             </div>
-            <div className="text-[#C4B5FD] text-xs pl-5 opacity-80">
+            <div className="text-neo-muted text-xs pl-5 opacity-80">
               1 file changed, 24 insertions(+)
             </div>
-            <div className="text-[#C4B5FD] text-xs pl-5 opacity-80">
+            <div className="text-neo-muted text-xs pl-5 opacity-80">
               [main 3f8a1d2] feat: add dark mode
             </div>
             <div className="pt-2 flex items-center gap-2">
-              <span className="text-[#A8E6CF]" aria-hidden="true">
+              <span className="text-neo-mint" aria-hidden="true">
                 ✓
               </span>
-              <span className="text-[#BFFF00] opacity-80">buildlog detected push</span>
+              <span className="text-neo-lime opacity-80">buildlog detected push</span>
             </div>
           </div>
         </article>
@@ -207,24 +182,24 @@ function TerminalDemo() {
           className="flex flex-row md:flex-col items-center justify-center gap-3"
           aria-hidden="true"
         >
-          <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-[#BFFF00]" />
+          <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-neo-lime" />
           <div
-            className="border-2 border-[#BFFF00] px-3 py-2 flex-shrink-0"
+            className="border-2 border-neo-lime px-3 py-2 flex-shrink-0"
             style={{ boxShadow: '3px 3px 0 0 #BFFF00' }}
           >
-            <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-[#BFFF00]">
+            <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-neo-lime">
               AI ✦
             </span>
           </div>
-          <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-[#BFFF00]" />
+          <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-neo-lime" />
         </div>
 
         {/* Post output */}
         <article
-          className="border-4 border-black neo-terminal bg-[#FFFDF5]"
+          className="border-4 border-black neo-terminal bg-neo-cream"
           aria-label="Example: AI-generated social media draft"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b-4 border-black bg-[#FFD93D]">
+          <div className="flex items-center justify-between px-4 py-3 border-b-4 border-black bg-neo-secondary">
             <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
               Draft ready
             </span>
@@ -240,9 +215,8 @@ function TerminalDemo() {
               {['#buildinpublic', '#webdev'].map((tag) => (
                 <span
                   key={tag}
-                  className="inline-block border-2 border-black px-2 py-0.5 rotate-1 font-mono-ui text-xs font-bold uppercase tracking-wider"
+                  className="inline-block border-2 border-black px-2 py-0.5 rotate-1 font-mono-ui text-xs font-bold uppercase tracking-wider bg-neo-muted"
                   style={{
-                    background: '#C4B5FD',
                     boxShadow: '2px 2px 0 0 #000000',
                   }}
                 >
@@ -252,7 +226,7 @@ function TerminalDemo() {
             </div>
             <div className="flex items-center gap-2 pt-2 border-t-2 border-black">
               <div
-                className="w-2.5 h-2.5 rounded-full bg-[#A8E6CF] border-2 border-black"
+                className="w-2.5 h-2.5 rounded-full bg-neo-mint border-2 border-black"
                 aria-hidden="true"
               />
               <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
@@ -274,7 +248,7 @@ const STEPS = [
     iconLabel: 'Git commit icon',
     title: 'Connect GitHub',
     desc: 'Link any repo with one click. We monitor pushes, PRs, and releases automatically.',
-    accent: '#FFD93D',
+    accentClass: 'bg-neo-secondary',
   },
   {
     num: '02',
@@ -282,7 +256,7 @@ const STEPS = [
     iconLabel: 'Lightning bolt icon',
     title: 'AI writes the post',
     desc: 'Every meaningful commit becomes a ready-to-publish social update, crafted by AI.',
-    accent: '#C4B5FD',
+    accentClass: 'bg-neo-muted',
   },
   {
     num: '03',
@@ -290,7 +264,7 @@ const STEPS = [
     iconLabel: 'Globe icon',
     title: 'Publish everywhere',
     desc: 'Review drafts and ship to Twitter/X and LinkedIn from one dashboard. More platforms coming soon.',
-    accent: '#FF6B6B',
+    accentClass: 'bg-neo-accent',
   },
 ]
 
@@ -300,19 +274,19 @@ const STATS = [
     num: '0s',
     label: 'to write a post',
     sub: 'AI generates it instantly',
-    accent: '#FF6B6B',
+    accentClass: 'bg-neo-accent',
   },
   {
     num: '2',
     label: 'platforms supported',
     sub: 'Twitter · LinkedIn — more coming soon',
-    accent: '#FFD93D',
+    accentClass: 'bg-neo-secondary',
   },
   {
     num: '∞',
     label: 'posts per month',
     sub: 'unlimited on Pro plan',
-    accent: '#C4B5FD',
+    accentClass: 'bg-neo-muted',
   },
 ]
 
@@ -333,7 +307,7 @@ function GridOverlay({ opacity = '08' }: { opacity?: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div className="min-h-screen antialiased" style={{ background: '#FFFDF5', color: '#000000' }}>
+    <div className="min-h-screen antialiased bg-neo-cream text-black">
       <JsonLd />
       <LandingNav />
 
@@ -362,7 +336,7 @@ export default function LandingPage() {
             {/* Badge */}
             <div className="mb-8 md:mb-10">
               <div
-                className="inline-flex border-2 border-black px-4 py-1.5 -rotate-1 bg-[#FFD93D]"
+                className="inline-flex border-2 border-black px-4 py-1.5 -rotate-1 bg-neo-secondary"
                 style={{ boxShadow: '3px 3px 0 0 #000000' }}
               >
                 <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em]">
@@ -381,7 +355,7 @@ export default function LandingPage() {
               <span className="block">
                 into{' '}
                 <span
-                  className="inline-block border-4 border-black px-3 rotate-1 bg-[#FF6B6B]"
+                  className="inline-block border-4 border-black px-3 rotate-1 bg-neo-accent"
                   style={{ boxShadow: '6px 6px 0 0 #000000' }}
                 >
                   content
@@ -400,7 +374,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-[#FF6B6B] font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-neo-accent font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
               >
                 Start for free <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -408,7 +382,7 @@ export default function LandingPage() {
                 href="https://github.com/spencerzhao2/buildlog"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-[#FFFDF5] font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-neo-cream font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
               >
                 <Github className="h-4 w-4" aria-hidden="true" /> View on GitHub
               </Link>
@@ -416,7 +390,7 @@ export default function LandingPage() {
 
             {/* Floating badges (desktop) */}
             <div
-              className="absolute top-0 right-0 border-2 border-black px-3 py-2 rotate-3 hidden lg:block bg-[#BFFF00]"
+              className="absolute top-0 right-0 border-2 border-black px-3 py-2 rotate-3 hidden lg:block bg-neo-lime"
               style={{ boxShadow: '4px 4px 0 0 #000000' }}
               aria-hidden="true"
             >
@@ -444,7 +418,7 @@ export default function LandingPage() {
         {/* ── DEMO ─────────────────────────────────────────────────────────── */}
         <section
           aria-labelledby="demo-heading"
-          className="border-y-4 border-black py-16 px-6 bg-[#1A1A2E]"
+          className="border-y-4 border-black py-16 px-6 bg-neo-dark"
         >
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-10">
@@ -452,10 +426,10 @@ export default function LandingPage() {
                 Live demo
               </h2>
               <div
-                className="inline-flex border-2 border-[#BFFF00] px-4 py-1.5 bg-[#1A1A2E]"
+                className="inline-flex border-2 border-neo-lime px-4 py-1.5 bg-neo-dark"
                 style={{ boxShadow: '3px 3px 0 0 #BFFF00' }}
               >
-                <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-[#BFFF00]">
+                <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-neo-lime">
                   ✦ See it in action
                 </span>
               </div>
@@ -465,15 +439,11 @@ export default function LandingPage() {
         </section>
 
         {/* ── HOW IT WORKS ──────────────────────────────────────────────────── */}
-        <section
-          aria-labelledby="how-it-works-heading"
-          className="py-24 px-6"
-          style={{ background: '#FFFDF5' }}
-        >
+        <section aria-labelledby="how-it-works-heading" className="py-24 px-6 bg-neo-cream">
           <div className="max-w-5xl mx-auto">
             <div className="mb-14">
               <div
-                className="inline-flex border-2 border-black px-4 py-1.5 mb-6 -rotate-1 bg-[#C4B5FD]"
+                className="inline-flex border-2 border-black px-4 py-1.5 mb-6 -rotate-1 bg-neo-muted"
                 style={{ boxShadow: '3px 3px 0 0 #000000' }}
               >
                 <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em]">
@@ -492,10 +462,10 @@ export default function LandingPage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-              {STEPS.map(({ num, Icon, iconLabel, title, desc, accent }) => (
+              {STEPS.map(({ num, Icon, iconLabel, title, desc, accentClass }) => (
                 <article
                   key={num}
-                  className="border-4 border-black p-8 bg-[#FFFDF5] neo-card relative overflow-hidden"
+                  className="border-4 border-black p-8 bg-neo-cream neo-card relative overflow-hidden"
                 >
                   {/* Watermark number */}
                   <div
@@ -508,9 +478,8 @@ export default function LandingPage() {
                   <div className="relative">
                     {/* Numbered badge */}
                     <div
-                      className="inline-flex border-2 border-black px-2.5 py-1 mb-5 rotate-1 font-mono-ui text-sm font-bold text-black"
+                      className={`inline-flex border-2 border-black px-2.5 py-1 mb-5 rotate-1 font-mono-ui text-sm font-bold text-black ${accentClass}`}
                       style={{
-                        background: accent,
                         boxShadow: '2px 2px 0 0 #000000',
                       }}
                     >
@@ -537,19 +506,14 @@ export default function LandingPage() {
         </section>
 
         {/* ── STATS ─────────────────────────────────────────────────────────── */}
-        <section
-          aria-label="Key statistics"
-          className="border-t-4 border-black"
-          style={{ background: '#FFFDF5' }}
-        >
+        <section aria-label="Key statistics" className="border-t-4 border-black bg-neo-cream">
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3">
-            {STATS.map(({ num, label, sub, accent }, i) => (
+            {STATS.map(({ num, label, sub, accentClass }, i) => (
               <div
                 key={num}
-                className={`border-black p-10 md:p-14 ${
+                className={`border-black p-10 md:p-14 ${accentClass} ${
                   i < 2 ? 'border-b-4 md:border-b-0 md:border-r-4' : ''
                 }`}
-                style={{ background: accent }}
               >
                 <div
                   className="font-display font-black leading-none mb-3"
@@ -570,8 +534,7 @@ export default function LandingPage() {
         {/* ── CTA ───────────────────────────────────────────────────────────── */}
         <section
           aria-labelledby="cta-heading"
-          className="border-t-4 border-black py-24 px-6 relative overflow-hidden"
-          style={{ background: '#FFD93D' }}
+          className="border-t-4 border-black py-24 px-6 relative overflow-hidden bg-neo-secondary"
         >
           <GridOverlay opacity="06" />
 
@@ -595,7 +558,7 @@ export default function LandingPage() {
 
           <div className="max-w-3xl mx-auto text-center relative">
             <div
-              className="inline-flex border-2 border-black px-4 py-1.5 mb-8 rotate-2 bg-[#FF6B6B]"
+              className="inline-flex border-2 border-black px-4 py-1.5 mb-8 rotate-2 bg-neo-accent"
               style={{ boxShadow: '3px 3px 0 0 #000000' }}
             >
               <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-black">
@@ -630,14 +593,14 @@ export default function LandingPage() {
       </main>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
-      <footer className="border-t-4 border-black py-8 px-6" style={{ background: '#FFFDF5' }}>
+      <footer className="border-t-4 border-black py-8 px-6 bg-neo-cream">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <LogoMark size={24} />
             <span className="font-display font-bold text-lg tracking-tight">buildlog</span>
           </div>
           <span className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40">
-            © 2025 buildlog
+            © {new Date().getFullYear()} buildlog
           </span>
         </div>
       </footer>

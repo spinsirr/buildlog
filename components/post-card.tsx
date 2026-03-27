@@ -118,6 +118,7 @@ export function PostCard({
               onChange={(e) => setEditContent(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-md p-3 text-sm text-zinc-200 resize-none focus:outline-none focus:border-zinc-500"
               rows={4}
+              aria-label="Edit post content"
             />
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
@@ -238,8 +239,8 @@ export function PostCard({
                 type="button"
                 onClick={handleRegenerate}
                 disabled={regenerating || busy}
-                className="p-1.5 rounded-md text-zinc-500 hover:text-amber-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                title="Regenerate with AI"
+                className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-md text-zinc-500 hover:text-amber-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                aria-label="Regenerate with AI"
               >
                 {regenerating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -253,8 +254,8 @@ export function PostCard({
                 type="button"
                 onClick={() => setEditing(true)}
                 disabled={busy}
-                className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                title="Edit"
+                className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                aria-label="Edit"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
@@ -264,8 +265,8 @@ export function PostCard({
                 type="button"
                 onClick={() => setShowPreview(true)}
                 disabled={busy}
-                className="p-1.5 rounded-md text-zinc-500 hover:text-sky-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                title="Preview post"
+                className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-md text-zinc-500 hover:text-sky-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                aria-label="Preview post"
               >
                 <Eye className="h-3.5 w-3.5" />
               </button>
@@ -275,8 +276,8 @@ export function PostCard({
                 type="button"
                 onClick={() => setShowPreview(true)}
                 disabled={busy || overLimit}
-                className="p-1.5 rounded-md text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                title={
+                className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-md text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                aria-label={
                   overLimit
                     ? 'Post exceeds 280 characters'
                     : connectedPlatforms.length === 0
@@ -296,8 +297,8 @@ export function PostCard({
                 type="button"
                 onClick={handleGenerateXhs}
                 disabled={busy || xhsLoading}
-                className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                title="生成小红书文案"
+                className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                aria-label="生成小红书文案"
               >
                 {xhsLoading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -310,8 +311,8 @@ export function PostCard({
               type="button"
               onClick={handleDelete}
               disabled={busy}
-              className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-              title="Delete"
+              className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              aria-label="Delete"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

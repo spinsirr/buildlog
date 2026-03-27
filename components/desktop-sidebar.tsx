@@ -55,7 +55,7 @@ export function DesktopSidebar() {
             type="button"
             onClick={handleLogout}
             className="text-zinc-500 hover:text-zinc-300 transition-colors"
-            title="Sign out"
+            aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
           </button>
