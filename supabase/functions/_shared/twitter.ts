@@ -1,4 +1,5 @@
-import { type OAuthProviderConfig, getValidToken } from "./oauth-refresh.ts"
+/* eslint-disable vercel-ai-security/no-hardcoded-api-keys -- config object with env var names, not secrets */
+import { getValidToken, type OAuthProviderConfig } from "./oauth-refresh.ts"
 
 const twitterConfig: OAuthProviderConfig = {
   platform: "twitter",

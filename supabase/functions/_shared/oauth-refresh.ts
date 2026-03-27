@@ -38,8 +38,8 @@ async function refreshAccessToken(
   const { clientId, clientSecret } = getCredentials(config)
 
   const bodyParams: Record<string, string> = {
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
+    "grant_type": "refresh_token",
+    "refresh_token": refreshToken,
   }
 
   const headers: Record<string, string> = {
@@ -117,9 +117,7 @@ export async function getValidToken(
 
   if (!conn) throw new Error(`${config.platform} not connected`)
 
-  const expiresAt = conn.expires_at
-    ? new Date(conn.expires_at as string).getTime()
-    : null
+  const expiresAt = conn.expires_at ? new Date(conn.expires_at as string).getTime() : null
 
   // Token expired (or about to) — try refreshing
   if (expiresAt && Date.now() > expiresAt - EXPIRY_BUFFER_MS) {
