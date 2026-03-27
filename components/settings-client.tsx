@@ -121,7 +121,6 @@ export function SettingsClient({
     }
   }, [])
 
-
   async function handleManageSubscription() {
     setBillingLoading(true)
     try {
@@ -143,7 +142,10 @@ export function SettingsClient({
       data: { user },
     } = await supabase.auth.getUser()
     if (user) {
-      const { error } = await supabase.from('profiles').update({ auto_publish: checked }).eq('id', user.id)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ auto_publish: checked })
+        .eq('id', user.id)
       if (error) {
         setProfile((p) => ({ ...p, auto_publish: prev }))
         toast.error('Failed to update auto-publish setting')
@@ -158,7 +160,10 @@ export function SettingsClient({
       data: { user },
     } = await supabase.auth.getUser()
     if (user) {
-      const { error } = await supabase.from('profiles').update({ email_notifications: checked }).eq('id', user.id)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ email_notifications: checked })
+        .eq('id', user.id)
       if (error) {
         setProfile((p) => ({ ...p, email_notifications: prev }))
         toast.error('Failed to update notification setting')
