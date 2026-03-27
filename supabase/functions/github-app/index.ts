@@ -21,7 +21,9 @@ async function generateAppJwt(): Promise<string> {
     .replace(/\//g, "_")
     .replace(/=/g, "")
 
-  const pemContent = privateKey
+  // Handle both real newlines and literal \n in env var
+  const normalizedKey = privateKey.replace(/\\n/g, "\n")
+  const pemContent = normalizedKey
     .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/\s/g, "")

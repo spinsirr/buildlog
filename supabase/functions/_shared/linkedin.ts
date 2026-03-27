@@ -1,42 +1,23 @@
-import { decrypt } from "./crypto.ts"
-import { createServiceClient } from "./supabase.ts"
+import { type OAuthProviderConfig, getValidToken } from "./oauth-refresh.ts"
 
-async function getValidToken(
-  userId: string,
-): Promise<{ accessToken: string; linkedinUserId: string }> {
-  const supabase = createServiceClient()
-
-  const { data: conn } = await supabase
-    .from("platform_connections")
-    .select("access_token, platform_user_id, expires_at")
-    .eq("user_id", userId)
-    .eq("platform", "linkedin")
-    .single()
-
-  if (!conn) throw new Error("LinkedIn not connected")
-
-  if (conn.expires_at) {
-    const expiresAt = new Date(conn.expires_at).getTime()
-    if (Date.now() > expiresAt) {
-      throw new Error("LinkedIn token expired. Please reconnect in Settings.")
-    }
-  }
-
-  if (!conn.platform_user_id) {
-    throw new Error("LinkedIn user ID not found. Please reconnect in Settings.")
-  }
-
-  return {
-    accessToken: await decrypt(conn.access_token),
-    linkedinUserId: conn.platform_user_id,
-  }
+const linkedinConfig: OAuthProviderConfig = {
+  platform: "linkedin",
+  tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
+  authMethod: "body",
+  clientIdEnv: "LINKEDIN_CLIENT_ID",
+  clientSecretEnv: "LINKEDIN_CLIENT_SECRET",
 }
 
 export async function publishToLinkedIn(
   userId: string,
   text: string,
 ): Promise<{ postId: string; postUrl: string }> {
-  const { accessToken, linkedinUserId } = await getValidToken(userId)
+  const { accessToken, connection } = await getValidToken(linkedinConfig, userId)
+
+  const linkedinUserId = connection.platform_user_id as string
+  if (!linkedinUserId) {
+    throw new Error("LinkedIn user ID not found. Please reconnect in Settings.")
+  }
 
   const res = await fetch("https://api.linkedin.com/v2/posts", {
     method: "POST",

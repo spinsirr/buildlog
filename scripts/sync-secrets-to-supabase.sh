@@ -26,21 +26,32 @@ TMPFILE=$(mktemp)
 trap 'rm -f "$TMPFILE"' EXIT
 infisical export --env=dev --format=dotenv --output-file="$TMPFILE"
 
-# Build supabase secrets set args
-ARGS=""
+# Set secrets one at a time to safely handle multiline values (PEM keys etc.)
+COUNT=0
 for key in "${EDGE_KEYS[@]}"; do
-  val=$(grep "^${key}=" "$TMPFILE" | cut -d'=' -f2- || true)
+  # Use python to correctly parse dotenv values (handles multiline quoted strings)
+  val=$(python3 -c "
+import re, sys
+content = open(sys.argv[1]).read()
+# Try quoted value first (handles multiline like PEM keys)
+m = re.search(r'^' + sys.argv[2] + r'=\"((?:[^\\\\\"]|\\\\.)*)\"', content, re.MULTILINE | re.DOTALL)
+if not m:
+    # Fall back to unquoted single-line value
+    m = re.search(r'^' + sys.argv[2] + r'=(.+)$', content, re.MULTILINE)
+if m:
+    print(m.group(1), end='')
+" "$TMPFILE" "$key" 2>/dev/null || true)
+
   if [ -n "$val" ]; then
-    ARGS="$ARGS ${key}=${val}"
+    bunx supabase secrets set "${key}=${val}"
+    COUNT=$((COUNT + 1))
   else
     echo "  ⚠ $key not found in Infisical, skipping"
   fi
 done
 
-if [ -n "$ARGS" ]; then
-  # shellcheck disable=SC2086
-  npx supabase secrets set $ARGS
-  echo "Done."
+if [ "$COUNT" -gt 0 ]; then
+  echo "Done. Set $COUNT secrets."
 else
   echo "No secrets to sync."
 fi
