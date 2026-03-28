@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { NotificationBell } from '@/components/notification-bell'
+import { QuickCapture } from '@/components/quick-capture'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -33,6 +34,9 @@ export function DesktopSidebar() {
 
       {/* Navigation */}
       <SidebarNav />
+
+      {/* Quick capture — parking lot for ADHD idea capture */}
+      <QuickCapture />
 
       {/* Streak counter */}
       <StreakCounter />

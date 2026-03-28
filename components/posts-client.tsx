@@ -1,8 +1,9 @@
 'use client'
 
-import { FileText, Loader2, Plus, Search } from 'lucide-react'
+import { FileText, Loader2, Plus, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { PostCard } from '@/components/post-card'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -15,10 +16,17 @@ import { cn } from '@/lib/utils'
 function NewPostForm({ onCreated }: { onCreated: () => void }) {
   const [content, setContent] = useState('')
   const [busy, setBusy] = useState(false)
+  const [step, setStep] = useState<'write' | 'confirm'>('write')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const charCount = content.length
+  const overLimit = charCount > 280
+  const canSubmit = content.trim().length > 0 && !overLimit
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  useEffect(() => {
+    if (step === 'write') textareaRef.current?.focus()
+  }, [step])
+
+  async function handleSubmit() {
     if (!content.trim()) return
     setBusy(true)
     const result = await callEdgeFunction<{ error?: string }>('create-post', {
@@ -33,48 +41,101 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
       } else {
         toast.error('Create failed', { description: result.error || 'Failed to create post' })
       }
+      setStep('write')
     } else {
       setContent('')
+      setStep('write')
       onCreated()
-      toast.success('Post created')
+      toast.success('Draft saved!', { description: 'Ready to review and publish.' })
     }
     setBusy(false)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Write a build update..."
-        aria-label="Write a build update"
-        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 resize-none focus:outline-none focus:border-zinc-600 placeholder:text-zinc-500"
-        rows={3}
-      />
-      <div className="flex items-center justify-between">
-        <span
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 mb-1">
+        <div
           className={cn(
-            'text-[11px] font-mono',
-            charCount > 280 ? 'text-red-400' : 'text-zinc-500'
+            'h-1.5 flex-1 rounded-full transition-colors',
+            step === 'write' ? 'bg-purple-500' : 'bg-purple-500'
           )}
-        >
-          {charCount}/280
-        </span>
-        <Button
-          type="submit"
-          size="sm"
-          disabled={busy || !content.trim()}
-          className="bg-purple-600 hover:bg-purple-500 text-white border-0"
-        >
-          {busy ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Plus className="h-3.5 w-3.5" />
+        />
+        <div
+          className={cn(
+            'h-1.5 flex-1 rounded-full transition-colors',
+            step === 'confirm' ? 'bg-purple-500' : 'bg-zinc-800'
           )}
-          Create Draft
-        </Button>
+        />
       </div>
-    </form>
+
+      {step === 'write' ? (
+        <>
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
+            Step 1 — Write your update
+          </label>
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What did you build today?"
+            aria-label="Write a build update"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 resize-none focus:outline-none focus:border-zinc-600 placeholder:text-zinc-500"
+            rows={3}
+          />
+          <div className="flex items-center justify-between">
+            <span
+              className={cn('text-[11px] font-mono', overLimit ? 'text-red-400' : 'text-zinc-500')}
+            >
+              {charCount}/280
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!canSubmit}
+              onClick={() => setStep('confirm')}
+              className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+            >
+              Next
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
+            Step 2 — Looks good?
+          </label>
+          <div className="bg-zinc-950 rounded-lg p-3 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap border border-zinc-800">
+            {content}
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setStep('write')}
+              className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              onClick={handleSubmit}
+              className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+              Save Draft
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -113,10 +174,20 @@ export function PostsClient({
 }) {
   const supabase = useMemo(() => createClient(), [])
   const publishingRef = useRef(false)
+  const searchParams = useSearchParams()
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [showNewPost, setShowNewPost] = useState(false)
   const [posts, setPosts] = useState(initialPosts)
   const [search, setSearch] = useState('')
   const connectedPlatforms = initialConnectedPlatforms
+
+  // Handle keyboard shortcut deep links
+  useEffect(() => {
+    if (searchParams.get('new') === '1') setShowNewPost(true)
+    if (searchParams.get('focus') === 'search') {
+      requestAnimationFrame(() => searchInputRef.current?.focus())
+    }
+  }, [searchParams])
 
   async function handleUpdate(id: string, updates: Record<string, unknown>) {
     if (updates.status === 'published') {
@@ -234,6 +305,7 @@ export function PostsClient({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
         <input
+          ref={searchInputRef}
           type="text"
           placeholder="Search posts..."
           aria-label="Search posts"
@@ -269,7 +341,18 @@ export function PostsClient({
           {renderPosts(allPosts)}
         </TabsContent>
         <TabsContent value="draft" className="mt-4">
-          {renderPosts(drafts)}
+          {drafts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="relative">
+                <Sparkles className="h-8 w-8 text-emerald-400 animate-confetti-pop" />
+                <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400/30 animate-ping" />
+              </div>
+              <p className="text-base font-semibold text-emerald-400">Inbox zero!</p>
+              <p className="text-xs text-zinc-500">No drafts waiting. You're crushing it.</p>
+            </div>
+          ) : (
+            renderPosts(drafts)
+          )}
         </TabsContent>
         <TabsContent value="published" className="mt-4">
           {published.length === 0 ? (

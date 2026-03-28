@@ -142,7 +142,7 @@ export function PostPreviewModal({
                     ? 'stroke-red-400'
                     : remaining <= 20
                       ? 'stroke-amber-400'
-                      : 'stroke-indigo-400'
+                      : 'stroke-purple-400'
                 )}
                 strokeWidth="2"
                 strokeDasharray={circumference}

@@ -8,6 +8,7 @@ import useSWR from 'swr'
 import { DashboardPostsTable } from '@/components/dashboard-posts-table'
 import { DashboardStats } from '@/components/dashboard-stats'
 import { ErrorState } from '@/components/error-state'
+import { FocusCard } from '@/components/focus-card'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { calculateStreak } from '@/lib/utils'
@@ -86,7 +87,8 @@ export default function DashboardPage() {
   if (isLoading) return <DashboardSkeleton />
   if (error || !data) return <ErrorState retry={() => mutate()} />
 
-  const { stats, allPosts } = data
+  const { stats, allPosts, hasRepos, hasSocial } = data
+  const draftCount = allPosts.filter((p) => p.status === 'draft').length
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,6 +115,9 @@ export default function DashboardPage() {
           Connect repo
         </Link>
       </div>
+
+      {/* Single Focus Card — one clear next action for ADHD brains */}
+      <FocusCard hasRepos={hasRepos} hasSocial={hasSocial} draftCount={draftCount} />
 
       <DashboardStats stats={stats} />
       <DashboardPostsTable posts={allPosts} />

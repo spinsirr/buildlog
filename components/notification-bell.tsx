@@ -34,12 +34,12 @@ const NotificationItem = memo(function NotificationItem({
       onClick={() => onSelect(notification)}
       className={cn(
         'w-full text-left px-3 py-2.5 border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-colors',
-        !notification.read && 'bg-purple-500/5'
+        !notification.read && 'bg-zinc-800/50'
       )}
     >
       <div className="flex items-start gap-2">
         {!notification.read && (
-          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
+          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-zinc-400 shrink-0" />
         )}
         <div className={cn('flex-1', notification.read && 'ml-3.5')}>
           <p className="text-xs text-zinc-300 leading-relaxed">{notification.message}</p>
@@ -60,7 +60,7 @@ export function NotificationBell() {
     notifications: Notification[]
     unreadCount: number
   }>('notifications', fetchNotifications, {
-    refreshInterval: 30000,
+    refreshInterval: 60000,
     refreshWhenHidden: false,
     refreshWhenOffline: false,
   })
@@ -163,7 +163,7 @@ export function NotificationBell() {
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span
-            className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-purple-500"
+            className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-zinc-400"
             aria-hidden="true"
           />
         )}
@@ -191,7 +191,7 @@ export function NotificationBell() {
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
               <span className="text-xs font-medium text-zinc-300">
                 Notifications
-                {unreadCount > 0 && <span className="ml-1.5 text-indigo-400">({unreadCount})</span>}
+                {unreadCount > 0 && <span className="ml-1.5 text-zinc-400">({unreadCount})</span>}
               </span>
               {unreadCount > 0 && (
                 <button

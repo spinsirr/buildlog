@@ -4,7 +4,7 @@ import { ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { cn, draftAgeBucket, draftAgeText, timeAgo } from '@/lib/utils'
 
 export function PostCardHeader({
   post,
@@ -100,6 +100,21 @@ export function PostCardMeta({
           {charCount}/280
         </span>
       )}
+      {/* Time anchor — explicit age for ADHD time blindness */}
+      <span
+        className={cn(
+          'text-[11px] font-mono',
+          post.status === 'draft'
+            ? {
+                fresh: 'text-zinc-500',
+                aging: 'text-amber-400/70',
+                stale: 'text-red-400/70',
+              }[draftAgeBucket(post.created_at)]
+            : 'text-zinc-500'
+        )}
+      >
+        {post.status === 'draft' ? draftAgeText(post.created_at) : timeAgo(post.created_at)}
+      </span>
     </div>
   )
 }

@@ -56,8 +56,9 @@ export function PostCard({
     try {
       await onUpdate(post.id, { status: 'published' })
       setShowPreview(false)
-      toast.success('Post published', {
-        description: connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(', '),
+      toast.success('Published! 🎉', {
+        description: `Live on ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(', ')}`,
+        duration: 4000,
       })
     } catch (err) {
       // Revert optimistic UI state on error

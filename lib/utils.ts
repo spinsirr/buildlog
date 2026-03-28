@@ -40,3 +40,24 @@ export function timeAgo(date: string | null): string | null {
   const months = Math.floor(days / 30)
   return `${months}mo ago`
 }
+
+/** Returns age bucket for ADHD time anchors — helps with time blindness */
+export function draftAgeBucket(date: string): 'fresh' | 'aging' | 'stale' {
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days <= 2) return 'fresh'
+  if (days <= 7) return 'aging'
+  return 'stale'
+}
+
+/** Explicit draft age text — combats ADHD time blindness with clear language */
+export function draftAgeText(date: string): string {
+  const hours = Math.floor((Date.now() - new Date(date).getTime()) / 3600000)
+  if (hours < 1) return 'just created'
+  if (hours < 24) return `${hours}h old`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return '1 day old'
+  if (days < 7) return `${days} days old`
+  if (days < 14) return '1 week old'
+  const weeks = Math.floor(days / 7)
+  return `${weeks} weeks old`
+}

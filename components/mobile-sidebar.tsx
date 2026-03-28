@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { NotificationBell } from '@/components/notification-bell'
+import { QuickCapture } from '@/components/quick-capture'
 import { navItems } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -70,6 +71,9 @@ export function MobileSidebar() {
               </Link>
             ))}
           </nav>
+
+          {/* Quick capture */}
+          <QuickCapture />
 
           {/* Streak */}
           <StreakCounter />

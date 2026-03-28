@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { platformLabels } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { cn, draftAgeBucket, draftAgeText, timeAgo } from '@/lib/utils'
 
 export function DashboardPostsTable({ posts }: { posts: Post[] }) {
   return (
@@ -92,8 +92,22 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
                       {post.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-xs text-zinc-500 font-mono-ui">
-                    {new Date(post.created_at).toLocaleDateString()}
+                  <TableCell className="hidden md:table-cell text-xs font-mono-ui">
+                    <span
+                      className={cn(
+                        post.status === 'draft'
+                          ? {
+                              fresh: 'text-zinc-500',
+                              aging: 'text-amber-400/70',
+                              stale: 'text-red-400/70',
+                            }[draftAgeBucket(post.created_at)]
+                          : 'text-zinc-500'
+                      )}
+                    >
+                      {post.status === 'draft'
+                        ? draftAgeText(post.created_at)
+                        : timeAgo(post.created_at)}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <DashboardActions postId={post.id} />

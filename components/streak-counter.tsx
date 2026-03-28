@@ -3,7 +3,7 @@
 import { Flame } from 'lucide-react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { calculateStreak } from '@/lib/utils'
+import { calculateStreak, cn } from '@/lib/utils'
 
 async function fetchStreak() {
   const supabase = createClient()
@@ -20,12 +20,37 @@ export function StreakCounter() {
     dedupingInterval: 60000,
   })
 
+  const count = streak ?? 0
+  const hot = count >= 3
+  const fire = count >= 7
+
   return (
     <div className="px-3 pb-3">
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-zinc-900 border border-zinc-800">
-        <Flame className="h-4 w-4 text-orange-400" />
-        <span className="text-sm font-medium text-zinc-300">{streak ?? 0}</span>
-        <span className="text-xs text-zinc-500">day streak</span>
+      <div
+        className={cn(
+          'flex items-center gap-2 px-3 py-2.5 rounded-md border transition-colors',
+          fire
+            ? 'bg-orange-500/5 border-orange-500/20'
+            : hot
+              ? 'bg-amber-500/5 border-amber-500/20'
+              : 'bg-zinc-900 border-zinc-800'
+        )}
+      >
+        <Flame
+          className={cn(
+            'h-4 w-4 transition-colors',
+            fire ? 'text-orange-400' : hot ? 'text-amber-400' : 'text-zinc-500'
+          )}
+        />
+        <span
+          className={cn(
+            'text-sm font-medium tabular-nums',
+            fire ? 'text-orange-300' : hot ? 'text-amber-300' : 'text-zinc-300'
+          )}
+        >
+          {count}
+        </span>
+        <span className="text-xs text-zinc-500">day streak{fire ? ' 🔥' : ''}</span>
       </div>
     </div>
   )

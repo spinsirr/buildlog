@@ -1,12 +1,13 @@
 'use client'
 
-import { Check, CreditCard, Loader2, Sparkles } from 'lucide-react'
+import { Check, ChevronDown, CreditCard, Loader2, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { callEdgeFunction } from '@/lib/edge-function'
@@ -469,62 +470,86 @@ export function SettingsClient({
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-zinc-50">Post Tone</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {TONES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              disabled={savingTone}
-              onClick={() => handleToneChange(t.value)}
-              className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors text-left ${
-                tone === t.value
-                  ? 'border-purple-500/50 bg-purple-500/5'
-                  : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50'
-              }`}
-            >
-              <div>
-                <Label
-                  className={`text-sm font-medium ${tone === t.value ? 'text-purple-400' : 'text-zinc-200'}`}
-                >
-                  {t.label}
-                </Label>
-                <p className="text-xs text-zinc-400 mt-0.5">{t.description}</p>
+      <Collapsible defaultOpen={false}>
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-zinc-50">Post Tone</CardTitle>
+                  <span className="text-xs text-zinc-500 capitalize">{tone}</span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-zinc-500 transition-transform [[data-open]_&]:rotate-180" />
               </div>
-              {tone === t.value && <Check className="h-4 w-4 text-purple-400 shrink-0" />}
-            </button>
-          ))}
-        </CardContent>
-      </Card>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-3">
+              {TONES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  disabled={savingTone}
+                  onClick={() => handleToneChange(t.value)}
+                  className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors text-left ${
+                    tone === t.value
+                      ? 'border-purple-500/50 bg-purple-500/5'
+                      : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <div>
+                    <Label
+                      className={`text-sm font-medium ${tone === t.value ? 'text-purple-400' : 'text-zinc-200'}`}
+                    >
+                      {t.label}
+                    </Label>
+                    <p className="text-xs text-zinc-400 mt-0.5">{t.description}</p>
+                  </div>
+                  {tone === t.value && <Check className="h-4 w-4 text-purple-400 shrink-0" />}
+                </button>
+              ))}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader>
-          <CardTitle className="text-zinc-50">Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-0 divide-y divide-zinc-800">
-          <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
-            <div>
-              <Label className="text-sm font-medium text-zinc-200">Auto-publish</Label>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Publish posts from GitHub events immediately.
-              </p>
-            </div>
-            <Switch checked={autoPublish} onCheckedChange={handleAutoPublishToggle} />
-          </div>
-          <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
-            <div>
-              <Label className="text-sm font-medium text-zinc-200">Email notifications</Label>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Get notified when posts are published or drafts are created.
-              </p>
-            </div>
-            <Switch checked={emailNotifications} onCheckedChange={handleEmailNotificationsToggle} />
-          </div>
-        </CardContent>
-      </Card>
+      <Collapsible defaultOpen={false}>
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-zinc-50">Preferences</CardTitle>
+                <ChevronDown className="h-4 w-4 text-zinc-500 transition-transform [[data-open]_&]:rotate-180" />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-0 divide-y divide-zinc-800">
+              <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                <div>
+                  <Label className="text-sm font-medium text-zinc-200">Auto-publish</Label>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Publish posts from GitHub events immediately.
+                  </p>
+                </div>
+                <Switch checked={autoPublish} onCheckedChange={handleAutoPublishToggle} />
+              </div>
+              <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                <div>
+                  <Label className="text-sm font-medium text-zinc-200">Email notifications</Label>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Get notified when posts are published or drafts are created.
+                  </p>
+                </div>
+                <Switch
+                  checked={emailNotifications}
+                  onCheckedChange={handleEmailNotificationsToggle}
+                />
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   )
 }

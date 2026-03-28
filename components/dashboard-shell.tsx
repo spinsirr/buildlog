@@ -3,6 +3,7 @@
 import { useAuth } from '@/components/auth-provider'
 import { DesktopSidebar } from '@/components/desktop-sidebar'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { MobileSidebar } from '@/components/mobile-sidebar'
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       >
         Skip to content
       </a>
+      <KeyboardShortcuts />
       <MobileSidebar />
       <DesktopSidebar />
       <div className="flex-1 md:ml-60">
