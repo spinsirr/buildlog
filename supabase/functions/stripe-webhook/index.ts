@@ -51,28 +51,57 @@ Deno.serve(async (req) => {
     return jsonResponse({ received: true, skipped: "duplicate" }, req, { status: 200 })
   }
 
+  // Resolve user_id: prefer metadata, fall back to stripe_customer_id lookup
+  async function resolveUserId(
+    metadata: Record<string, string> | undefined,
+    customerId: string | null,
+    context: string,
+  ): Promise<string | null> {
+    if (metadata?.user_id) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", metadata.user_id)
+        .single()
+      if (data) return data.id
+      log.error(`${context}: user_id from metadata not found in profiles`, {
+        userId: metadata.user_id,
+      })
+    }
+
+    if (customerId) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("stripe_customer_id", customerId)
+        .single()
+      if (data) {
+        log.info(`${context}: resolved user via stripe_customer_id fallback`, {
+          customerId,
+          userId: data.id,
+        })
+        return data.id
+      }
+    }
+
+    log.error(`${context}: could not resolve user`, {
+      hasMetadata: !!metadata?.user_id,
+      hasCustomerId: !!customerId,
+    })
+    return null
+  }
+
   try {
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object
-        const userId = subscription.metadata?.user_id
-        if (!userId) {
-          log.error("missing user_id in subscription metadata", { subscriptionId: subscription.id })
-          break
-        }
-
-        // Validate user exists in profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", userId)
-          .single()
-
-        if (!profile) {
-          log.error("user_id not found in profiles", { userId })
-          break
-        }
+        const userId = await resolveUserId(
+          subscription.metadata,
+          subscription.customer as string | null,
+          event.type,
+        )
+        if (!userId) break
 
         // Map status: active/trialing -> 'active', others pass through
         const rawStatus = subscription.status
@@ -104,23 +133,12 @@ Deno.serve(async (req) => {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object
-        const userId = subscription.metadata?.user_id
-        if (!userId) {
-          log.error("missing user_id in subscription metadata", { subscriptionId: subscription.id })
-          break
-        }
-
-        // Validate user exists in profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", userId)
-          .single()
-
-        if (!profile) {
-          log.error("user_id not found in profiles", { userId })
-          break
-        }
+        const userId = await resolveUserId(
+          subscription.metadata,
+          subscription.customer as string | null,
+          "subscription.deleted",
+        )
+        if (!userId) break
 
         const { error } = await supabase
           .from("subscriptions")
@@ -141,7 +159,6 @@ Deno.serve(async (req) => {
       }
 
       case "invoice.payment_failed": {
-        // Payment failed — mark the subscription as past_due (or whatever Stripe reports)
         const invoice = event.data.object
         const failedSubId = invoice.subscription as string | null
 
@@ -180,52 +197,72 @@ Deno.serve(async (req) => {
 
       case "checkout.session.completed": {
         const session = event.data.object
-        const userId = session.metadata?.user_id
         const stripeCustomerId = session.customer as string | null
+        const userId = await resolveUserId(
+          session.metadata,
+          stripeCustomerId,
+          "checkout.session.completed",
+        )
+        if (!userId) break
 
-        if (!userId) {
-          log.error("missing user_id in session metadata", { sessionId: session.id })
-          break
+        if (stripeCustomerId) {
+          // Sync stripe_customer_id to profile
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("stripe_customer_id")
+            .eq("id", userId)
+            .single()
+
+          if (profile && !profile.stripe_customer_id) {
+            const { error } = await supabase
+              .from("profiles")
+              .update({ stripe_customer_id: stripeCustomerId })
+              .eq("id", userId)
+
+            if (error) {
+              log.error("failed to sync stripe_customer_id", {
+                userId,
+                stripeCustomerId,
+                error: String(error),
+              })
+            }
+          }
         }
 
-        if (!stripeCustomerId) {
-          log.error("missing customer in session", { sessionId: session.id })
-          break
-        }
+        // Also create subscription row if checkout was for a subscription
+        const subscriptionId = session.subscription as string | null
+        if (subscriptionId) {
+          const sub = await getStripe().subscriptions.retrieve(subscriptionId)
+          const rawStatus = sub.status
+          const status = rawStatus === "active" || rawStatus === "trialing" ? "active" : rawStatus
 
-        // Validate user exists in profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, stripe_customer_id")
-          .eq("id", userId)
-          .single()
+          const { error } = await supabase.from("subscriptions").upsert(
+            {
+              user_id: userId,
+              stripe_subscription_id: sub.id,
+              stripe_price_id: sub.items?.data?.[0]?.price?.id ?? null,
+              status,
+              current_period_end: sub.current_period_end
+                ? new Date(sub.current_period_end * 1000).toISOString()
+                : null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" },
+          )
 
-        if (!profile) {
-          log.error("user_id not found in profiles", { userId })
-          break
-        }
-
-        // Don't overwrite if the user already has a different customer ID
-        if (profile.stripe_customer_id && profile.stripe_customer_id !== stripeCustomerId) {
-          log.error("user already has a different stripe_customer_id", {
-            userId,
-            existing: profile.stripe_customer_id,
-            incoming: stripeCustomerId,
-          })
-          break
-        }
-
-        const { error } = await supabase
-          .from("profiles")
-          .update({ stripe_customer_id: stripeCustomerId })
-          .eq("id", userId)
-
-        if (error) {
-          log.error("failed to sync stripe_customer_id", {
-            userId,
-            stripeCustomerId,
-            error: String(error),
-          })
+          if (error) {
+            log.error("checkout: failed to upsert subscription", {
+              userId,
+              subscriptionId: sub.id,
+              error: String(error),
+            })
+          } else {
+            log.info("checkout: subscription created via checkout fallback", {
+              userId,
+              subscriptionId: sub.id,
+              status,
+            })
+          }
         }
         break
       }
