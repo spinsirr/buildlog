@@ -348,7 +348,7 @@ export function PostsClient({
                 <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400/30 animate-ping" />
               </div>
               <p className="text-base font-semibold text-emerald-400">Inbox zero!</p>
-              <p className="text-xs text-zinc-500">No drafts waiting. You're crushing it.</p>
+              <p className="text-xs text-zinc-500">No drafts waiting. You&apos;re crushing it.</p>
             </div>
           ) : (
             renderPosts(drafts)

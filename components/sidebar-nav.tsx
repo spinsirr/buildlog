@@ -3,7 +3,6 @@
 import { BarChart3, FileText, GitFork, LayoutDashboard, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useMemo } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
