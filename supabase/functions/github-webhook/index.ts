@@ -301,7 +301,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   }
 
   // Generate AI content
-  const content = await generatePost({
+  const { content, category, changeSummary } = await generatePost({
     sourceType,
     repoName: repoFullName,
     tone: profile.tone ?? "casual",
@@ -352,6 +352,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       "source_type": sourceType,
       source_data: strippedData,
       content,
+      category,
+      change_summary: changeSummary,
       status: "draft",
       published_at: null,
     })

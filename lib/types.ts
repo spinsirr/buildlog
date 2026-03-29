@@ -3,6 +3,8 @@ export type Post = {
   content: string
   status: string
   source_type: string
+  category: string | null
+  change_summary: string | null
   platforms: string[] | null
   created_at: string
   source_data: Record<string, unknown> | null

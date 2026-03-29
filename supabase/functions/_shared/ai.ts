@@ -299,7 +299,13 @@ IMPORTANT: Write a COMPLETE post. Do not end mid-sentence.`,
   return result
 }
 
-export async function generatePost(input: GeneratePostInput): Promise<string> {
+export interface GeneratePostResult {
+  content: string
+  category: string
+  changeSummary: string
+}
+
+export async function generatePost(input: GeneratePostInput): Promise<GeneratePostResult> {
   const tone = input.tone ?? "casual"
   const changeType = classifyChange(input)
   const changeContext = buildChangeContext(input)
@@ -407,5 +413,48 @@ Output ONLY the post text, nothing else.`
     result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
   }
 
-  return result
+  // Map internal classifyChange categories to changelog-friendly categories
+  const categoryMap: Record<string, string> = {
+    feature: "feature",
+    bugfix: "fix",
+    refactor: "improvement",
+    performance: "improvement",
+    ui: "improvement",
+    testing: "infra",
+    devops: "infra",
+    docs: "docs",
+    general: "improvement",
+  }
+  const category = categoryMap[changeType] ?? "improvement"
+
+  // Generate a human-readable changelog summary (separate from social post)
+  const summarySystem = `You write concise changelog entries for a product changelog page.
+
+RULES:
+- Write 1-2 sentences describing what changed from a USER perspective
+- Focus on what users can now do, what was fixed, or what improved
+- NEVER mention file names, function names, package names, or technical internals
+- Write in past tense ("Added...", "Fixed...", "Improved...")
+- No hashtags, no emojis, no marketing language
+- Be specific and factual
+
+Output ONLY the changelog entry, nothing else.`
+
+  const summaryPrompt = `Write a changelog entry for this ${input.sourceType}:\n${context}`
+
+  let changeSummary: string
+  try {
+    const summaryResult = await callGemini(summarySystem, summaryPrompt, {
+      maxOutputTokens: 200,
+      temperature: 0.3,
+    })
+    changeSummary = summaryResult.text.trim()
+  } catch (err) {
+    log.warn("Failed to generate changelog summary, using fallback: {error}", {
+      error: String(err),
+    })
+    changeSummary = result.replace(/#\w+/g, "").trim()
+  }
+
+  return { content: result, category, changeSummary }
 }

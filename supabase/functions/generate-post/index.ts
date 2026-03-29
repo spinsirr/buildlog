@@ -83,7 +83,7 @@ async function handleGenerate(
 
   const tone = profile?.tone ?? "casual"
 
-  const content = await generatePost({
+  const { content, category, changeSummary } = await generatePost({
     sourceType,
     repoName,
     tone,
@@ -107,6 +107,8 @@ async function handleGenerate(
       source_type: sourceType,
       source_data: data,
       content,
+      category,
+      change_summary: changeSummary,
       status: "draft",
     })
     .select()
@@ -194,7 +196,7 @@ async function handleRegenerate(
     }
   }
 
-  const content = await generatePost({
+  const { content, category, changeSummary } = await generatePost({
     sourceType: post.source_type as "commit" | "pr" | "release",
     repoName,
     tone,
@@ -216,7 +218,7 @@ async function handleRegenerate(
 
   const { data: updatedPost, error: updateError } = await supabase
     .from("posts")
-    .update({ content, updated_at: new Date().toISOString() })
+    .update({ content, category, change_summary: changeSummary, updated_at: new Date().toISOString() })
     .eq("id", post.id)
     .select()
     .single()
