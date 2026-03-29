@@ -2,7 +2,7 @@
 // Each platform provides a config object; this module handles
 // expiration checks, token refresh, encrypted storage, and failure tracking.
 
-import { decrypt, encrypt, toBase64Utf8 } from "./crypto.ts"
+import { decrypt, encrypt, rfc6749BasicAuth } from "./crypto.ts"
 import { createServiceClient } from "./supabase.ts"
 
 export interface OAuthProviderConfig {
@@ -47,7 +47,7 @@ async function refreshAccessToken(
   }
 
   if (config.authMethod === "basic") {
-    headers.Authorization = `Basic ${toBase64Utf8(`${clientId}:${clientSecret}`)}`
+    headers.Authorization = `Basic ${rfc6749BasicAuth(clientId, clientSecret)}`
   } else {
     bodyParams.client_id = clientId
     bodyParams.client_secret = clientSecret

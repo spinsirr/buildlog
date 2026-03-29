@@ -65,6 +65,18 @@ export function toBase64Utf8(value: string): string {
   return bytesToBase64(utf8ToBytes(value))
 }
 
+/**
+ * RFC 6749 §2.3.1 compliant Basic auth header value.
+ * Both client_id and client_secret are percent-encoded (with uppercase
+ * hex digits per RFC 3986) before being joined with ":" and base64-encoded.
+ *
+ * Twitter's OAuth 2.0 token endpoint strictly enforces this.
+ */
+export function rfc6749BasicAuth(clientId: string, clientSecret: string): string {
+  // encodeURIComponent gives uppercase hex digits per spec, which satisfies RFC 3986.
+  return toBase64Utf8(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`)
+}
+
 function getAesKey(): Promise<CryptoKey> {
   const keyHex = requiredEnv("TOKEN_ENCRYPTION_KEY")
   if (keyHex.length !== 64) {
