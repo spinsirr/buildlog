@@ -248,23 +248,8 @@ async function oauthCallback(
       status: tokenRes.status,
       body,
     })
-    // DEBUG: return error + credential diagnostics (no secrets exposed)
-    return new Response(
-      JSON.stringify({
-        error: "token_exchange_failed",
-        status: tokenRes.status,
-        twitter_response: body,
-        redirect_uri_used: redirectUri,
-        auth_method: provider.tokenAuthMethod,
-        client_id_len: clientId.length,
-        client_id_prefix: clientId.slice(0, 6),
-        client_secret_len: clientSecret.length,
-        client_secret_suffix: clientSecret.slice(-4),
-        has_auth_header: !!headers.Authorization,
-        auth_header_len: headers.Authorization?.length ?? 0,
-        body_params: Object.keys(bodyParams),
-      }, null, 2),
-      { status: 200, headers: { "Content-Type": "application/json" } },
+    return redirectResponse(
+      `${frontendUrl}/settings?error=${platform}_token_exchange&detail=${encodeURIComponent(body.slice(0, 200))}`,
     )
   }
 
