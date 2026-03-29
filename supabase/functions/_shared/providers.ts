@@ -34,7 +34,7 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderConfig> = {
     tokenUrl: "https://api.twitter.com/2/oauth2/token",
     userInfoUrl: "https://api.twitter.com/2/users/me?user.fields=username,name,profile_image_url",
     scopes: ["tweet.read", "tweet.write", "users.read", "offline.access"],
-    tokenAuthMethod: "basic",
+    tokenAuthMethod: "body",
     pkce: true,
     extractUser: (data) => {
       const user = (data as { data: { id: string; username: string } }).data
