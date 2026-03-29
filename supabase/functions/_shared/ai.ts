@@ -15,6 +15,7 @@ interface GeneratePostInput {
     additions?: number
     deletions?: number
     filesChanged?: number
+    commitMessages?: string[]
   }
 }
 
@@ -81,32 +82,30 @@ function classifyChange(input: GeneratePostInput): string {
   return "general"
 }
 
-function buildDiffContext(input: GeneratePostInput): string {
+function buildChangeContext(input: GeneratePostInput): string {
   const parts: string[] = []
 
   if (input.data.additions !== undefined || input.data.deletions !== undefined) {
     const adds = input.data.additions ?? 0
     const dels = input.data.deletions ?? 0
-    parts.push(`Changes: +${adds} -${dels} lines`)
-
-    if (adds > 500) parts.push("(large change)")
-    else if (adds < 20 && dels < 20) parts.push("(small, focused change)")
+    parts.push(`Scale: +${adds} -${dels} lines across ${input.data.filesChanged ?? "?"} files`)
   }
 
-  if (input.data.filesChanged !== undefined) {
-    parts.push(`${input.data.filesChanged} file${input.data.filesChanged !== 1 ? "s" : ""} changed`)
+  if (input.data.commitMessages && input.data.commitMessages.length > 0) {
+    const msgs = input.data.commitMessages.slice(0, 15).join("\n- ")
+    parts.push(`Commit history:\n- ${msgs}`)
   }
 
   if (input.data.files && input.data.files.length > 0) {
-    const fileList = input.data.files.slice(0, 8).join(", ")
+    const fileList = input.data.files.slice(0, 20).join("\n- ")
     parts.push(
-      `Files: ${fileList}${
-        input.data.files.length > 8 ? ` (+${input.data.files.length - 8} more)` : ""
+      `Files touched:\n- ${fileList}${
+        input.data.files.length > 20 ? `\n  (+${input.data.files.length - 20} more)` : ""
       }`,
     )
   }
 
-  return parts.length > 0 ? `\n${parts.join(" | ")}` : ""
+  return parts.length > 0 ? `\n\n${parts.join("\n\n")}` : ""
 }
 
 async function callGeminiOnce(url: string, body: string): Promise<string> {
@@ -197,23 +196,23 @@ async function callGemini(
 
 export async function generateXhsPost(input: GeneratePostInput): Promise<string> {
   const changeType = classifyChange(input)
-  const diffContext = buildDiffContext(input)
+  const changeContext = buildChangeContext(input)
 
   let context: string
   if (input.sourceType === "commit") {
-    context = `Commit in ${input.repoName}: "${input.data.message}"${diffContext}`
+    context = `Commit in ${input.repoName}: "${input.data.message}"${changeContext}`
   } else if (input.sourceType === "pr") {
     const desc = input.data.description
-      ? `\nPR description: ${input.data.description.slice(0, 500)}`
+      ? `\nPR description: ${input.data.description.slice(0, 1000)}`
       : ""
-    context = `PR merged in ${input.repoName}: "${input.data.title}"${desc}${diffContext}`
+    context = `PR merged in ${input.repoName}: "${input.data.title}"${changeContext}${desc}`
   } else if (input.sourceType === "release") {
     const desc = input.data.description
-      ? `\nRelease notes: ${input.data.description.slice(0, 500)}`
+      ? `\nRelease notes: ${input.data.description.slice(0, 1000)}`
       : ""
-    context = `New release in ${input.repoName}: ${input.data.title}${desc}${diffContext}`
+    context = `New release in ${input.repoName}: ${input.data.title}${desc}${changeContext}`
   } else {
-    context = `New tag in ${input.repoName}: ${input.data.title}${diffContext}`
+    context = `New tag in ${input.repoName}: ${input.data.title}${changeContext}`
   }
 
   const changeTypeHints: Record<string, string> = {
@@ -258,23 +257,23 @@ ${changeTypeHints[changeType]}
 export async function generatePost(input: GeneratePostInput): Promise<string> {
   const tone = input.tone ?? "casual"
   const changeType = classifyChange(input)
-  const diffContext = buildDiffContext(input)
+  const changeContext = buildChangeContext(input)
 
   let context: string
   if (input.sourceType === "commit") {
-    context = `Commit in ${input.repoName}: "${input.data.message}"${diffContext}`
+    context = `Commit in ${input.repoName}: "${input.data.message}"${changeContext}`
   } else if (input.sourceType === "pr") {
     const desc = input.data.description
-      ? `\nPR description: ${input.data.description.slice(0, 500)}`
+      ? `\nPR description: ${input.data.description.slice(0, 1000)}`
       : ""
-    context = `PR merged in ${input.repoName}: "${input.data.title}"${desc}${diffContext}`
+    context = `PR merged in ${input.repoName}: "${input.data.title}"${desc}${changeContext}`
   } else if (input.sourceType === "release") {
     const desc = input.data.description
-      ? `\nRelease notes: ${input.data.description.slice(0, 500)}`
+      ? `\nRelease notes: ${input.data.description.slice(0, 1000)}`
       : ""
-    context = `New release in ${input.repoName}: ${input.data.title}${desc}${diffContext}`
+    context = `New release in ${input.repoName}: ${input.data.title}${desc}${changeContext}`
   } else {
-    context = `New tag in ${input.repoName}: ${input.data.title}${diffContext}`
+    context = `New tag in ${input.repoName}: ${input.data.title}${changeContext}`
   }
 
   const examples = toneExamples[tone]
@@ -295,17 +294,31 @@ export async function generatePost(input: GeneratePostInput): Promise<string> {
 
   const system = `You are an expert build-in-public content writer for developers on Twitter/X.
 
-RULES:
-- MUST be under 280 characters total (this is critical - count carefully)
-- Write exactly ONE post, no alternatives
-- Sound authentic and human - not like a bot or marketing copy
+YOUR JOB: Read the technical context below and translate it into an engaging, human post about what was BUILT or SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
+
+CRITICAL RULES:
+- MUST be under 280 characters total (count carefully)
+- Write exactly ONE complete post — never end mid-sentence or mid-thought
+- The post MUST be a complete, well-formed sentence or paragraph
+- Sound authentic and human — not like a bot or marketing copy
 - No excessive emojis (0-2 max)
-- Focus on what was built, learned, or shipped and why it matters
 - End with 1-2 relevant hashtags (always include #buildinpublic)
-- Never start with "Just" for every post - vary your openings
-- Don't use quotes around the feature name
-- If the commit message is a conventional commit (feat:, fix:, etc.), extract the meaningful part
-- Do NOT include URLs - they will be added separately
+- Never start with "Just" for every post — vary your openings
+- Do NOT include URLs — they will be added separately
+
+ABSOLUTELY NEVER EXPOSE:
+- File names or paths (e.g. "auth.ts", "middleware", "components/")
+- Function or variable names (e.g. "handleWebhook", "fetchToken")
+- Package/library names (e.g. "Stripe SDK", "Supabase", "Prisma") unless it's the main product
+- Technical jargon that non-developers wouldn't understand
+- Internal architecture details (e.g. "edge function", "webhook handler", "OAuth flow")
+- Specific error messages or status codes
+
+INSTEAD, TALK ABOUT:
+- What the USER can now do (new features, fixed bugs, better experience)
+- What you LEARNED or figured out during the build
+- The PROGRESS or milestone (shipped, improved, launched)
+- The FEELING of building (satisfaction, challenge, breakthrough)
 
 TONE:
 ${toneInstructions[tone]}
@@ -320,7 +333,7 @@ Output ONLY the post text, nothing else.`
 
   const prompt = `Generate a build-in-public post for this ${input.sourceType}:\n${context}`
 
-  let result = (await callGemini(system, prompt)).trim()
+  let result = (await callGemini(system, prompt, { maxOutputTokens: 400, temperature: 0.7 })).trim()
 
   const TWITTER_LIMIT = 280
   if (result.length > TWITTER_LIMIT) {

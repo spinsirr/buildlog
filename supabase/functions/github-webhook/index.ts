@@ -1,6 +1,7 @@
 import { generatePost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
+import { fetchPrContext } from "../_shared/github.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
 import { fetchPlatformsAndPublish } from "../_shared/publish.ts"
@@ -217,6 +218,20 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   ) {
     sourceType = "pr"
     const pr = payload.pull_request
+
+    // Fetch commit messages + file paths for richer AI context
+    let commitMessages: string[] = []
+    let files: string[] = []
+    try {
+      const prCtx = await fetchPrContext(installationId, repoFullName, pr.number)
+      commitMessages = prCtx.commitMessages
+      files = prCtx.files
+    } catch (err) {
+      log.warn("failed to fetch PR context, continuing with basic data: {error}", {
+        error: String(err),
+      })
+    }
+
     postData = {
       title: pr.title,
       description: pr.body,
@@ -224,6 +239,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       additions: pr.additions,
       deletions: pr.deletions,
       filesChanged: pr.changed_files,
+      commitMessages,
+      files,
     }
   } else if (event === "release" && payload.action === "published") {
     sourceType = "release"
