@@ -203,22 +203,8 @@ async function oauthCallback(
 
   const oauthState = await retrieveOAuthState(state)
   if (!oauthState || oauthState.platform !== platform) {
-    // DEBUG: check what's in the DB
-    const debugSupabase = createServiceClient()
-    const { data: allStates, error: dbErr } = await debugSupabase
-      .from("oauth_states")
-      .select("state, platform, created_at, expires_at")
-      .order("created_at", { ascending: false })
-      .limit(5)
-    return new Response(JSON.stringify({
-      error: "invalid_state",
-      state_from_url: state,
-      state_len: state.length,
-      retrieve_result: oauthState,
-      recent_states: allStates,
-      db_error: dbErr?.message ?? null,
-      platform_expected: platform,
-    }, null, 2), { status: 200, headers: { "Content-Type": "application/json" } })
+    log.error("invalid oauth state: {platform}", { platform })
+    return redirectResponse(`https://buildlog.ink/settings?error=${platform}_invalid_state`)
   }
 
   const frontendUrl = oauthState.returnUrl
