@@ -77,9 +77,18 @@ export async function getInstallationToken(installationId: number): Promise<stri
   return data.token
 }
 
+export interface FileDiff {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  patch?: string
+}
+
 export interface PrContext {
   commitMessages: string[]
   files: string[]
+  diffs: FileDiff[]
 }
 
 /**
@@ -91,7 +100,7 @@ export async function fetchPrContext(
   repoFullName: string,
   prNumber: number,
 ): Promise<PrContext> {
-  const result: PrContext = { commitMessages: [], files: [] }
+  const result: PrContext = { commitMessages: [], files: [], diffs: [] }
 
   let token: string
   try {
@@ -127,8 +136,29 @@ export async function fetchPrContext(
   }
 
   if (filesRes.status === "fulfilled" && filesRes.value.ok) {
-    const files = (await filesRes.value.json()) as Array<{ filename: string }>
+    const files = (await filesRes.value.json()) as Array<{
+      filename: string
+      status: string
+      additions: number
+      deletions: number
+      patch?: string
+    }>
     result.files = files.map((f) => f.filename)
+    // Keep diffs under ~12KB total to avoid bloating the AI prompt
+    let totalPatchSize = 0
+    const MAX_PATCH_BUDGET = 12_000
+    for (const f of files) {
+      const patchLen = f.patch?.length ?? 0
+      if (totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0) break
+      result.diffs.push({
+        filename: f.filename,
+        status: f.status,
+        additions: f.additions,
+        deletions: f.deletions,
+        patch: f.patch?.slice(0, 3000), // cap individual file patch
+      })
+      totalPatchSize += Math.min(patchLen, 3000)
+    }
   } else {
     log.warn("failed to fetch PR files")
   }

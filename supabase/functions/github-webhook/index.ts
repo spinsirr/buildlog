@@ -174,7 +174,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
 
   // Parse the event type and extract relevant data
   let sourceType: "commit" | "pr" | "release" | "tag" | null = null
-  let postData: Record<string, string | string[] | number | undefined> = {}
+  // deno-lint-ignore no-explicit-any
+  let postData: Record<string, any> = {}
 
   if (event === "push" && payload.commits?.length > 0) {
     sourceType = "commit"
@@ -219,13 +220,10 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     sourceType = "pr"
     const pr = payload.pull_request
 
-    // Fetch commit messages + file paths for richer AI context
-    let commitMessages: string[] = []
-    let files: string[] = []
+    // Fetch commit messages, file paths, and code diffs for richer AI context
+    let prCtx: { commitMessages: string[]; files: string[]; diffs: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }> } = { commitMessages: [], files: [], diffs: [] }
     try {
-      const prCtx = await fetchPrContext(installationId, repoFullName, pr.number)
-      commitMessages = prCtx.commitMessages
-      files = prCtx.files
+      prCtx = await fetchPrContext(installationId, repoFullName, pr.number)
     } catch (err) {
       log.warn("failed to fetch PR context, continuing with basic data: {error}", {
         error: String(err),
@@ -239,8 +237,9 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       additions: pr.additions,
       deletions: pr.deletions,
       filesChanged: pr.changed_files,
-      commitMessages,
-      files,
+      commitMessages: prCtx.commitMessages,
+      files: prCtx.files,
+      diffs: prCtx.diffs,
     }
   } else if (event === "release" && payload.action === "published") {
     sourceType = "release"

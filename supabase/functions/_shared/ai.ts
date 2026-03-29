@@ -2,6 +2,14 @@ import { getLog } from "./logger.ts"
 
 const log = getLog("ai")
 
+interface FileDiff {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  patch?: string
+}
+
 interface GeneratePostInput {
   sourceType: "commit" | "pr" | "release" | "tag"
   repoName: string
@@ -16,6 +24,7 @@ interface GeneratePostInput {
     deletions?: number
     filesChanged?: number
     commitMessages?: string[]
+    diffs?: FileDiff[]
   }
 }
 
@@ -96,7 +105,16 @@ function buildChangeContext(input: GeneratePostInput): string {
     parts.push(`Commit history:\n- ${msgs}`)
   }
 
-  if (input.data.files && input.data.files.length > 0) {
+  // Include actual code diffs — this is the richest context for understanding what changed
+  if (input.data.diffs && input.data.diffs.length > 0) {
+    const diffSections = input.data.diffs
+      .filter((d) => d.patch)
+      .map((d) => `--- ${d.filename} (${d.status}, +${d.additions} -${d.deletions})\n${d.patch}`)
+    if (diffSections.length > 0) {
+      parts.push(`Code changes:\n${diffSections.join("\n\n")}`)
+    }
+  } else if (input.data.files && input.data.files.length > 0) {
+    // Fallback to file list if no diffs available
     const fileList = input.data.files.slice(0, 20).join("\n- ")
     parts.push(
       `Files touched:\n- ${fileList}${
