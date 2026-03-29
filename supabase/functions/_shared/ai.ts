@@ -126,7 +126,12 @@ function buildChangeContext(input: GeneratePostInput): string {
   return parts.length > 0 ? `\n\n${parts.join("\n\n")}` : ""
 }
 
-async function callGeminiOnce(url: string, body: string): Promise<string> {
+interface GeminiResult {
+  text: string
+  truncated: boolean
+}
+
+async function callGeminiOnce(url: string, body: string): Promise<GeminiResult> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30_000)
 
@@ -146,7 +151,10 @@ async function callGeminiOnce(url: string, body: string): Promise<string> {
     }
 
     const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> }
+        finishReason?: string
+      }>
     }
 
     const text = data.candidates?.[0]?.content?.parts
@@ -155,7 +163,10 @@ async function callGeminiOnce(url: string, body: string): Promise<string> {
       .trim()
     if (!text) throw new Error("Gemini response was empty")
 
-    return text
+    const finishReason = data.candidates?.[0]?.finishReason
+    const truncated = finishReason === "MAX_TOKENS"
+
+    return { text, truncated }
   } finally {
     clearTimeout(timeout)
   }
@@ -174,7 +185,7 @@ async function callGemini(
   system: string,
   prompt: string,
   opts?: { maxOutputTokens?: number; temperature?: number },
-): Promise<string> {
+): Promise<GeminiResult> {
   const apiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_API_KEY")
   if (!apiKey) {
     throw new Error("Missing GEMINI_API_KEY (or GOOGLE_API_KEY)")
@@ -267,8 +278,24 @@ ${changeTypeHints[changeType]}
 
   const prompt = `为以下开发动态生成一篇小红书文案：\n${context}`
 
-  const result = (await callGemini(system, prompt, { maxOutputTokens: 600, temperature: 0.85 }))
-    .trim()
+  const { text, truncated } = await callGemini(system, prompt, {
+    maxOutputTokens: 600,
+    temperature: 0.85,
+  })
+  let result = text.trim()
+
+  if (truncated) {
+    log.warn("XHS post was truncated by model, retrying")
+    const retry = await callGemini(
+      system,
+      `${prompt}
+
+IMPORTANT: Write a COMPLETE post. Do not end mid-sentence.`,
+      { maxOutputTokens: 800, temperature: 0.5 },
+    )
+    result = retry.text.trim()
+  }
+
   return result
 }
 
@@ -351,28 +378,33 @@ Output ONLY the post text, nothing else.`
 
   const prompt = `Generate a build-in-public post for this ${input.sourceType}:\n${context}`
 
-  const isComplete = (text: string) => /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split('\n').pop() || '')
+  const isComplete = (text: string) =>
+    /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split("\n").pop() || "")
 
-  let result = (await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.7 })).trim()
+  const initial = await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.7 })
+  let result = initial.text.trim()
 
-  // Retry if the post looks truncated (doesn't end with punctuation or hashtag)
-  if (!isComplete(result) && result.length < 280) {
-    const retry = (await callGemini(
+  // Retry if model hit token limit (truncated) or post looks incomplete
+  if (initial.truncated || (!isComplete(result) && result.length < 280)) {
+    log.warn("Post was {reason}, retrying", {
+      reason: initial.truncated ? "truncated by MAX_TOKENS" : "incomplete",
+    })
+    const retry = await callGemini(
       system,
       `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence and hashtags. Do not end mid-word or mid-thought.`,
-      { maxOutputTokens: 800, temperature: 0.5 }
-    )).trim()
-    if (isComplete(retry) && retry.length <= 280) result = retry
+      { maxOutputTokens: 800, temperature: 0.5 },
+    )
+    if (isComplete(retry.text.trim()) && retry.text.trim().length <= 280) result = retry.text.trim()
   }
 
-  // If AI exceeded 280 chars, re-generate with stricter instruction rather than hard-truncating
+  // If AI exceeded 280 chars, re-generate with stricter instruction
   if (result.length > 280) {
-    const retry = (await callGemini(
+    const retry = await callGemini(
       system,
       `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under 280 characters while keeping it complete and engaging.`,
-      { maxOutputTokens: 800, temperature: 0.5 }
-    )).trim()
-    result = retry.length <= 280 ? retry : result.slice(0, 279) + "…"
+      { maxOutputTokens: 800, temperature: 0.5 },
+    )
+    result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
   }
 
   return result

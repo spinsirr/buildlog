@@ -55,7 +55,7 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
               {posts.map((post) => (
                 <TableRow key={post.id} className="border-zinc-800 hover:bg-zinc-800/30">
                   <TableCell className="max-w-xs">
-                    <p className="text-sm text-zinc-300 line-clamp-1">{post.content}</p>
+                    <p className="text-sm text-zinc-300 line-clamp-2">{post.content}</p>
                     {post.connected_repos && (
                       <span className="text-xs text-zinc-500 font-mono-ui">
                         {post.connected_repos.full_name}

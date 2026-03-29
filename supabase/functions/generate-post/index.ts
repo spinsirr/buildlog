@@ -173,7 +173,9 @@ async function handleRegenerate(
   const sourceData = (post.source_data ?? {}) as Record<string, unknown>
 
   // For PR posts, re-fetch code diffs from GitHub for richer context
-  let diffs: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }> = []
+  let diffs: Array<
+    { filename: string; status: string; additions: number; deletions: number; patch?: string }
+  > = []
   if (
     post.source_type === "pr" &&
     profile?.github_installation_id &&
@@ -274,7 +276,9 @@ async function handleXhsCopy(
   const sourceData = (post.source_data ?? {}) as Record<string, unknown>
 
   // For PR posts, re-fetch code diffs for richer context
-  let diffs: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }> = []
+  let diffs: Array<
+    { filename: string; status: string; additions: number; deletions: number; patch?: string }
+  > = []
   if (
     post.source_type === "pr" &&
     xhsProfile?.github_installation_id &&

@@ -174,8 +174,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
 
   // Parse the event type and extract relevant data
   let sourceType: "commit" | "pr" | "release" | "tag" | null = null
-  // deno-lint-ignore no-explicit-any
-  let postData: Record<string, any> = {}
+  let postData: Record<string, string | string[] | number | undefined> = {}
 
   if (event === "push" && payload.commits?.length > 0) {
     sourceType = "commit"
@@ -221,7 +220,13 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     const pr = payload.pull_request
 
     // Fetch commit messages, file paths, and code diffs for richer AI context
-    let prCtx: { commitMessages: string[]; files: string[]; diffs: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }> } = { commitMessages: [], files: [], diffs: [] }
+    let prCtx: {
+      commitMessages: string[]
+      files: string[]
+      diffs: Array<
+        { filename: string; status: string; additions: number; deletions: number; patch?: string }
+      >
+    } = { commitMessages: [], files: [], diffs: [] }
     try {
       prCtx = await fetchPrContext(installationId, repoFullName, pr.number)
     } catch (err) {

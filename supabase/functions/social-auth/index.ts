@@ -250,7 +250,9 @@ async function oauthCallback(
       body,
     })
     return redirectResponse(
-      `${frontendUrl}/settings?error=${platform}_token_exchange&detail=${encodeURIComponent(body.slice(0, 200))}`,
+      `${frontendUrl}/settings?error=${platform}_token_exchange&detail=${
+        encodeURIComponent(body.slice(0, 200))
+      }`,
     )
   }
 
