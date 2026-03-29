@@ -50,8 +50,8 @@ export const OAUTH_PROVIDERS: Record<string, OAuthProviderConfig> = {
     tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
     userInfoUrl: "https://api.linkedin.com/v2/userinfo",
     scopes: ["openid", "profile", "email", "w_member_social"],
-    tokenAuthMethod: "basic",
-    pkce: true,
+    tokenAuthMethod: "body",
+    pkce: false,
     extractUser: (data) => {
       const d = data as { sub: string; name?: string; email?: string }
       return { id: d.sub, username: d.name ?? d.email ?? d.sub }
