@@ -351,13 +351,16 @@ Output ONLY the post text, nothing else.`
 
   const prompt = `Generate a build-in-public post for this ${input.sourceType}:\n${context}`
 
-  let result = (await callGemini(system, prompt, { maxOutputTokens: 400, temperature: 0.7 })).trim()
+  let result = (await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.7 })).trim()
 
-  const TWITTER_LIMIT = 280
-  if (result.length > TWITTER_LIMIT) {
-    const truncated = result.slice(0, TWITTER_LIMIT - 1)
-    const lastSpace = truncated.lastIndexOf(" ")
-    result = `${lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated}…`
+  // If AI exceeded 280 chars, re-generate with stricter instruction rather than hard-truncating
+  if (result.length > 280) {
+    const retry = (await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under 280 characters while keeping it complete and engaging.`,
+      { maxOutputTokens: 800, temperature: 0.5 }
+    )).trim()
+    result = retry.length <= 280 ? retry : result.slice(0, 279) + "…"
   }
 
   return result
