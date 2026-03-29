@@ -248,8 +248,16 @@ async function oauthCallback(
       status: tokenRes.status,
       body,
     })
-    const detail = encodeURIComponent(`${tokenRes.status}:${body.slice(0, 200)}`)
-    return redirectResponse(`${frontendUrl}/settings?error=${platform}_token_exchange&detail=${detail}`)
+    // DEBUG: return error directly so we can see Twitter's response
+    return new Response(
+      JSON.stringify({
+        error: "token_exchange_failed",
+        status: tokenRes.status,
+        twitter_response: body,
+        redirect_uri_used: `${getEdgeFunctionBaseUrl()}/${platform}/callback`,
+      }, null, 2),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    )
   }
 
   const tokenData = (await tokenRes.json()) as {
