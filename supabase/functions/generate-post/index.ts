@@ -2,6 +2,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { generatePost, generateXhsPost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
+import { fetchPrContext } from "../_shared/github.ts"
 import { parsePathParts, safeJson } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { checkLimit } from "../_shared/subscription.ts"
@@ -162,23 +163,52 @@ async function handleRegenerate(
     }
   }
 
-  const { data: profile } = await supabase.from("profiles").select("tone").eq("id", userId).single()
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tone, github_installation_id")
+    .eq("id", userId)
+    .single()
 
   const tone = profile?.tone ?? "casual"
+  const sourceData = (post.source_data ?? {}) as Record<string, unknown>
+
+  // For PR posts, re-fetch code diffs from GitHub for richer context
+  let diffs: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }> = []
+  if (
+    post.source_type === "pr" &&
+    profile?.github_installation_id &&
+    sourceData.repo &&
+    sourceData.pr_number
+  ) {
+    try {
+      const prCtx = await fetchPrContext(
+        profile.github_installation_id,
+        sourceData.repo as string,
+        sourceData.pr_number as number,
+      )
+      diffs = prCtx.diffs
+    } catch (err) {
+      log.warn("regenerate: failed to fetch PR diffs: {error}", { error: String(err) })
+    }
+  }
 
   const content = await generatePost({
     sourceType: post.source_type as "commit" | "pr" | "release",
     repoName,
     tone,
-    data: (post.source_data ?? {}) as {
-      message?: string
-      title?: string
-      description?: string
-      files?: string[]
-      url?: string
-      additions?: number
-      deletions?: number
-      filesChanged?: number
+    data: {
+      ...(sourceData as {
+        message?: string
+        title?: string
+        description?: string
+        files?: string[]
+        url?: string
+        additions?: number
+        deletions?: number
+        filesChanged?: number
+        commitMessages?: string[]
+      }),
+      diffs,
     },
   })
 
@@ -235,18 +265,50 @@ async function handleXhsCopy(
     }
   }
 
+  const { data: xhsProfile } = await supabase
+    .from("profiles")
+    .select("github_installation_id")
+    .eq("id", userId)
+    .single()
+
+  const sourceData = (post.source_data ?? {}) as Record<string, unknown>
+
+  // For PR posts, re-fetch code diffs for richer context
+  let diffs: Array<{ filename: string; status: string; additions: number; deletions: number; patch?: string }> = []
+  if (
+    post.source_type === "pr" &&
+    xhsProfile?.github_installation_id &&
+    sourceData.repo &&
+    sourceData.pr_number
+  ) {
+    try {
+      const prCtx = await fetchPrContext(
+        xhsProfile.github_installation_id,
+        sourceData.repo as string,
+        sourceData.pr_number as number,
+      )
+      diffs = prCtx.diffs
+    } catch (err) {
+      log.warn("xhs-copy: failed to fetch PR diffs: {error}", { error: String(err) })
+    }
+  }
+
   const content = await generateXhsPost({
     sourceType: post.source_type as "commit" | "pr" | "release" | "tag",
     repoName,
-    data: (post.source_data ?? {}) as {
-      message?: string
-      title?: string
-      description?: string
-      files?: string[]
-      url?: string
-      additions?: number
-      deletions?: number
-      filesChanged?: number
+    data: {
+      ...(sourceData as {
+        message?: string
+        title?: string
+        description?: string
+        files?: string[]
+        url?: string
+        additions?: number
+        deletions?: number
+        filesChanged?: number
+        commitMessages?: string[]
+      }),
+      diffs,
     },
   })
 
