@@ -37,16 +37,30 @@ async function getChangelog(slug: string) {
 
   if (!profile) return null
 
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('id, content, source_type, source_data, created_at, connected_repos(full_name)')
-    .eq('user_id', profile.id)
-    .in('status', ['published', 'draft'])
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const [{ data: posts }, { data: digests }] = await Promise.all([
+    supabase
+      .from('posts')
+      .select('id, content, source_type, source_data, created_at, connected_repos(full_name)')
+      .eq('user_id', profile.id)
+      .in('status', ['published', 'draft'])
+      .order('created_at', { ascending: false })
+      .limit(100),
+    supabase
+      .from('weekly_digests')
+      .select('week_start, summary, post_count')
+      .eq('user_id', profile.id)
+      .order('week_start', { ascending: false })
+      .limit(20),
+  ])
+
+  const digestMap = new Map<string, string>()
+  for (const d of digests ?? []) {
+    digestMap.set(d.week_start, d.summary)
+  }
 
   return {
     profile,
+    digestMap,
     posts: (posts ?? []).map((p) => ({
       ...p,
       connected_repos: Array.isArray(p.connected_repos)
@@ -154,7 +168,7 @@ function PostEntry({ post }: { post: ChangelogPost }) {
   )
 }
 
-function WeekSection({ week }: { week: WeekGroup }) {
+function WeekSection({ week, digest }: { week: WeekGroup; digest?: string }) {
   return (
     <section className="relative">
       <div className="sticky top-0 z-10 -mx-1 mb-6 bg-zinc-950/80 px-1 py-3 backdrop-blur-sm">
@@ -165,6 +179,14 @@ function WeekSection({ week }: { week: WeekGroup }) {
           </span>
         </h2>
       </div>
+      {digest && (
+        <div className="mb-6 rounded-lg border border-zinc-800/50 bg-zinc-900/50 p-4">
+          <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-widest text-purple-400/70">
+            Week Summary
+          </p>
+          <div className="text-sm leading-relaxed text-zinc-300 whitespace-pre-line">{digest}</div>
+        </div>
+      )}
       <div>
         {week.posts.map((post) => (
           <PostEntry key={post.id} post={post} />
@@ -181,7 +203,7 @@ export default async function ChangelogPage({ params }: { params: Promise<{ slug
   const data = await getChangelog(slug)
   if (!data) notFound()
 
-  const { profile, posts } = data
+  const { profile, posts, digestMap } = data
   const weeks = groupByWeek(posts)
   const username = profile.github_username ?? slug
 
@@ -226,7 +248,11 @@ export default async function ChangelogPage({ params }: { params: Promise<{ slug
         ) : (
           <div className="space-y-12">
             {weeks.map((week) => (
-              <WeekSection key={week.startDate} week={week} />
+              <WeekSection
+                key={week.startDate}
+                week={week}
+                digest={digestMap.get(week.startDate)}
+              />
             ))}
           </div>
         )}
