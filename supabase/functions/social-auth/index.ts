@@ -1,7 +1,7 @@
 // deno-lint-ignore-file camelcase
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { base64UrlEncode, encrypt, randomBytes, toBase64Utf8 } from "../_shared/crypto.ts"
+import { base64UrlEncode, encrypt, randomBytes, rfc6749BasicAuth } from "../_shared/crypto.ts"
 import { parsePathParts, safeJson } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { OAUTH_PROVIDERS, type OAuthProviderConfig } from "../_shared/providers.ts"
@@ -229,7 +229,7 @@ async function oauthCallback(
     "Content-Type": "application/x-www-form-urlencoded",
   }
   if (provider.tokenAuthMethod === "basic") {
-    headers.Authorization = `Basic ${toBase64Utf8(`${clientId}:${clientSecret}`)}`
+    headers.Authorization = `Basic ${rfc6749BasicAuth(clientId, clientSecret)}`
   } else {
     bodyParams.client_id = clientId
     bodyParams.client_secret = clientSecret
