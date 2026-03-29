@@ -1,4 +1,14 @@
-import { Bug, Code, GitMerge, GitPullRequest, Rocket, Sparkles, Tag, Wrench, FileText } from 'lucide-react'
+import {
+  Bug,
+  Code,
+  FileText,
+  GitMerge,
+  GitPullRequest,
+  Rocket,
+  Sparkles,
+  Tag,
+  Wrench,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -50,7 +60,7 @@ async function getChangelog(slug: string) {
     supabase
       .from('posts')
       .select(
-        'id, content, change_summary, category, source_type, source_data, created_at, connected_repos(full_name)',
+        'id, content, change_summary, category, source_type, source_data, created_at, connected_repos(full_name)'
       )
       .eq('user_id', profile.id)
       .in('status', ['published', 'draft'])
@@ -111,8 +121,7 @@ function groupByWeek(posts: ChangelogPost[]): WeekGroup[] {
     const end = new Date(start)
     end.setDate(end.getDate() + 6)
 
-    const fmt = (d: Date) =>
-      d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
     // Group posts by category within each week
     const catMap = new Map<string, ChangelogPost[]>()
@@ -226,7 +235,9 @@ function CategorySection({ group }: { group: CategoryGroup }) {
   return (
     <div className="mb-6 last:mb-0">
       <div className="mb-3 flex items-center gap-2">
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${color}`}>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${color}`}
+        >
           <Icon className="h-3 w-3" />
           {group.label}
         </span>
@@ -282,7 +293,6 @@ export default async function ChangelogPage({ params }: { params: Promise<{ slug
 
   // Stats
   const totalPosts = posts.length
-  const categories = new Set(posts.map((p) => p.category ?? 'improvement'))
   const repos = new Set(posts.map((p) => p.connected_repos?.full_name).filter(Boolean))
 
   return (
@@ -323,10 +333,12 @@ export default async function ChangelogPage({ params }: { params: Promise<{ slug
               <span className="font-mono text-zinc-300">{totalPosts}</span> updates
             </span>
             <span>
-              <span className="font-mono text-zinc-300">{repos.size}</span> repo{repos.size !== 1 ? 's' : ''}
+              <span className="font-mono text-zinc-300">{repos.size}</span> repo
+              {repos.size !== 1 ? 's' : ''}
             </span>
             <span>
-              <span className="font-mono text-zinc-300">{weeks.length}</span> week{weeks.length !== 1 ? 's' : ''}
+              <span className="font-mono text-zinc-300">{weeks.length}</span> week
+              {weeks.length !== 1 ? 's' : ''}
             </span>
             {/* Agent API link */}
             <a

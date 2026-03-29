@@ -27,7 +27,7 @@ function groupByDay(posts: Post[]): DayGroup[] {
   }
 
   return Array.from(days.entries()).map(([date, posts]) => {
-    const d = new Date(date + 'T12:00:00Z')
+    const d = new Date(`${date}T12:00:00Z`)
     const today = new Date().toISOString().slice(0, 10)
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
 

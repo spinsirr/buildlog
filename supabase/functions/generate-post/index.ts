@@ -218,7 +218,12 @@ async function handleRegenerate(
 
   const { data: updatedPost, error: updateError } = await supabase
     .from("posts")
-    .update({ content, category, change_summary: changeSummary, updated_at: new Date().toISOString() })
+    .update({
+      content,
+      category,
+      change_summary: changeSummary,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", post.id)
     .select()
     .single()

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -28,7 +28,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   // Build query
   let query = supabase
     .from('posts')
-    .select('id, content, change_summary, category, source_type, created_at, published_at, connected_repos(full_name)')
+    .select(
+      'id, content, change_summary, category, source_type, created_at, published_at, connected_repos(full_name)'
+    )
     .eq('user_id', profile.id)
     .in('status', ['published', 'draft'])
     .order('created_at', { ascending: false })
@@ -85,20 +87,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
       entries: items,
     }))
 
-  return NextResponse.json({
-    changelog: {
-      owner: profile.github_username,
-      slug,
-      generated_at: new Date().toISOString(),
-      total_entries: entries.length,
+  return NextResponse.json(
+    {
+      changelog: {
+        owner: profile.github_username,
+        slug,
+        generated_at: new Date().toISOString(),
+        total_entries: entries.length,
+      },
+      weeks: grouped,
+      // Flat list for agents that just want a simple array
+      entries,
     },
-    weeks: grouped,
-    // Flat list for agents that just want a simple array
-    entries,
-  }, {
-    headers: {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-      'Access-Control-Allow-Origin': '*',
-    },
-  })
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'Access-Control-Allow-Origin': '*',
+      },
+    }
+  )
 }
