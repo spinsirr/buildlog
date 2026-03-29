@@ -186,7 +186,7 @@ export function NotificationBell() {
             ref={dropdownRef}
             role="menu"
             aria-label="Notifications"
-            className="absolute right-0 top-full mt-1 w-[calc(100vw-2rem)] sm:w-72 max-w-sm z-50 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl"
+            className="absolute left-0 top-full mt-1 w-72 z-50 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl sm:left-auto sm:right-0"
           >
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
               <span className="text-xs font-medium text-zinc-300">

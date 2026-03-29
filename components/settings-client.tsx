@@ -94,7 +94,10 @@ export function SettingsClient({
     } else if (error) {
       const platform = error.split('_')[0]
       const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
-      toast.error('Connection failed', { description: `Failed to connect ${label}: ${error}` })
+      const detail = searchParams.get('detail')
+      toast.error('Connection failed', {
+        description: `Failed to connect ${label}: ${error}${detail ? ` (${decodeURIComponent(detail)})` : ''}`,
+      })
       router.replace('/settings', { scroll: false })
     }
   }, [searchParams, router, supabase])
