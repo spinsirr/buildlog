@@ -248,7 +248,8 @@ async function oauthCallback(
       status: tokenRes.status,
       body,
     })
-    return redirectResponse(`${frontendUrl}/settings?error=${platform}_token_exchange`)
+    const detail = encodeURIComponent(`${tokenRes.status}:${body.slice(0, 200)}`)
+    return redirectResponse(`${frontendUrl}/settings?error=${platform}_token_exchange&detail=${detail}`)
   }
 
   const tokenData = (await tokenRes.json()) as {
