@@ -105,8 +105,9 @@ export function PostCard({
   }, [onGenerateXhs, post.id])
 
   const handleEdit = useCallback(() => {
+    setEditContent(post.content)
     setEditing(true)
-  }, [])
+  }, [post.content])
 
   const handleCancelEdit = useCallback(() => {
     setEditing(false)

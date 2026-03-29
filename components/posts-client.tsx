@@ -234,6 +234,7 @@ export function PostsClient({
     })
     if (!result.ok) throw new Error(result.error || 'Failed to regenerate')
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...result.data.post } : p)))
+    await refreshPosts()
   }
 
   async function handleGenerateXhs(id: string): Promise<string> {
