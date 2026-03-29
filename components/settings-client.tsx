@@ -1,6 +1,14 @@
 'use client'
 
-import { Check, ChevronDown, CreditCard, Loader2, Sparkles } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  CreditCard,
+  ExternalLink,
+  Globe,
+  Loader2,
+  Sparkles,
+} from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -110,6 +118,8 @@ export function SettingsClient({
   const [bskyHandle, setBskyHandle] = useState('')
   const [bskyPassword, setBskyPassword] = useState('')
   const [bskyLoading, setBskyLoading] = useState(false)
+  const [changelogEnabled, setChangelogEnabled] = useState(initialProfile.changelog_enabled)
+  const [changelogSlug, setChangelogSlug] = useState(initialProfile.changelog_slug)
 
   const handleUpgrade = useCallback(async () => {
     setBillingLoading(true)
@@ -270,6 +280,51 @@ export function SettingsClient({
       toast.success(`${label} disconnected`)
       setActionPlatform(null)
     })
+  }
+
+  async function handleChangelogToggle(checked: boolean) {
+    const prev = changelogEnabled
+    setChangelogEnabled(checked)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ changelog_enabled: checked })
+        .eq('id', user.id)
+      if (error) {
+        setChangelogEnabled(prev)
+        toast.error('Update failed', { description: 'Failed to update changelog setting' })
+      }
+    }
+  }
+
+  async function handleChangelogSlugSave() {
+    const trimmed = changelogSlug
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-')
+    if (!trimmed) return
+    setChangelogSlug(trimmed)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ changelog_slug: trimmed })
+        .eq('id', user.id)
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Slug taken', { description: 'That URL is already in use. Try another.' })
+        } else {
+          toast.error('Update failed', { description: error.message })
+        }
+      } else {
+        toast.success('Changelog URL updated')
+      }
+    }
   }
 
   const getConnection = (id: string) => connections.find((c) => c.platform === id)
@@ -553,6 +608,57 @@ export function SettingsClient({
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-zinc-50 flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Public Changelog
+              </CardTitle>
+              <p className="text-sm text-zinc-400 mt-1">
+                Share a live shipping log anyone can see — no login required.
+              </p>
+            </div>
+            <Switch checked={changelogEnabled} onCheckedChange={handleChangelogToggle} />
+          </div>
+        </CardHeader>
+        {changelogEnabled && (
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-zinc-300">Changelog URL</Label>
+              <div className="flex gap-2">
+                <div className="flex flex-1 items-center rounded-md border border-zinc-700 bg-zinc-800 overflow-hidden">
+                  <span className="px-3 text-xs text-zinc-500 whitespace-nowrap border-r border-zinc-700">
+                    buildlog.ink/changelog/
+                  </span>
+                  <input
+                    type="text"
+                    value={changelogSlug}
+                    onChange={(e) => setChangelogSlug(e.target.value)}
+                    onBlur={handleChangelogSlugSave}
+                    onKeyDown={(e) => e.key === 'Enter' && handleChangelogSlugSave()}
+                    className="flex-1 min-w-0 px-3 py-2 text-sm bg-transparent text-zinc-100 focus:outline-none"
+                    placeholder="your-slug"
+                  />
+                </div>
+                <a
+                  href={`/changelog/${changelogSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            </div>
+            <p className="text-[11px] text-zinc-500">
+              Your shipping activity will be visible at this URL. Posts are grouped by week.
+            </p>
+          </CardContent>
+        )}
+      </Card>
     </div>
   )
 }

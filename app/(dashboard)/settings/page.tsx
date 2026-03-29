@@ -13,7 +13,10 @@ function useSettingsData() {
     const [{ data: rows }, { data: profileData, error: profileError }, { data: sub }] =
       await Promise.all([
         supabase.from('platform_connections').select('platform, platform_username'),
-        supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
+        supabase
+          .from('profiles')
+          .select('tone, auto_publish, email_notifications, changelog_slug, changelog_enabled')
+          .single(),
         supabase.from('subscriptions').select('status').single(),
       ])
 
@@ -32,6 +35,8 @@ function useSettingsData() {
       tone: profileData?.tone ?? 'casual',
       auto_publish: profileData?.auto_publish ?? false,
       email_notifications: profileData?.email_notifications ?? true,
+      changelog_slug: profileData?.changelog_slug ?? '',
+      changelog_enabled: profileData?.changelog_enabled ?? false,
     }
 
     const plan: 'free' | 'pro' = sub?.status === 'active' ? 'pro' : 'free'

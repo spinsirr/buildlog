@@ -20,6 +20,8 @@ export type ProfileSettings = {
   tone: string
   auto_publish: boolean
   email_notifications: boolean
+  changelog_slug: string
+  changelog_enabled: boolean
 }
 
 export type Connection = {
