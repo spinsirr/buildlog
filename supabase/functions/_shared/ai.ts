@@ -351,7 +351,19 @@ Output ONLY the post text, nothing else.`
 
   const prompt = `Generate a build-in-public post for this ${input.sourceType}:\n${context}`
 
+  const isComplete = (text: string) => /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split('\n').pop() || '')
+
   let result = (await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.7 })).trim()
+
+  // Retry if the post looks truncated (doesn't end with punctuation or hashtag)
+  if (!isComplete(result) && result.length < 280) {
+    const retry = (await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence and hashtags. Do not end mid-word or mid-thought.`,
+      { maxOutputTokens: 800, temperature: 0.5 }
+    )).trim()
+    if (isComplete(retry) && retry.length <= 280) result = retry
+  }
 
   // If AI exceeded 280 chars, re-generate with stricter instruction rather than hard-truncating
   if (result.length > 280) {
