@@ -26,7 +26,20 @@ export async function publishToTwitter(
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Twitter API error: ${res.status} ${body}`)
+    let message = `Twitter API error (${res.status})`
+    try {
+      const err = JSON.parse(body)
+      if (err.title === "CreditsDepleted") {
+        message = "Twitter API credits exhausted — upgrade your X API plan or wait for credits to reset"
+      } else if (err.detail) {
+        message = err.detail
+      } else if (err.title) {
+        message = err.title
+      }
+    } catch {
+      // non-JSON body, use generic message
+    }
+    throw new Error(message)
   }
 
   const payload = (await res.json()) as { data: { id: string } }
