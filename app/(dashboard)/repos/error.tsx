@@ -3,7 +3,7 @@
 import { ErrorState } from '@/components/error-state'
 
 export default function ReposError({
-  error: _error,
+  error: _error, // eslint-disable-line @typescript-eslint/no-unused-vars -- required by Next.js error boundary
   reset,
 }: {
   error: Error & { digest?: string }

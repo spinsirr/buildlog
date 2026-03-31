@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       sig,
       Deno.env.get("STRIPE_WEBHOOK_SECRET")!,
     )
-  } catch (_err) {
+  } catch {
     log.error("signature verification failed")
     return errorResponse("Invalid signature", 400, req)
   }

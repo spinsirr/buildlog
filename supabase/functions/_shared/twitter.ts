@@ -30,7 +30,8 @@ export async function publishToTwitter(
     try {
       const err = JSON.parse(body)
       if (err.title === "CreditsDepleted") {
-        message = "Twitter API credits exhausted — upgrade your X API plan or wait for credits to reset"
+        message =
+          "Twitter API credits exhausted — upgrade your X API plan or wait for credits to reset"
       } else if (err.detail) {
         message = err.detail
       } else if (err.title) {

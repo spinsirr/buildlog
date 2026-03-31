@@ -125,7 +125,7 @@ async function oauthInitiate(
   provider: OAuthProviderConfig,
   platform: string,
 ): Promise<Response> {
-  const { user, supabase: _userClient, error } = await requireUser(req)
+  const { user, error } = await requireUser(req)
   if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
   const limit = await checkLimit(user.id, "platforms")
@@ -330,7 +330,7 @@ async function oauthCallback(
 // ---------------------------------------------------------------------------
 
 async function blueskyConnect(req: Request): Promise<Response> {
-  const { user, supabase: _userClient, error } = await requireUser(req)
+  const { user, error } = await requireUser(req)
   if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
 
   const limit = await checkLimit(user.id, "platforms")

@@ -8,9 +8,6 @@ import { cn, draftAgeBucket, draftAgeText, timeAgo } from '@/lib/utils'
 
 export function PostCardHeader({
   post,
-  charCount,
-  overLimit,
-  editing,
 }: {
   post: Post
   charCount: number

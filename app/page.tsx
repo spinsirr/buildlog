@@ -82,17 +82,14 @@ const JSON_LD_BREADCRUMB = JSON.stringify({
 function JsonLd() {
   return (
     <>
-      {/* eslint-disable-next-line -- static constants, no XSS risk */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON_LD_SOFTWARE_APP }}
       />
-      {/* eslint-disable-next-line -- static constants, no XSS risk */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON_LD_ORGANIZATION }}
       />
-      {/* eslint-disable-next-line -- static constants, no XSS risk */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD_BREADCRUMB }} />
     </>
   )
