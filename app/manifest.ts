@@ -2,10 +2,10 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'BuildLog — Turn Commits into Content',
+    name: 'BuildLog — Turn Shipping into Marketing',
     short_name: 'BuildLog',
     description:
-      'Connect your GitHub and let AI turn every commit into a ready-to-publish social post. Build in public, effortlessly.',
+      'Your team ships every day. BuildLog turns it into marketing. AI-powered posts for Twitter/X, LinkedIn, and Bluesky from your code changes.',
     start_url: '/',
     display: 'standalone',
     background_color: '#0a0a0a',

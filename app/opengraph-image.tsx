@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const alt = 'BuildLog — Turn Commits into Content'
+export const alt = 'BuildLog — Turn Shipping into Marketing'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 export const runtime = 'edge'
@@ -136,7 +136,7 @@ export default async function Image() {
               color: '#fafafa',
             }}
           >
-            Turn Commits
+            Turn Shipping
           </div>
           <div
             style={{
@@ -157,7 +157,7 @@ export default async function Image() {
                 color: 'transparent',
               }}
             >
-              Content
+              Marketing
             </span>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default async function Image() {
             letterSpacing: '-0.01em',
           }}
         >
-          Connect GitHub · AI writes the post · Publish everywhere
+          Your team ships every day. BuildLog turns it into marketing.
         </div>
 
         {/* Platform badges */}

@@ -8,23 +8,23 @@ import { LogoMark } from '@/components/logo-mark'
 const SITE_URL = 'https://buildlog.ink'
 
 export const metadata: Metadata = {
-  title: 'BuildLog — Turn Commits into Content',
+  title: 'BuildLog — Turn Shipping into Marketing',
   description:
-    'Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.',
+    'Your team ships every day. BuildLog turns it into marketing. AI reads your code changes and writes platform-optimized posts for Twitter/X, LinkedIn, and Bluesky.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: SITE_URL,
     siteName: 'BuildLog',
-    title: 'BuildLog — Turn Commits into Content',
+    title: 'BuildLog — Turn Shipping into Marketing',
     description:
-      'Connect GitHub once. AI writes the post. Publish to Twitter/X, LinkedIn, and Bluesky from one dashboard.',
+      'Your team ships every day. BuildLog turns it into marketing — AI-written posts for Twitter/X, LinkedIn, and Bluesky.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BuildLog — Turn Commits into Content',
-    description: 'Connect GitHub once. AI writes the post. Publish everywhere.',
+    title: 'BuildLog — Turn Shipping into Marketing',
+    description: 'Your team ships every day. BuildLog turns it into marketing.',
   },
 }
 
@@ -35,7 +35,7 @@ const JSON_LD_SOFTWARE_APP = JSON.stringify({
   '@type': 'SoftwareApplication',
   name: 'BuildLog',
   description:
-    'Turn your GitHub commits into social media posts with AI. Build in public, effortlessly.',
+    'Your team ships every day. BuildLog turns it into marketing. AI-powered social posts from your code changes.',
   url: SITE_URL,
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
@@ -51,7 +51,7 @@ const JSON_LD_SOFTWARE_APP = JSON.stringify({
     'Twitter/X publishing',
     'LinkedIn publishing',
     'Bluesky publishing',
-    'Build in public automation',
+    'Dev team GTM automation',
   ],
 })
 
@@ -63,7 +63,7 @@ const JSON_LD_ORGANIZATION = JSON.stringify({
   logo: `${SITE_URL}/logo-icon.png`,
   sameAs: ['https://github.com/spencerzhao2/buildlog'],
   description:
-    'BuildLog helps developers build in public by turning GitHub commits into social media posts with AI.',
+    'BuildLog is the GTM engine for dev teams — AI turns every code change into platform-optimized social posts.',
 })
 
 const JSON_LD_BREADCRUMB = JSON.stringify({

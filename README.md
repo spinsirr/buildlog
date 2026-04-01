@@ -1,6 +1,6 @@
 # BuildLog
 
-Build in public, effortlessly. Connect your GitHub repos and let AI auto-generate social media posts from your commits, PRs, and releases. Review drafts and publish to Twitter/X, LinkedIn, and Bluesky.
+Your team ships every day. BuildLog turns it into marketing. Connect your GitHub repos and let AI auto-generate social media posts from your commits, PRs, and releases. Review drafts and publish to Twitter/X, LinkedIn, and Bluesky.
 
 **Live at [buildlog.ink](https://buildlog.ink)**
 

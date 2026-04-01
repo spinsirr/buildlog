@@ -51,26 +51,27 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://buildlog.ink'),
   title: {
-    default: 'BuildLog — Turn Commits into Content',
+    default: 'BuildLog — Turn Shipping into Marketing',
     template: '%s | BuildLog',
   },
   description:
-    'Connect your GitHub and let AI turn every commit into a ready-to-publish social post for Twitter/X, LinkedIn, and Bluesky. Build in public, effortlessly.',
+    'Your team ships every day. BuildLog turns it into marketing. AI reads your code changes and writes platform-optimized posts for Twitter/X, LinkedIn, and Bluesky.',
   applicationName: 'BuildLog',
   authors: [{ name: 'BuildLog', url: 'https://buildlog.ink' }],
   creator: 'BuildLog',
   publisher: 'BuildLog',
   generator: 'Next.js',
   keywords: [
-    'build in public',
+    'developer marketing',
+    'go to market',
+    'GTM for dev teams',
     'developer tools',
     'github automation',
     'social media automation',
     'AI content generation',
     'twitter automation',
     'linkedin automation',
-    'developer marketing',
-    'commit to content',
+    'shipping into marketing',
   ],
   referrer: 'origin-when-cross-origin',
   alternates: {
@@ -85,14 +86,14 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://buildlog.ink',
     siteName: 'BuildLog',
-    title: 'BuildLog — Turn Commits into Content',
+    title: 'BuildLog — Turn Shipping into Marketing',
     description:
-      'Connect GitHub once. AI writes the post. Publish to Twitter/X, LinkedIn, and Bluesky from one dashboard.',
+      'Your team ships every day. BuildLog turns it into marketing — AI-written posts for Twitter/X, LinkedIn, and Bluesky.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BuildLog — Turn Commits into Content',
-    description: 'Connect GitHub once. AI writes the post. Publish everywhere.',
+    title: 'BuildLog — Turn Shipping into Marketing',
+    description: 'Your team ships every day. BuildLog turns it into marketing.',
   },
   robots: {
     index: true,

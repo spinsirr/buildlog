@@ -36,7 +36,7 @@ export default async function LoginPage() {
         style={{ boxShadow: '3px 3px 0 0 #000' }}
         aria-hidden
       >
-        ★ BUILD IN PUBLIC
+        ★ GTM FOR DEV TEAMS
       </div>
 
       {/* Decorative floating badge — bottom right */}
@@ -88,7 +88,7 @@ export default async function LoginPage() {
               </span>
             </h1>
             <p className="font-mono-ui text-sm text-black font-bold uppercase tracking-wide">
-              Turn commits into content.
+              Turn shipping into marketing.
             </p>
           </div>
 
