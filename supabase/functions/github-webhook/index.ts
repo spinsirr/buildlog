@@ -1,7 +1,7 @@
 import { generatePost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
-import { fetchPrContext } from "../_shared/github.ts"
+import { fetchPrContext, fetchTagContext } from "../_shared/github.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
 import { fetchPlatformsAndPublish } from "../_shared/publish.ts"
@@ -255,9 +255,31 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     }
   } else if (event === "create" && payload.ref_type === "tag") {
     sourceType = "tag"
+
+    // Fetch commits and diffs between this tag and the previous tag
+    let tagCtx: {
+      commitMessages: string[]
+      files: string[]
+      diffs: Array<
+        { filename: string; status: string; additions: number; deletions: number; patch?: string }
+      >
+      previousTag?: string
+    } = { commitMessages: [], files: [], diffs: [] }
+    try {
+      tagCtx = await fetchTagContext(installationId, repoFullName, payload.ref as string)
+    } catch (err) {
+      log.warn("failed to fetch tag context, continuing with basic data: {error}", {
+        error: String(err),
+      })
+    }
+
     postData = {
       title: payload.ref,
       url: `https://github.com/${repoFullName}/releases/tag/${payload.ref}`,
+      commitMessages: tagCtx.commitMessages,
+      files: tagCtx.files,
+      diffs: tagCtx.diffs,
+      filesChanged: tagCtx.files.length,
     }
   }
 

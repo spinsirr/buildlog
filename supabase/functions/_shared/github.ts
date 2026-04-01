@@ -95,6 +95,108 @@ export interface PrContext {
  * Fetch commit messages and changed file paths for a PR.
  * Best-effort: returns partial data if API calls fail.
  */
+export interface TagContext {
+  commitMessages: string[]
+  files: string[]
+  diffs: FileDiff[]
+  previousTag?: string
+}
+
+/**
+ * Fetch commits and diffs between this tag and the previous tag.
+ * Falls back to comparing against the first commit if no previous tag exists.
+ */
+export async function fetchTagContext(
+  installationId: number,
+  repoFullName: string,
+  tagName: string,
+): Promise<TagContext> {
+  const result: TagContext = { commitMessages: [], files: [], diffs: [] }
+
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get installation token for tag context: {error}", { error: String(err) })
+    return result
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  // Find the previous tag to compare against
+  try {
+    const tagsRes = await fetch(
+      `https://api.github.com/repos/${repoFullName}/tags?per_page=10`,
+      { headers },
+    )
+    if (tagsRes.ok) {
+      const tags = (await tagsRes.json()) as Array<{ name: string }>
+      const tagNames = tags.map((t) => t.name)
+      const currentIdx = tagNames.indexOf(tagName)
+      const previousTag = currentIdx >= 0 && currentIdx < tagNames.length - 1
+        ? tagNames[currentIdx + 1]
+        : null
+
+      if (previousTag) {
+        result.previousTag = previousTag
+        // Compare previous tag to this tag
+        const compareRes = await fetch(
+          `https://api.github.com/repos/${repoFullName}/compare/${previousTag}...${tagName}`,
+          { headers },
+        )
+        if (compareRes.ok) {
+          const compare = (await compareRes.json()) as {
+            commits: Array<{ commit: { message: string } }>
+            files: Array<{
+              filename: string
+              status: string
+              additions: number
+              deletions: number
+              patch?: string
+            }>
+          }
+          result.commitMessages = compare.commits.map((c) => c.commit.message.split("\n")[0])
+          result.files = compare.files.map((f) => f.filename)
+
+          // Keep diffs under ~12KB total
+          let totalPatchSize = 0
+          const MAX_PATCH_BUDGET = 12_000
+          for (const f of compare.files) {
+            const patchLen = f.patch?.length ?? 0
+            if (totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0) break
+            result.diffs.push({
+              filename: f.filename,
+              status: f.status,
+              additions: f.additions,
+              deletions: f.deletions,
+              patch: f.patch?.slice(0, 3000),
+            })
+            totalPatchSize += Math.min(patchLen, 3000)
+          }
+        }
+      } else {
+        // No previous tag — get the tag's commit and show recent commits
+        const commitRes = await fetch(
+          `https://api.github.com/repos/${repoFullName}/commits?sha=${tagName}&per_page=10`,
+          { headers },
+        )
+        if (commitRes.ok) {
+          const commits = (await commitRes.json()) as Array<{ commit: { message: string } }>
+          result.commitMessages = commits.map((c) => c.commit.message.split("\n")[0])
+        }
+      }
+    }
+  } catch (err) {
+    log.warn("failed to fetch tag context: {error}", { error: String(err) })
+  }
+
+  return result
+}
+
 export async function fetchPrContext(
   installationId: number,
   repoFullName: string,
