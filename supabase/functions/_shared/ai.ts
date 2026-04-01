@@ -39,19 +39,19 @@ Sound like a senior engineer sharing knowledge - precise, insightful, educationa
 
 const toneExamples: Record<string, string[]> = {
   casual: [
-    "Just shipped dark mode for the dashboard. Took way longer than expected but the result is clean. #buildinpublic",
-    "Finally fixed that auth bug that's been haunting me for 2 days. Turns out it was a missing await. Classic. #buildinpublic #webdev",
-    "New feature dropped: you can now export your data as CSV. Small win but users have been asking for this forever. #buildinpublic",
+    "Dark mode just landed on the dashboard. Looks clean. #devtools",
+    "Fixed a login bug that was tripping up new signups. Should be smooth now. #shipping",
+    "You can now export your data as CSV. Small feature, big ask. #productupdate",
   ],
   professional: [
-    "Shipped a new onboarding flow that reduces time-to-value by 40%. Better first impressions = better retention. #buildinpublic",
-    "Released v2.1 with performance improvements across the board. API response times down 60% after switching to edge functions. #buildinpublic",
-    "Implemented role-based access control this week. Enterprise customers need granular permissions, and we now deliver. #buildinpublic #saas",
+    "Shipped a new onboarding flow — time-to-value cut significantly. Better first impressions = better retention. #saas #shipping",
+    "Released v2.1 with performance improvements across the board. Faster API, snappier UI. #devtools",
+    "Role-based access control is now live. Granular permissions for teams that need them. #saas #enterprise",
   ],
   technical: [
-    "Migrated our auth from JWT to session tokens with HTTP-only cookies. Eliminated XSS token theft vector while keeping <50ms auth checks. #buildinpublic #security",
-    "Refactored the query layer to use prepared statements with connection pooling. P99 latency dropped from 120ms to 18ms. #buildinpublic #postgres",
-    "Added streaming SSR with React Server Components. TTFB went from 800ms to 120ms on the dashboard. The architecture shift was worth it. #buildinpublic",
+    "Migrated auth to session tokens with HTTP-only cookies. Better security without sacrificing speed. #security #webdev",
+    "Query layer now uses prepared statements with connection pooling. Latency dropped dramatically. #postgres #performance",
+    "Added streaming SSR with Server Components. First paint is noticeably faster on the dashboard. #react #performance",
   ],
 }
 
@@ -256,17 +256,21 @@ export async function generateXhsPost(input: GeneratePostInput): Promise<string>
     general: "描述构建、修改或发布了什么。",
   }
 
-  const system = `你是一个专业的小红书技术博主，擅长用小红书风格写开发者的 build-in-public 内容。
+  const system = `你是一个技术内容作者，帮开发团队把代码变更转化为小红书风格的产品动态。
 
-规则：
-- 字数控制在 300-800 字符
+核心原则：
+- 严格基于提供的代码变更信息写作，绝对不要编造任何没有发生的事情
+- 不要虚构故事、翻车经历、踩坑过程或任何不在上下文中的细节
+- 如果上下文信息有限，就写简短的更新，不要用虚构内容来凑字数
+
+格式规则：
+- 字数控制在 200-500 字符
 - 第一行是标题，用 emoji 开头，简洁有力
 - 正文分段，每段用 emoji 作为小标题或要点标记
-- 语气真诚、接地气，像在跟朋友分享开发日常
-- 适当使用 emoji 装饰（5-10个），但不要堆砌
-- 结尾加 3-5 个小红书话题标签，格式为 #话题#
-- 常用话题：#程序员日常# #独立开发# #开源项目# #技术分享# #BuildInPublic#
-- 可以加一些个人感想、踩坑经验、学到的东西
+- 语气简洁专业，像产品更新公告
+- 适当使用 emoji（3-6个），不要堆砌
+- 结尾加 2-4 个话题标签，格式为 #话题#
+- 常用话题：#程序员日常# #独立开发# #技术分享# #产品更新#
 - 不要包含 URL 链接
 - 不要用 Markdown 格式
 - 只输出文案内容，不要其他说明
@@ -305,20 +309,22 @@ IMPORTANT: Write a COMPLETE post. Do not end mid-sentence.`,
  * for LinkedIn's longer format and professional audience.
  */
 export async function expandForLinkedIn(tweetContent: string): Promise<string> {
-  const system = `You are an expert LinkedIn content writer for developer tools companies.
+  const system = `You are a content writer for developer tools companies on LinkedIn.
 
-YOUR JOB: Take a short tweet-style post and expand it into a compelling LinkedIn post.
+YOUR JOB: Take a short tweet-style post and expand it into a LinkedIn post.
+
+CRITICAL: Only describe what actually happened based on the tweet content. Do NOT invent stories, challenges, or lessons that aren't implied by the original post.
 
 RULES:
 - Target 600-1000 characters (significantly longer than the tweet)
 - Professional but human tone — like a founder giving a confident product update
-- Add context, insight, or a lesson learned that makes it valuable to a professional audience
-- Structure: hook line → context/detail → takeaway or call to discussion
-- No hashtags in the body — add 3-5 relevant hashtags at the very end, separated by spaces
-- Always include #BuildInPublic as one of the hashtags
+- Add relevant context or insight, but only if grounded in the original content
+- Structure: hook line → what shipped/changed → why it matters
+- No hashtags in the body — add 2-4 relevant hashtags at the very end, separated by spaces
 - No emojis except sparingly (0-2 max)
 - Do NOT include URLs
 - Do NOT start with "I'm excited to announce" or similar clichés
+- Do NOT fabricate technical details, metrics, or experiences not in the original
 - Sound like a real founder, not a press release
 
 Output ONLY the LinkedIn post text, nothing else.`
@@ -371,9 +377,9 @@ export async function generatePost(input: GeneratePostInput): Promise<string> {
     general: "Describe what was built, changed, or shipped.",
   }
 
-  const system = `You are an expert build-in-public content writer for developers on Twitter/X.
+  const system = `You are a content writer for developer tools companies on Twitter/X.
 
-YOUR JOB: Read the technical context below and translate it into an engaging, human post about what was BUILT or SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
+YOUR JOB: Read the technical context below and write a concise post about what was SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
 
 CRITICAL RULES:
 - MUST be under 280 characters total (count carefully)
@@ -381,9 +387,11 @@ CRITICAL RULES:
 - The post MUST be a complete, well-formed sentence or paragraph
 - Sound authentic and human — not like a bot or marketing copy
 - No excessive emojis (0-2 max)
-- End with 1-2 relevant hashtags (always include #buildinpublic)
+- End with 1-2 relevant hashtags
 - Never start with "Just" for every post — vary your openings
 - Do NOT include URLs — they will be added separately
+- NEVER fabricate events, bugs, outages, or experiences that aren't in the provided context
+- Only describe what actually happened based on the code changes provided
 
 ABSOLUTELY NEVER EXPOSE:
 - File names or paths (e.g. "auth.ts", "middleware", "components/")
@@ -395,9 +403,8 @@ ABSOLUTELY NEVER EXPOSE:
 
 INSTEAD, TALK ABOUT:
 - What the USER can now do (new features, fixed bugs, better experience)
-- What you LEARNED or figured out during the build
 - The PROGRESS or milestone (shipped, improved, launched)
-- The FEELING of building (satisfaction, challenge, breakthrough)
+- Why this change matters for the product
 
 TONE:
 ${toneInstructions[tone]}
@@ -410,7 +417,7 @@ ${fewShotBlock}
 
 Output ONLY the post text, nothing else.`
 
-  const prompt = `Generate a build-in-public post for this ${input.sourceType}:\n${context}`
+  const prompt = `Generate a shipping update post for this ${input.sourceType}:\n${context}`
 
   const isComplete = (text: string) =>
     /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split("\n").pop() || "")
