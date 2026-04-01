@@ -13,7 +13,7 @@ function useSettingsData() {
     const [{ data: rows }, { data: profileData, error: profileError }, { data: sub }] =
       await Promise.all([
         supabase.from('platform_connections').select('platform, platform_username'),
-        supabase.from('profiles').select('tone, auto_publish, email_notifications').single(),
+        supabase.from('profiles').select('tone, auto_publish, email_notifications, github_username').single(),
         supabase.from('subscriptions').select('status').single(),
       ])
 
@@ -35,8 +35,9 @@ function useSettingsData() {
     }
 
     const plan: 'free' | 'pro' = sub?.status === 'active' ? 'pro' : 'free'
+    const githubUsername: string | null = profileData?.github_username ?? null
 
-    return { connections, profile, plan }
+    return { connections, profile, plan, githubUsername }
   })
 }
 
@@ -51,6 +52,7 @@ export default function SettingsPage() {
       initialConnections={data.connections}
       initialProfile={data.profile}
       initialPlan={data.plan}
+      githubUsername={data.githubUsername}
     />
   )
 }

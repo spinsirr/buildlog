@@ -1,12 +1,13 @@
 'use client'
 
-import { Check, ChevronDown, CreditCard, Loader2, Sparkles } from 'lucide-react'
+import { Check, ChevronDown, CreditCard, Globe, Loader2, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChangelogUrlCopy } from '@/components/changelog-url-copy'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -46,10 +47,12 @@ export function SettingsClient({
   initialConnections,
   initialProfile,
   initialPlan,
+  githubUsername,
 }: {
   initialConnections: Connection[]
   initialProfile: ProfileSettings
   initialPlan: Plan
+  githubUsername: string | null
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -340,6 +343,25 @@ export function SettingsClient({
           )}
         </CardContent>
       </Card>
+
+      {githubUsername && (
+        <Card className="bg-zinc-900 border-zinc-800">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-zinc-400" />
+              <div>
+                <CardTitle className="text-zinc-50">Public Changelog</CardTitle>
+                <p className="text-sm text-zinc-400 mt-1">
+                  Share your build log with followers and the world.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChangelogUrlCopy username={githubUsername} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader>

@@ -20,6 +20,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+    ],
+  },
   experimental: {
     viewTransition: true,
   },
