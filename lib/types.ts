@@ -9,6 +9,7 @@ export type Post = {
   connected_repos: { full_name: string } | null
   platform_post_url: string | null
   published_at: string | null
+  scheduled_at: string | null
 }
 
 export type Profile = {
@@ -20,6 +21,7 @@ export type ProfileSettings = {
   tone: string
   auto_publish: boolean
   email_notifications: boolean
+  publish_delay_minutes: number
 }
 
 export type Connection = {

@@ -246,6 +246,14 @@ export function PostsClient({
     return result.data.content
   }
 
+  async function handleSchedule(id: string, scheduledAt: string | null) {
+    const result = await callEdgeFunction<{ post: Post }>('schedule-post', {
+      body: { id, scheduled_at: scheduledAt },
+    })
+    if (!result.ok) throw new Error(result.error || 'Failed to schedule')
+    await refreshPosts()
+  }
+
   async function refreshPosts() {
     const { data } = await supabase
       .from('posts')
@@ -264,6 +272,7 @@ export function PostsClient({
   const allPosts = filtered
   const drafts = allPosts.filter((p) => p.status === 'draft')
   const published = allPosts.filter((p) => p.status === 'published')
+  const scheduled = allPosts.filter((p) => p.status === 'scheduled')
 
   function renderPosts(postList: Post[]) {
     if (postList.length === 0) return <EmptyState />
@@ -277,6 +286,7 @@ export function PostsClient({
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
             onGenerateXhs={handleGenerateXhs}
+            onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
           />
         ))}
@@ -336,6 +346,9 @@ export function PostsClient({
           <TabsTrigger value="published" className="data-[state=active]:bg-zinc-800">
             Published ({published.length})
           </TabsTrigger>
+          <TabsTrigger value="scheduled" className="data-[state=active]:bg-zinc-800">
+            Scheduled ({scheduled.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-4">
@@ -363,6 +376,16 @@ export function PostsClient({
             </div>
           ) : (
             renderPosts(published)
+          )}
+        </TabsContent>
+        <TabsContent value="scheduled" className="mt-4">
+          {scheduled.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <p className="text-sm text-zinc-500">No scheduled posts.</p>
+              <p className="text-xs text-zinc-500">Schedule a draft to see it here.</p>
+            </div>
+          ) : (
+            renderPosts(scheduled)
           )}
         </TabsContent>
       </Tabs>
