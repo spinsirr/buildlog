@@ -18,6 +18,7 @@ export function PostCard({
   onDelete,
   onRegenerate,
   onGenerateXhs,
+  onSchedule,
   connectedPlatforms,
 }: {
   post: Post
@@ -25,6 +26,7 @@ export function PostCard({
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
   onGenerateXhs: (id: string) => Promise<string>
+  onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
 }) {
   const [editing, setEditing] = useState(false)

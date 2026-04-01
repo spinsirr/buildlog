@@ -15,7 +15,7 @@ function useSettingsData() {
         supabase.from('platform_connections').select('platform, platform_username'),
         supabase
           .from('profiles')
-          .select('tone, auto_publish, email_notifications, github_username')
+          .select('tone, auto_publish, email_notifications, publish_delay_minutes, github_username')
           .single(),
         supabase.from('subscriptions').select('status').single(),
       ])
@@ -35,6 +35,7 @@ function useSettingsData() {
       tone: profileData?.tone ?? 'casual',
       auto_publish: profileData?.auto_publish ?? false,
       email_notifications: profileData?.email_notifications ?? true,
+      publish_delay_minutes: profileData?.publish_delay_minutes ?? 0,
     }
 
     const plan: 'free' | 'pro' = sub?.status === 'active' ? 'pro' : 'free'
