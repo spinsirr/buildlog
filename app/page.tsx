@@ -1,4 +1,4 @@
-import { ArrowRight, GitCommit, Github, Globe, Star, Zap } from 'lucide-react'
+import { ArrowRight, Check, GitCommit, Github, Globe, Star, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LandingNav } from '@/components/landing-nav'
@@ -102,11 +102,11 @@ function JsonLd() {
 const MARQUEE_ITEMS = [
   'Twitter · X',
   'LinkedIn',
-  'GitHub',
-  'Build in Public',
-  'Auto-Post',
-  'Commit → Content',
-  'No Writing Required',
+  'Bluesky',
+  'Ship → Post',
+  'Code-Aware AI',
+  'Platform-Optimized',
+  'Zero Writing',
 ]
 
 function MarqueeStrip() {
@@ -130,12 +130,12 @@ function MarqueeStrip() {
 // ─── Terminal demo ────────────────────────────────────────────────────────────
 function TerminalDemo() {
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_100px_1fr] gap-4 md:gap-6 items-center">
+    <div className="w-full max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_80px_1fr] gap-4 lg:gap-6 items-start">
         {/* Commit terminal */}
         <article
           className="border-4 border-black neo-terminal bg-neo-dark"
-          aria-label="Example: a git commit triggers BuildLog"
+          aria-label="Example: a git push triggers BuildLog"
         >
           <div className="flex items-center gap-2 px-4 py-3 border-b-4 border-black">
             <div
@@ -158,31 +158,30 @@ function TerminalDemo() {
             <div className="flex gap-2">
               <span className="text-neo-secondary">$</span>
               <span className="text-neo-lime">
-                git commit <span className="text-white/60">-m</span>{' '}
-                <span className="text-white">&quot;feat: add dark mode&quot;</span>
+                git push <span className="text-white/60">origin main</span>
               </span>
             </div>
             <div className="text-neo-muted text-xs pl-5 opacity-80">
-              1 file changed, 24 insertions(+)
+              feat: add team billing dashboard
             </div>
             <div className="text-neo-muted text-xs pl-5 opacity-80">
-              [main 3f8a1d2] feat: add dark mode
+              4 files changed, 142 insertions(+), 18 deletions(-)
             </div>
             <div className="pt-2 flex items-center gap-2">
               <span className="text-neo-mint" aria-hidden="true">
                 ✓
               </span>
-              <span className="text-neo-lime opacity-80">buildlog detected push</span>
+              <span className="text-neo-lime opacity-80">buildlog analyzing diff...</span>
             </div>
           </div>
         </article>
 
         {/* Connector */}
         <div
-          className="flex flex-row md:flex-col items-center justify-center gap-3"
+          className="flex flex-row lg:flex-col items-center justify-center gap-3 py-4 lg:py-8"
           aria-hidden="true"
         >
-          <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-neo-lime" />
+          <div className="flex-1 lg:flex-none h-px lg:h-5 w-full lg:w-px bg-neo-lime" />
           <div
             className="border-2 border-neo-lime px-3 py-2 flex-shrink-0"
             style={{ boxShadow: '3px 3px 0 0 #BFFF00' }}
@@ -191,50 +190,62 @@ function TerminalDemo() {
               AI ✦
             </span>
           </div>
-          <div className="flex-1 md:flex-none h-px md:h-5 w-full md:w-px bg-neo-lime" />
+          <div className="flex-1 lg:flex-none h-px lg:h-5 w-full lg:w-px bg-neo-lime" />
         </div>
 
-        {/* Post output */}
-        <article
-          className="border-4 border-black neo-terminal bg-neo-cream"
-          aria-label="Example: AI-generated social media draft"
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b-4 border-black bg-neo-secondary">
-            <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
-              Draft ready
-            </span>
-            <span className="font-mono-ui text-xs font-bold text-black">twitter · linkedin</span>
-          </div>
-          <div className="p-5 space-y-3">
-            <p className="font-mono-ui text-sm leading-relaxed text-black">
-              Just shipped dark mode 🌙
-              <br />
-              Building features people actually ask for &gt; chasing trends.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['#buildinpublic', '#webdev'].map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-block border-2 border-black px-2 py-0.5 rotate-1 font-mono-ui text-xs font-bold uppercase tracking-wider bg-neo-muted"
-                  style={{
-                    boxShadow: '2px 2px 0 0 #000000',
-                  }}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 pt-2 border-t-2 border-black">
-              <div
-                className="w-2.5 h-2.5 rounded-full bg-neo-mint border-2 border-black"
-                aria-hidden="true"
-              />
+        {/* Platform-specific outputs */}
+        <div className="space-y-4">
+          {/* Twitter output */}
+          <article
+            className="border-4 border-black neo-terminal bg-neo-cream"
+            aria-label="Twitter post: concise 280-char version"
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 border-b-4 border-black bg-neo-secondary">
               <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
-                Ready to publish
+                Twitter / X
               </span>
+              <span className="font-mono-ui text-xs font-bold text-black">280 chars</span>
             </div>
-          </div>
-        </article>
+            <div className="p-4">
+              <p className="font-mono-ui text-sm leading-relaxed text-black">
+                Shipped team billing — every seat now has usage visibility and spend controls. Small
+                feature, big trust signal for enterprise buyers. #buildinpublic
+              </p>
+            </div>
+          </article>
+
+          {/* LinkedIn output */}
+          <article
+            className="border-4 border-black neo-terminal bg-neo-cream"
+            aria-label="LinkedIn post: expanded professional version"
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 border-b-4 border-black bg-[#0A66C2]">
+              <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-white">
+                LinkedIn
+              </span>
+              <span className="font-mono-ui text-xs font-bold text-white/80">600-1000 chars</span>
+            </div>
+            <div className="p-4">
+              <p className="font-mono-ui text-sm leading-relaxed text-black">
+                We just shipped team billing with per-seat usage visibility.
+                <br />
+                <br />
+                Why this matters: enterprise buyers don&apos;t just want a product that works — they
+                need to justify the spend internally. Giving every team member a clear view of their
+                usage and costs removes the biggest objection in procurement conversations...
+              </p>
+              <div className="flex items-center gap-2 pt-2 mt-2 border-t-2 border-black/10">
+                <div
+                  className="w-2.5 h-2.5 rounded-full bg-neo-mint border-2 border-black"
+                  aria-hidden="true"
+                />
+                <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
+                  Ready to publish
+                </span>
+              </div>
+            </div>
+          </article>
+        </div>
       </div>
     </div>
   )
@@ -246,16 +257,16 @@ const STEPS = [
     num: '01',
     Icon: GitCommit,
     iconLabel: 'Git commit icon',
-    title: 'Connect GitHub',
-    desc: 'Link any repo with one click. We monitor pushes, PRs, and releases automatically.',
+    title: 'Connect your repos',
+    desc: 'Install the GitHub App. BuildLog monitors pushes, merged PRs, and releases across all your repos.',
     accentClass: 'bg-neo-secondary',
   },
   {
     num: '02',
     Icon: Zap,
     iconLabel: 'Lightning bolt icon',
-    title: 'AI writes the post',
-    desc: 'Every meaningful commit becomes a ready-to-publish social update, crafted by AI.',
+    title: 'AI reads the diff',
+    desc: 'Not just commit messages — BuildLog reads your actual code changes and understands what you shipped.',
     accentClass: 'bg-neo-muted',
   },
   {
@@ -263,7 +274,7 @@ const STEPS = [
     Icon: Globe,
     iconLabel: 'Globe icon',
     title: 'Publish everywhere',
-    desc: 'Review drafts and ship to Twitter/X and LinkedIn from one dashboard. More platforms coming soon.',
+    desc: 'Platform-optimized posts: concise for Twitter, long-form for LinkedIn, native for Bluesky. Review or auto-publish.',
     accentClass: 'bg-neo-accent',
   },
 ]
@@ -273,19 +284,19 @@ const STATS = [
   {
     num: '0s',
     label: 'to write a post',
-    sub: 'AI generates it instantly',
+    sub: 'AI reads your diff and writes it',
     accentClass: 'bg-neo-accent',
   },
   {
-    num: '2',
-    label: 'platforms supported',
-    sub: 'Twitter · LinkedIn — more coming soon',
+    num: '3',
+    label: 'platforms',
+    sub: 'Twitter · LinkedIn · Bluesky',
     accentClass: 'bg-neo-secondary',
   },
   {
-    num: '∞',
-    label: 'posts per month',
-    sub: 'unlimited on Pro plan',
+    num: '1',
+    label: 'click to publish',
+    sub: 'or zero — auto-publish on push',
     accentClass: 'bg-neo-muted',
   },
 ]
@@ -340,7 +351,7 @@ export default function LandingPage() {
                 style={{ boxShadow: '3px 3px 0 0 #000000' }}
               >
                 <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em]">
-                  ✦ Build in public, effortlessly
+                  ✦ Turn shipping into distribution
                 </span>
               </div>
             </div>
@@ -349,25 +360,24 @@ export default function LandingPage() {
             <h1
               id="hero-heading"
               className="font-display font-black uppercase tracking-tight leading-none mb-8"
-              style={{ fontSize: 'clamp(52px, 10vw, 96px)' }}
+              style={{ fontSize: 'clamp(44px, 8vw, 84px)' }}
             >
-              <span className="block">Turn commits</span>
+              <span className="block">You ship every day.</span>
               <span className="block">
-                into{' '}
+                BuildLog turns it into{' '}
                 <span
                   className="inline-block border-4 border-black px-3 rotate-1 bg-neo-accent"
                   style={{ boxShadow: '6px 6px 0 0 #000000' }}
                 >
-                  content
+                  marketing
                 </span>
               </span>
             </h1>
 
             {/* Subtext */}
-            <p className="font-mono-ui text-base md:text-lg max-w-md mb-10 leading-relaxed opacity-70">
-              Connect GitHub once. AI writes the post.
-              <br />
-              You review and publish everywhere.
+            <p className="font-mono-ui text-base md:text-lg max-w-lg mb-10 leading-relaxed opacity-70">
+              AI reads your code changes — not just commit messages — and writes platform-optimized
+              posts for Twitter, LinkedIn, and Bluesky.
             </p>
 
             {/* CTAs */}
@@ -376,7 +386,7 @@ export default function LandingPage() {
                 href="/login"
                 className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-neo-accent font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
               >
-                Start for free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                Connect GitHub — free <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
               <Link
                 href="https://github.com/spencerzhao2/buildlog"
@@ -396,7 +406,7 @@ export default function LandingPage() {
             >
               <div className="font-display font-black text-3xl leading-none">100%</div>
               <div className="font-mono-ui text-xs font-bold uppercase tracking-widest">
-                automatic
+                code-aware
               </div>
             </div>
 
@@ -531,6 +541,79 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── WHY BUILDLOG ──────────────────────────────────────────────────── */}
+        <section
+          aria-labelledby="why-heading"
+          className="border-t-4 border-black py-24 px-6 bg-neo-dark"
+        >
+          <div className="max-w-5xl mx-auto">
+            <div className="mb-14">
+              <div
+                className="inline-flex border-2 border-neo-lime px-4 py-1.5 mb-6 rotate-1 bg-neo-dark"
+                style={{ boxShadow: '3px 3px 0 0 #BFFF00' }}
+              >
+                <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-neo-lime">
+                  Why BuildLog
+                </span>
+              </div>
+              <h2
+                id="why-heading"
+                className="font-display font-black uppercase leading-tight text-white"
+                style={{ fontSize: 'clamp(32px, 5vw, 56px)' }}
+              >
+                Your code changes are
+                <br />
+                your best content.
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <h3 className="font-display font-bold text-lg uppercase text-neo-lime">
+                  Without BuildLog
+                </h3>
+                {[
+                  'Ship a feature. Forget to post about it.',
+                  'Open Twitter. Stare at blank compose box.',
+                  'Write something. Delete it. Give up.',
+                  'Copy the tweet to LinkedIn. Looks terrible at 280 chars.',
+                  'Post once a month. Wonder why nobody knows about your product.',
+                ].map((item) => (
+                  <div key={item} className="flex gap-3 items-start">
+                    <span
+                      className="text-neo-accent font-bold text-lg leading-none mt-0.5"
+                      aria-hidden="true"
+                    >
+                      ✕
+                    </span>
+                    <p className="font-mono-ui text-sm leading-relaxed text-white/70">{item}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-6">
+                <h3 className="font-display font-bold text-lg uppercase text-neo-lime">
+                  With BuildLog
+                </h3>
+                {[
+                  'Push to GitHub. BuildLog reads the diff.',
+                  'AI writes a tweet — concise, human, no jargon.',
+                  'Same feature → expanded LinkedIn post with context.',
+                  'Review in dashboard or auto-publish instantly.',
+                  'Ship daily, post daily. Compound your distribution.',
+                ].map((item) => (
+                  <div key={item} className="flex gap-3 items-start">
+                    <Check
+                      className="h-4 w-4 text-neo-mint flex-shrink-0 mt-0.5"
+                      aria-hidden="true"
+                    />
+                    <p className="font-mono-ui text-sm leading-relaxed text-white/70">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── CTA ───────────────────────────────────────────────────────────── */}
         <section
           aria-labelledby="cta-heading"
@@ -562,7 +645,7 @@ export default function LandingPage() {
               style={{ boxShadow: '3px 3px 0 0 #000000' }}
             >
               <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-black">
-                ✦ Free to start
+                ✦ Free to start — 5 posts/month
               </span>
             </div>
 
@@ -571,22 +654,23 @@ export default function LandingPage() {
               className="font-display font-black uppercase leading-tight mb-6 text-black"
               style={{ fontSize: 'clamp(40px, 8vw, 80px)' }}
             >
-              Ship code.
+              You ship.
               <br />
-              Let AI
+              AI writes
               <br />
-              tell the story.
+              the post.
             </h2>
 
-            <p className="font-mono-ui text-sm md:text-base max-w-sm mx-auto mb-10 leading-relaxed opacity-70 text-black">
-              Connect your GitHub and start turning commits into content in under a minute.
+            <p className="font-mono-ui text-sm md:text-base max-w-md mx-auto mb-10 leading-relaxed opacity-70 text-black">
+              Connect your GitHub in 30 seconds. First 5 posts are free every month. Upgrade for
+              unlimited.
             </p>
 
             <Link
               href="/login"
               className="inline-flex items-center gap-3 border-4 border-black px-10 py-5 bg-black font-mono-ui text-base font-bold uppercase tracking-wider text-white neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
             >
-              Connect GitHub for free <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              Connect GitHub — free <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </Link>
           </div>
         </section>

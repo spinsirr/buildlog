@@ -299,6 +299,40 @@ IMPORTANT: Write a COMPLETE post. Do not end mid-sentence.`,
   return result
 }
 
+/**
+ * Expand a short-form post (tweet) into a LinkedIn-appropriate post.
+ * Called at publish time — takes the existing content and rewrites it
+ * for LinkedIn's longer format and professional audience.
+ */
+export async function expandForLinkedIn(tweetContent: string): Promise<string> {
+  const system = `You are an expert LinkedIn content writer for developer tools companies.
+
+YOUR JOB: Take a short tweet-style post and expand it into a compelling LinkedIn post.
+
+RULES:
+- Target 600-1000 characters (significantly longer than the tweet)
+- Professional but human tone — like a founder giving a confident product update
+- Add context, insight, or a lesson learned that makes it valuable to a professional audience
+- Structure: hook line → context/detail → takeaway or call to discussion
+- No hashtags in the body — add 3-5 relevant hashtags at the very end, separated by spaces
+- Always include #BuildInPublic as one of the hashtags
+- No emojis except sparingly (0-2 max)
+- Do NOT include URLs
+- Do NOT start with "I'm excited to announce" or similar clichés
+- Sound like a real founder, not a press release
+
+Output ONLY the LinkedIn post text, nothing else.`
+
+  const prompt = `Expand this tweet into a LinkedIn post:\n\n"${tweetContent}"`
+
+  const { text } = await callGemini(system, prompt, {
+    maxOutputTokens: 800,
+    temperature: 0.7,
+  })
+
+  return text.trim()
+}
+
 export async function generatePost(input: GeneratePostInput): Promise<string> {
   const tone = input.tone ?? "casual"
   const changeType = classifyChange(input)
