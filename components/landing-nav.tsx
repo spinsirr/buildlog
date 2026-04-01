@@ -34,6 +34,12 @@ export function LandingNav() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-5" aria-label="Main navigation">
+          <Link
+            href="/pricing"
+            className="font-mono-ui text-sm font-bold uppercase tracking-widest px-2 py-1 border-2 border-transparent hover:border-black hover:bg-neo-secondary hover:px-3 hover:shadow-[4px_4px_0_0_#000] transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+          >
+            Pricing
+          </Link>
           {isLoggedIn ? (
             <Link
               href="/dashboard"
@@ -82,6 +88,13 @@ export function LandingNav() {
           id="mobile-menu"
           className="md:hidden border-t-4 border-black px-6 py-6 flex flex-col gap-4 bg-neo-cream"
         >
+          <Link
+            href="/pricing"
+            onClick={() => setOpen(false)}
+            className="block border-4 border-black px-5 py-4 bg-neo-secondary font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
+          >
+            Pricing
+          </Link>
           {isLoggedIn ? (
             <Link
               href="/dashboard"
