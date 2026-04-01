@@ -47,7 +47,7 @@ const PLANS = [
     period: '/month',
     description: 'For founders and teams who ship fast and want to show it.',
     accent: 'bg-neo-accent',
-    cta: 'Start 14-day free trial',
+    cta: 'Start 7-day free trial',
     ctaStyle: 'bg-neo-accent',
     popular: true,
     features: [
