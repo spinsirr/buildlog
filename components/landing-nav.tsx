@@ -1,25 +1,15 @@
-'use client'
-
-import { ArrowRight, Menu, X } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import { LogoMark } from '@/components/logo-mark'
-import { createClient } from '@/lib/supabase/client'
+import { MobileMenuButton } from '@/components/mobile-menu-button'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export function LandingNav() {
-  const [open, setOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-
-  useEffect(() => {
-    async function checkAuth() {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setIsLoggedIn(!!user)
-    }
-    checkAuth()
-  }, [])
+export async function LandingNav() {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const isLoggedIn = !!user
 
   return (
     <header className="border-b-4 border-black sticky top-0 z-50 bg-neo-cream">
@@ -65,64 +55,9 @@ export function LandingNav() {
           )}
         </nav>
 
-        {/* Mobile hamburger */}
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="md:hidden border-4 border-black p-2 bg-neo-cream neo-btn-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-        >
-          {open ? (
-            <X className="h-5 w-5" strokeWidth={3} />
-          ) : (
-            <Menu className="h-5 w-5" strokeWidth={3} />
-          )}
-        </button>
+        {/* Mobile menu (client component for toggle state) */}
+        <MobileMenuButton isLoggedIn={isLoggedIn} />
       </div>
-
-      {/* Mobile drawer */}
-      {open && (
-        <div
-          id="mobile-menu"
-          className="md:hidden border-t-4 border-black px-6 py-6 flex flex-col gap-4 bg-neo-cream"
-        >
-          <Link
-            href="/pricing"
-            onClick={() => setOpen(false)}
-            className="block border-4 border-black px-5 py-4 bg-neo-secondary font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
-          >
-            Pricing
-          </Link>
-          {isLoggedIn ? (
-            <Link
-              href="/dashboard"
-              onClick={() => setOpen(false)}
-              className="block border-4 border-black px-5 py-4 bg-neo-lime font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
-            >
-              Dashboard →
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="block border-4 border-black px-5 py-4 bg-neo-cream font-mono-ui text-sm font-bold uppercase tracking-wider text-center neo-btn"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="block border-4 border-black px-5 py-4 bg-neo-accent font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
-              >
-                Get started →
-              </Link>
-            </>
-          )}
-        </div>
-      )}
     </header>
   )
 }
