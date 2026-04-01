@@ -32,11 +32,11 @@ const PLANS = [
     features: [
       { text: '5 posts per month', included: true },
       { text: '1 connected repo', included: true },
-      { text: '1 platform (Twitter, LinkedIn, or Bluesky)', included: true },
+      { text: '1 platform (LinkedIn or Bluesky)', included: true },
       { text: 'AI post generation from diffs', included: true },
       { text: 'Public changelog page', included: true },
       { text: 'Unlimited repos', included: false },
-      { text: 'All platforms', included: false },
+      { text: 'Twitter + all platforms', included: false },
       { text: 'Auto-publish on push', included: false },
       { text: 'Brand voice training', included: false },
     ],
@@ -270,7 +270,7 @@ export default function PricingPage() {
                 },
                 {
                   q: 'Can I switch platforms on the free plan?',
-                  a: 'Yes. You get 1 connected platform at a time, but you can disconnect and reconnect a different one whenever you want.',
+                  a: 'Yes. You get 1 connected platform (LinkedIn or Bluesky) at a time, but you can disconnect and reconnect a different one whenever you want. Twitter requires the Pro plan.',
                 },
                 {
                   q: 'What happens when I hit the free limit?',

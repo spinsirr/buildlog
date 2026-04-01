@@ -5,7 +5,7 @@ import { base64UrlEncode, encrypt, randomBytes, rfc6749BasicAuth } from "../_sha
 import { parsePathParts, safeJson } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { OAUTH_PROVIDERS, type OAuthProviderConfig } from "../_shared/providers.ts"
-import { checkLimit } from "../_shared/subscription.ts"
+import { checkLimit, getUserPlan } from "../_shared/subscription.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 
 await setupLogger()
@@ -127,6 +127,21 @@ async function oauthInitiate(
 ): Promise<Response> {
   const { user, supabase: _userClient, error } = await requireUser(req)
   if (!user) return errorResponse(error ?? "Unauthorized", 401, req)
+
+  // Twitter is Pro-only (API costs)
+  if (platform === "twitter") {
+    const plan = await getUserPlan(user.id)
+    if (plan === "free") {
+      return jsonResponse(
+        {
+          error: "Twitter is available on the Pro plan. Upgrade to connect Twitter.",
+          code: "pro_only",
+        },
+        req,
+        { status: 403 },
+      )
+    }
+  }
 
   const limit = await checkLimit(user.id, "platforms")
   if (!limit.allowed) {

@@ -196,6 +196,14 @@ export function SettingsClient({
   }
 
   async function handleConnect(platform: string) {
+    // Twitter is Pro-only
+    if (platform === 'twitter' && initialPlan === 'free') {
+      toast.error('Twitter requires Pro', {
+        description: 'Upgrade to Pro to connect Twitter.',
+        action: { label: 'Upgrade', onClick: () => handleUpgrade() },
+      })
+      return
+    }
     if (platform === 'bluesky') {
       setShowBskyForm(true)
       return
@@ -400,27 +408,39 @@ export function SettingsClient({
                     </div>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant={connected ? 'outline' : 'default'}
-                    disabled={busy || (isBsky && bskyLoading)}
-                    onClick={() =>
-                      connected ? handleDisconnect(platform.id) : handleConnect(platform.id)
-                    }
-                    className={
-                      connected
-                        ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
-                        : 'bg-purple-600 hover:bg-purple-500 text-white border-0'
-                    }
-                  >
-                    {busy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : connected ? (
-                      'Disconnect'
-                    ) : (
-                      'Connect'
-                    )}
-                  </Button>
+                  {platform.id === 'twitter' && initialPlan === 'free' && !connected ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleConnect(platform.id)}
+                      className="border-zinc-700 text-zinc-500 hover:text-purple-400 hover:border-purple-500/50 gap-1.5"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Pro
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant={connected ? 'outline' : 'default'}
+                      disabled={busy || (isBsky && bskyLoading)}
+                      onClick={() =>
+                        connected ? handleDisconnect(platform.id) : handleConnect(platform.id)
+                      }
+                      className={
+                        connected
+                          ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
+                          : 'bg-purple-600 hover:bg-purple-500 text-white border-0'
+                      }
+                    >
+                      {busy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : connected ? (
+                        'Disconnect'
+                      ) : (
+                        'Connect'
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {isBsky && showBskyForm && !connected && (
