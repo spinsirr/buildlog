@@ -1,10 +1,10 @@
-import { GitCommit, GitMerge, Tag, PenLine, ExternalLink } from 'lucide-react'
+import { ExternalLink, GitCommit, GitMerge, PenLine, Tag } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Badge } from '@/components/ui/badge'
 import { LogoMark } from '@/components/logo-mark'
+import { Badge } from '@/components/ui/badge'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -26,11 +26,30 @@ type GroupedPosts = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SOURCE_TYPE_CONFIG: Record<string, { label: string; Icon: typeof GitCommit; className: string }> = {
-  commit: { label: 'Commit', Icon: GitCommit, className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  pr: { label: 'Pull Request', Icon: GitMerge, className: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-  release: { label: 'Release', Icon: Tag, className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  manual: { label: 'Post', Icon: PenLine, className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+const SOURCE_TYPE_CONFIG: Record<
+  string,
+  { label: string; Icon: typeof GitCommit; className: string }
+> = {
+  commit: {
+    label: 'Commit',
+    Icon: GitCommit,
+    className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  },
+  pr: {
+    label: 'Pull Request',
+    Icon: GitMerge,
+    className: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  },
+  release: {
+    label: 'Release',
+    Icon: Tag,
+    className: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  },
+  manual: {
+    label: 'Post',
+    Icon: PenLine,
+    className: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  },
 }
 
 function formatDate(dateString: string): string {
@@ -93,7 +112,7 @@ async function getPublishedPosts(userId: string): Promise<ChangelogPost[]> {
   return data.map((row) => ({
     ...row,
     connected_repos: Array.isArray(row.connected_repos)
-      ? row.connected_repos[0] ?? null
+      ? (row.connected_repos[0] ?? null)
       : row.connected_repos,
   })) as ChangelogPost[]
 }
@@ -138,11 +157,7 @@ export async function generateMetadata({
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default async function ChangelogPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
+export default async function ChangelogPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const profile = await getProfileByUsername(slug)
 
@@ -185,9 +200,7 @@ export default async function ChangelogPage({
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {profile.github_username}
-            </h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{profile.github_username}</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Changelog &middot; {posts.length} {posts.length === 1 ? 'post' : 'posts'}
             </p>
@@ -208,10 +221,7 @@ export default async function ChangelogPage({
               <section key={group.date}>
                 {/* Date header */}
                 <div className="flex items-center gap-3 mb-6">
-                  <time
-                    dateTime={group.date}
-                    className="text-sm font-medium text-muted-foreground"
-                  >
+                  <time dateTime={group.date} className="text-sm font-medium text-muted-foreground">
                     {group.label}
                   </time>
                   <div className="flex-1 h-px bg-border" />
@@ -230,9 +240,7 @@ export default async function ChangelogPage({
                       >
                         {/* Meta row */}
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <Badge
-                            className={`${config.className} text-[11px] gap-1`}
-                          >
+                          <Badge className={`${config.className} text-[11px] gap-1`}>
                             <Icon className="h-3 w-3" />
                             {config.label}
                           </Badge>
@@ -280,13 +288,9 @@ export default async function ChangelogPage({
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <LogoMark size={16} />
-            <span className="text-xs font-medium">
-              Powered by BuildLog
-            </span>
+            <span className="text-xs font-medium">Powered by BuildLog</span>
           </Link>
-          <span className="text-xs text-muted-foreground">
-            buildlog.ink
-          </span>
+          <span className="text-xs text-muted-foreground">buildlog.ink</span>
         </div>
       </footer>
     </div>
