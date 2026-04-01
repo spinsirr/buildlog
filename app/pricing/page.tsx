@@ -64,7 +64,7 @@ const PLANS = [
   },
   {
     name: 'Team',
-    price: '$49',
+    price: '$99',
     period: '/month',
     description: 'For dev teams turning shipping into a marketing engine.',
     accent: 'bg-neo-muted',
