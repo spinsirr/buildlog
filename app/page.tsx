@@ -1,4 +1,4 @@
-import { ArrowRight, Check, GitCommit, Github, Globe, Star, Zap } from 'lucide-react'
+import { ArrowRight, Check, GitCommit, Globe, Star, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LandingNav } from '@/components/landing-nav'
@@ -61,7 +61,7 @@ const JSON_LD_ORGANIZATION = JSON.stringify({
   name: 'BuildLog',
   url: SITE_URL,
   logo: `${SITE_URL}/logo-icon.png`,
-  sameAs: ['https://github.com/spencerzhao2/buildlog'],
+  sameAs: ['https://buildlog.ink'],
   description:
     'BuildLog is the GTM engine for dev teams — AI turns every code change into platform-optimized social posts.',
 })
@@ -387,14 +387,6 @@ export default function LandingPage() {
                 className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-neo-accent font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
               >
                 Connect GitHub — free <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link
-                href="https://github.com/spencerzhao2/buildlog"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2.5 border-4 border-black px-8 py-4 bg-neo-cream font-mono-ui text-sm font-bold uppercase tracking-wider text-black neo-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-              >
-                <Github className="h-4 w-4" aria-hidden="true" /> View on GitHub
               </Link>
             </div>
 
