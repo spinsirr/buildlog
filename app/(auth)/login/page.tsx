@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import {
   GitHubLoginButton,
@@ -6,6 +7,14 @@ import {
   XLoginButton,
 } from '@/components/login-buttons'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+
+export const metadata: Metadata = {
+  title: 'Sign in — BuildLog',
+  description:
+    'Sign in to BuildLog. Connect your GitHub repos and start turning your shipping activity into marketing.',
+  alternates: { canonical: '/login' },
+  robots: { index: false, follow: true },
+}
 
 export default async function LoginPage() {
   const supabase = await createServerSupabaseClient()

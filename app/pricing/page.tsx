@@ -4,6 +4,42 @@ import Link from 'next/link'
 import { LandingNav } from '@/components/landing-nav'
 import { LogoMark } from '@/components/logo-mark'
 
+const FAQ_ITEMS = [
+  {
+    q: 'What counts as a post?',
+    a: "Each AI-generated post that you publish (or auto-publish) to a platform counts as one post. Drafts that you never publish don't count.",
+  },
+  {
+    q: 'Can I switch platforms on the free plan?',
+    a: 'Yes. You get 1 connected platform (LinkedIn or Bluesky) at a time, but you can disconnect and reconnect a different one whenever you want. Twitter requires the Pro plan.',
+  },
+  {
+    q: 'What happens when I hit the free limit?',
+    a: "Your repos stay connected and BuildLog keeps generating drafts — you just can't publish until next month, or until you upgrade.",
+  },
+  {
+    q: 'Do you read my private code?',
+    a: 'BuildLog reads diffs (what changed) — not your full codebase. We never store your source code. Diffs are processed, used for generation, then discarded.',
+  },
+  {
+    q: 'When is the Team plan available?',
+    a: "Soon. If you're interested, start with Pro and we'll reach out when Teams launches with an exclusive early-access offer.",
+  },
+]
+
+const JSON_LD_FAQ = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ_ITEMS.map((faq) => ({
+    '@type': 'Question',
+    name: faq.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.a,
+    },
+  })),
+})
+
 export const metadata: Metadata = {
   title: 'Pricing — BuildLog',
   description:
@@ -101,6 +137,9 @@ function GridOverlay({ opacity = '08' }: { opacity?: string }) {
 export default function PricingPage() {
   return (
     <div className="min-h-screen antialiased bg-neo-cream text-black">
+      {/* Static JSON-LD from compile-time constants — no user input, XSS-safe */}
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD_FAQ }} />
       <LandingNav />
 
       <main id="main-content">
@@ -263,28 +302,7 @@ export default function PricingPage() {
             </div>
 
             <div className="space-y-4">
-              {[
-                {
-                  q: 'What counts as a post?',
-                  a: "Each AI-generated post that you publish (or auto-publish) to a platform counts as one post. Drafts that you never publish don't count.",
-                },
-                {
-                  q: 'Can I switch platforms on the free plan?',
-                  a: 'Yes. You get 1 connected platform (LinkedIn or Bluesky) at a time, but you can disconnect and reconnect a different one whenever you want. Twitter requires the Pro plan.',
-                },
-                {
-                  q: 'What happens when I hit the free limit?',
-                  a: "Your repos stay connected and BuildLog keeps generating drafts — you just can't publish until next month, or until you upgrade.",
-                },
-                {
-                  q: 'Do you read my private code?',
-                  a: 'BuildLog reads diffs (what changed) — not your full codebase. We never store your source code. Diffs are processed, used for generation, then discarded.',
-                },
-                {
-                  q: 'When is the Team plan available?',
-                  a: "Soon. If you're interested, start with Pro and we'll reach out when Teams launches with an exclusive early-access offer.",
-                },
-              ].map((faq) => (
+              {FAQ_ITEMS.map((faq) => (
                 <details key={faq.q} className="border-4 border-white/20 bg-white/5 group">
                   <summary className="px-6 py-4 cursor-pointer font-mono-ui text-sm font-bold uppercase tracking-wider text-white flex items-center justify-between list-none [&::-webkit-details-marker]:hidden">
                     {faq.q}
