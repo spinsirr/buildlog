@@ -23,7 +23,7 @@ function useSettingsData() {
           .select('tone, auto_publish, email_notifications, publish_delay_minutes, github_username')
           .eq('id', user.id)
           .single(),
-        supabase.from('subscriptions').select('status').maybeSingle(),
+        supabase.from('subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
       ])
 
     if (profileError) {
