@@ -10,14 +10,20 @@ import { SettingsSkeleton } from './loading'
 function useSettingsData() {
   const supabase = useMemo(() => createClient(), [])
   return useSWR('settings-data', async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+
     const [{ data: rows }, { data: profileData, error: profileError }, { data: sub }] =
       await Promise.all([
         supabase.from('platform_connections').select('platform, platform_username'),
         supabase
           .from('profiles')
           .select('tone, auto_publish, email_notifications, publish_delay_minutes, github_username')
+          .eq('id', user.id)
           .single(),
-        supabase.from('subscriptions').select('status').single(),
+        supabase.from('subscriptions').select('status').maybeSingle(),
       ])
 
     if (profileError) {

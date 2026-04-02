@@ -59,9 +59,9 @@ async function fetchUsageData() {
   const { data: sub, error: subError } = await supabase
     .from('subscriptions')
     .select('status')
-    .single()
+    .maybeSingle()
 
-  if (subError && subError.code !== 'PGRST116') {
+  if (subError) {
     console.error('Failed to load subscription:', subError.message)
   }
 
