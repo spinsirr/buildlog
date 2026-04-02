@@ -79,7 +79,7 @@ const PLANS = [
   },
   {
     name: 'Pro',
-    price: '$19',
+    price: '$19.9',
     period: '/month',
     description: 'For founders and teams who ship fast and want to show it.',
     accent: 'bg-neo-accent',
