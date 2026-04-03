@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1"
-import { expandForLinkedIn } from "./ai.ts"
 import { publishToBluesky } from "./bluesky.ts"
 import { publishToLinkedIn } from "./linkedin.ts"
 import { getLog } from "./logger.ts"
@@ -24,19 +23,6 @@ export async function publishToAllPlatforms(
   let primaryPostId: string | null = null
   let primaryPostUrl: string | null = null
 
-  // Generate LinkedIn-expanded content if needed (before parallel publish)
-  let linkedInContent = content
-  if (connectedPlatforms.has("linkedin")) {
-    try {
-      linkedInContent = await expandForLinkedIn(content)
-      log.info("expanded content for LinkedIn: {chars} chars", { chars: linkedInContent.length })
-    } catch (err) {
-      log.warn("LinkedIn expansion failed, using original content: {error}", {
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
-
   const tasks: Promise<void>[] = []
 
   if (connectedPlatforms.has("twitter")) {
@@ -59,7 +45,7 @@ export async function publishToAllPlatforms(
 
   if (connectedPlatforms.has("linkedin")) {
     tasks.push(
-      publishToLinkedIn(userId, linkedInContent)
+      publishToLinkedIn(userId, content)
         .then(({ postId, postUrl }) => {
           publishedPlatforms.push("linkedin")
           if (!primaryPostId) {

@@ -16,27 +16,17 @@ const log = getLog("ai")
 // gating is added.
 // ---------------------------------------------------------------------------
 
-type WatermarkVariant = "short" | "long" | "xhs"
+type WatermarkVariant = "default" | "xhs"
 
 const WATERMARKS: Record<WatermarkVariant, string> = {
-  /** Twitter / Bluesky — character-constrained platforms */
-  short: "\n\n🔧 buildlog.ink",
-  /** LinkedIn and other long-form platforms */
-  long: "\n\nBuilt with BuildLog — buildlog.ink",
+  /** All English platforms (Twitter, LinkedIn, Bluesky) */
+  default: "\n\n🔧 buildlog.ink",
   /** 小红书 (XHS) — Chinese-language attribution */
   xhs: "\n\n🔧 由 BuildLog 生成 — buildlog.ink",
 }
 
 function appendWatermark(content: string, variant: WatermarkVariant): string {
   return content + WATERMARKS[variant]
-}
-
-/** Strip any BuildLog watermark so it doesn't leak into AI prompts (e.g. LinkedIn expansion). */
-function stripWatermark(content: string): string {
-  return Object.values(WATERMARKS).reduce((text, wm) => {
-    const idx = text.lastIndexOf(wm)
-    return idx !== -1 ? text.slice(0, idx) : text
-  }, content)
 }
 
 interface FileDiff {
@@ -346,44 +336,6 @@ IMPORTANT: Write a COMPLETE post. Do not end mid-sentence.`,
 }
 
 /**
- * Expand a short-form post (tweet) into a LinkedIn-appropriate post.
- * Called at publish time — takes the existing content and rewrites it
- * for LinkedIn's longer format and professional audience.
- */
-export async function expandForLinkedIn(tweetContent: string): Promise<string> {
-  const system = `You are a content writer for developer tools companies on LinkedIn.
-
-YOUR JOB: Take a short tweet-style post and expand it into a LinkedIn post.
-
-CRITICAL: Only describe what actually happened based on the tweet content. Do NOT invent stories, challenges, or lessons that aren't implied by the original post.
-
-RULES:
-- Target 600-1000 characters (significantly longer than the tweet)
-- Professional but human tone — like a founder giving a confident product update
-- Add relevant context or insight, but only if grounded in the original content
-- Structure: hook line → what shipped/changed → why it matters
-- No hashtags in the body — add 2-4 relevant hashtags at the very end, separated by spaces
-- No emojis except sparingly (0-2 max)
-- Do NOT include URLs
-- Do NOT start with "I'm excited to announce" or similar clichés
-- Do NOT fabricate technical details, metrics, or experiences not in the original
-- Sound like a real founder, not a press release
-
-Output ONLY the LinkedIn post text, nothing else.`
-
-  // Strip any existing watermark from the tweet so the AI doesn't echo it
-  const cleanContent = stripWatermark(tweetContent)
-  const prompt = `Expand this tweet into a LinkedIn post:\n\n"${cleanContent}"`
-
-  const { text } = await callGemini(system, prompt, {
-    maxOutputTokens: 800,
-    temperature: 0.7,
-  })
-
-  return appendWatermark(text.trim(), "long")
-}
-
-/**
  * Generate an intro post for a newly connected repo.
  * Uses project context (README + manifest) to write a "here's what I'm building" post.
  */
@@ -452,7 +404,7 @@ Output ONLY the post text, nothing else.`
     result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
   }
 
-  return appendWatermark(result, "short")
+  return appendWatermark(result, "default")
 }
 
 export async function generatePost(input: GeneratePostInput): Promise<string> {
@@ -572,5 +524,5 @@ Output ONLY the post text, nothing else.`
     result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
   }
 
-  return appendWatermark(result, "short")
+  return appendWatermark(result, "default")
 }
