@@ -10,7 +10,7 @@ const SITE_URL = 'https://buildlog.ink'
 export const metadata: Metadata = {
   title: 'BuildLog — Turn Shipping into Marketing',
   description:
-    'Your team ships every day. BuildLog turns it into marketing. AI reads your code changes and writes platform-optimized posts for Twitter/X, LinkedIn, and Bluesky.',
+    'Your team ships every day. BuildLog turns it into marketing. AI reads your code changes and writes ready-to-publish posts — no writing needed.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     siteName: 'BuildLog',
     title: 'BuildLog — Turn Shipping into Marketing',
     description:
-      'Your team ships every day. BuildLog turns it into marketing — AI-written posts for Twitter/X, LinkedIn, and Bluesky.',
+      'Your team ships every day. BuildLog turns it into marketing — AI-written posts from your code changes.',
   },
   twitter: {
     card: 'summary_large_image',
@@ -35,7 +35,7 @@ const JSON_LD_SOFTWARE_APP = JSON.stringify({
   '@type': 'SoftwareApplication',
   name: 'BuildLog',
   description:
-    'Your team ships every day. BuildLog turns it into marketing. AI-powered social posts from your code changes.',
+    'Your team ships every day. BuildLog turns it into marketing. AI-powered social posts from your code changes — no writing needed.',
   url: SITE_URL,
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Web',
@@ -48,10 +48,10 @@ const JSON_LD_SOFTWARE_APP = JSON.stringify({
   featureList: [
     'GitHub integration',
     'AI-powered content generation',
-    'Twitter/X publishing',
-    'LinkedIn publishing',
-    'Bluesky publishing',
-    'Dev team GTM automation',
+    'Multi-platform publishing (Twitter/X, LinkedIn, Bluesky)',
+    'Zero-effort developer content',
+    'Code-aware AI — reads diffs, not just commit messages',
+    'Auto-publish or review-first workflow',
   ],
 })
 
@@ -63,7 +63,7 @@ const JSON_LD_ORGANIZATION = JSON.stringify({
   logo: `${SITE_URL}/logo-icon.png`,
   sameAs: ['https://buildlog.ink'],
   description:
-    'BuildLog is the GTM engine for dev teams — AI turns every code change into platform-optimized social posts.',
+    'BuildLog is the GTM engine for dev teams — AI turns every code change into ready-to-publish social posts.',
 })
 
 const JSON_LD_BREADCRUMB = JSON.stringify({
@@ -105,8 +105,8 @@ const MARQUEE_ITEMS = [
   'Bluesky',
   'Ship → Post',
   'Code-Aware AI',
-  'Platform-Optimized',
   'Zero Writing',
+  'One Click Publish',
 ]
 
 function MarqueeStrip() {
@@ -193,59 +193,45 @@ function TerminalDemo() {
           <div className="flex-1 lg:flex-none h-px lg:h-5 w-full lg:w-px bg-neo-lime" />
         </div>
 
-        {/* Platform-specific outputs */}
-        <div className="space-y-4">
-          {/* Twitter output */}
-          <article
-            className="border-4 border-black neo-terminal bg-neo-cream"
-            aria-label="Twitter post: concise 280-char version"
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b-4 border-black bg-neo-secondary">
-              <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
-                Twitter / X
+        {/* Generated post */}
+        <article
+          className="border-4 border-black neo-terminal bg-neo-cream"
+          aria-label="AI-generated post ready to publish anywhere"
+        >
+          <div className="flex items-center justify-between px-4 py-2.5 border-b-4 border-black bg-neo-lime">
+            <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
+              Your post
+            </span>
+            <span className="font-mono-ui text-xs font-bold text-black/60">AI-generated</span>
+          </div>
+          <div className="p-5">
+            <p className="font-mono-ui text-sm leading-relaxed text-black">
+              Shipped team billing — every seat now has usage visibility and spend controls. Small
+              feature, big trust signal for enterprise buyers.
+              <br />
+              <br />
+              Why this matters: enterprise buyers don&apos;t just want a product that works — they
+              need to justify the spend internally. Clear usage + cost visibility removes the
+              biggest objection in procurement. #buildinpublic
+            </p>
+            <div className="flex items-center gap-4 pt-4 mt-4 border-t-2 border-black/10">
+              <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black/40">
+                Publish to
               </span>
-              <span className="font-mono-ui text-xs font-bold text-black">280 chars</span>
-            </div>
-            <div className="p-4">
-              <p className="font-mono-ui text-sm leading-relaxed text-black">
-                Shipped team billing — every seat now has usage visibility and spend controls. Small
-                feature, big trust signal for enterprise buyers. #buildinpublic
-              </p>
-            </div>
-          </article>
-
-          {/* LinkedIn output */}
-          <article
-            className="border-4 border-black neo-terminal bg-neo-cream"
-            aria-label="LinkedIn post: expanded professional version"
-          >
-            <div className="flex items-center justify-between px-4 py-2.5 border-b-4 border-black bg-[#0A66C2]">
-              <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-white">
-                LinkedIn
-              </span>
-              <span className="font-mono-ui text-xs font-bold text-white/80">600-1000 chars</span>
-            </div>
-            <div className="p-4">
-              <p className="font-mono-ui text-sm leading-relaxed text-black">
-                We just shipped team billing with per-seat usage visibility.
-                <br />
-                <br />
-                Why this matters: enterprise buyers don&apos;t just want a product that works — they
-                need to justify the spend internally. Giving every team member a clear view of their
-                usage and costs removes the biggest objection in procurement conversations...
-              </p>
-              <div className="flex items-center gap-2 pt-2 mt-2 border-t-2 border-black/10">
-                <div
-                  className="w-2.5 h-2.5 rounded-full bg-neo-mint border-2 border-black"
-                  aria-hidden="true"
-                />
-                <span className="font-mono-ui text-xs font-bold uppercase tracking-wider text-black">
-                  Ready to publish
-                </span>
+              <div className="flex items-center gap-2">
+                {(['Twitter / X', 'LinkedIn', 'Bluesky'] as const).map((platform) => (
+                  <div
+                    key={platform}
+                    className="inline-flex border-2 border-black px-2.5 py-1 bg-neo-secondary"
+                    style={{ boxShadow: '2px 2px 0 0 #000000' }}
+                  >
+                    <span className="font-mono-ui text-xs font-bold text-black">{platform}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </article>
-        </div>
+          </div>
+        </article>
       </div>
     </div>
   )
@@ -274,7 +260,7 @@ const STEPS = [
     Icon: Globe,
     iconLabel: 'Globe icon',
     title: 'Publish everywhere',
-    desc: 'Platform-optimized posts: concise for Twitter, long-form for LinkedIn, native for Bluesky. Review or auto-publish.',
+    desc: 'One post, every platform. Publish to Twitter, LinkedIn, and Bluesky with a single click — or auto-publish on push.',
     accentClass: 'bg-neo-accent',
   },
 ]
@@ -376,8 +362,8 @@ export default function LandingPage() {
 
             {/* Subtext */}
             <p className="font-mono-ui text-base md:text-lg max-w-lg mb-10 leading-relaxed opacity-70">
-              AI reads your code changes — not just commit messages — and writes platform-optimized
-              posts for Twitter, LinkedIn, and Bluesky.
+              AI reads your actual code changes — not just commit messages — and writes
+              ready-to-publish posts. No writing. No context-switching.
             </p>
 
             {/* CTAs */}
@@ -568,7 +554,7 @@ export default function LandingPage() {
                   'Ship a feature. Forget to post about it.',
                   'Open Twitter. Stare at blank compose box.',
                   'Write something. Delete it. Give up.',
-                  'Copy the tweet to LinkedIn. Looks terrible at 280 chars.',
+                  'Copy-paste to LinkedIn. Forget Bluesky exists.',
                   'Post once a month. Wonder why nobody knows about your product.',
                 ].map((item) => (
                   <div key={item} className="flex gap-3 items-start">
@@ -588,8 +574,8 @@ export default function LandingPage() {
                 </h3>
                 {[
                   'Push to GitHub. BuildLog reads the diff.',
-                  'AI writes a tweet — concise, human, no jargon.',
-                  'Same feature → expanded LinkedIn post with context.',
+                  'AI writes the post — concise, human, no jargon.',
+                  'One click → published to Twitter, LinkedIn, Bluesky.',
                   'Review in dashboard or auto-publish instantly.',
                   'Ship daily, post daily. Compound your distribution.',
                 ].map((item) => (
@@ -637,7 +623,7 @@ export default function LandingPage() {
               style={{ boxShadow: '3px 3px 0 0 #000000' }}
             >
               <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em] text-black">
-                ✦ Free to start — 5 posts/month
+                ✦ Free — 5 posts/month · 1 repo · 1 platform
               </span>
             </div>
 
@@ -654,8 +640,8 @@ export default function LandingPage() {
             </h2>
 
             <p className="font-mono-ui text-sm md:text-base max-w-md mx-auto mb-10 leading-relaxed opacity-70 text-black">
-              Connect your GitHub in 30 seconds. First 5 posts are free every month. Upgrade for
-              unlimited.
+              Connect your GitHub in 30 seconds. Free tier gives you 5 posts/month with 1 repo and
+              1 platform. Upgrade for unlimited.
             </p>
 
             <Link
