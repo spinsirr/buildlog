@@ -36,8 +36,14 @@ Deno.serve(async (req) => {
     }
     return await handleGenerate(req, user.id, supabase)
   } catch (err) {
-    log.error("unhandled error: {error}", { error: String(err), stack: (err as Error).stack })
-    return errorResponse("Internal server error", 500, req)
+    const msg = String(err)
+    log.error("unhandled error: {error}", { error: msg, stack: (err as Error).stack })
+    const isGemini = msg.includes("Gemini")
+    return errorResponse(
+      isGemini ? "AI generation failed — please try again" : "Internal server error",
+      500,
+      req,
+    )
   }
 })
 
