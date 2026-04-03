@@ -423,9 +423,26 @@ Output ONLY the post text, nothing else.`
       projectContext.slice(0, 2000)
     }`
 
+  const isComplete = (text: string) =>
+    /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split("\n").pop() || "")
+
   const initial = await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.8 })
   let result = initial.text.trim()
 
+  // Retry if truncated or incomplete
+  if (initial.truncated || (!isComplete(result) && result.length < 280)) {
+    log.warn("Intro post was {reason}, retrying", {
+      reason: initial.truncated ? "truncated by MAX_TOKENS" : "incomplete",
+    })
+    const retry = await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence and hashtags. Do not end mid-word or mid-thought.`,
+      { maxOutputTokens: 800, temperature: 0.5 },
+    )
+    if (isComplete(retry.text.trim()) && retry.text.trim().length <= 280) result = retry.text.trim()
+  }
+
+  // Retry if over 280 chars
   if (result.length > 280) {
     const retry = await callGemini(
       system,
