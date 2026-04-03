@@ -640,8 +640,8 @@ export default function LandingPage() {
             </h2>
 
             <p className="font-mono-ui text-sm md:text-base max-w-md mx-auto mb-10 leading-relaxed opacity-70 text-black">
-              Connect your GitHub in 30 seconds. Free tier gives you 5 posts/month with 1 repo and
-              1 platform. Upgrade for unlimited.
+              Connect your GitHub in 30 seconds. Free tier gives you 5 posts/month with 1 repo and 1
+              platform. Upgrade for unlimited.
             </p>
 
             <Link
