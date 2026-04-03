@@ -229,7 +229,7 @@ async function callGemini(
     throw new Error("Missing GEMINI_API_KEY (or GOOGLE_API_KEY)")
   }
 
-  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash"
+  const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-3-flash-preview"
 
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
