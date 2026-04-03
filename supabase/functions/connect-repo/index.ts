@@ -1,3 +1,4 @@
+import { generateIntroPost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { fetchRepoContext } from "../_shared/github.ts"
@@ -52,11 +53,26 @@ Deno.serve(async (req) => {
       if (profile?.github_installation_id) {
         const ctx = await fetchRepoContext(profile.github_installation_id, body.full_name)
         if (ctx) {
-          await supabase
+          // Store project context
+          const { data: repoRow } = await supabase
             .from("connected_repos")
             .update({ project_context: ctx })
             .eq("user_id", user.id)
             .eq("github_repo_id", body.repo_id)
+            .select("id")
+            .single()
+
+          // Generate intro post as first draft
+          if (repoRow) {
+            const content = await generateIntroPost(body.full_name, ctx)
+            await supabase.from("posts").insert({
+              user_id: user.id,
+              repo_id: repoRow.id,
+              source_type: "intro",
+              content,
+              status: "draft",
+            })
+          }
         }
       }
     } catch {

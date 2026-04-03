@@ -344,6 +344,57 @@ Output ONLY the LinkedIn post text, nothing else.`
   return text.trim()
 }
 
+/**
+ * Generate an intro post for a newly connected repo.
+ * Uses project context (README + manifest) to write a "here's what I'm building" post.
+ */
+export async function generateIntroPost(
+  repoName: string,
+  projectContext: string,
+  tone: "casual" | "professional" | "technical" = "casual",
+): Promise<string> {
+  const examples = toneExamples[tone]
+  const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join("\n")
+
+  const system = `You are a content writer helping developers share what they're building on Twitter/X.
+
+YOUR JOB: Write an introductory post about a project. This is NOT a shipping update — it's a "here's what I'm building" announcement.
+
+CRITICAL RULES:
+- MUST be under 280 characters total (count carefully)
+- Write exactly ONE complete post — never end mid-sentence
+- Sound authentic — like a developer genuinely excited about their project
+- No excessive emojis (0-2 max)
+- End with 1-2 relevant hashtags
+- Do NOT include URLs
+- Do NOT expose internal technical details (file names, function names, architecture)
+- Focus on: what the project DOES, who it's FOR, why it's interesting
+
+TONE:
+${toneInstructions[tone]}
+
+EXAMPLES of good ${tone} posts:
+${fewShotBlock}
+
+Output ONLY the post text, nothing else.`
+
+  const prompt = `Write an introductory post for this project:\n\nProject: ${repoName}\n\nContext:\n${projectContext.slice(0, 2000)}`
+
+  const initial = await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.8 })
+  let result = initial.text.trim()
+
+  if (result.length > 280) {
+    const retry = await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under 280 characters.`,
+      { maxOutputTokens: 800, temperature: 0.5 },
+    )
+    result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
+  }
+
+  return result
+}
+
 export async function generatePost(input: GeneratePostInput): Promise<string> {
   const tone = input.tone ?? "casual"
   const changeType = classifyChange(input)

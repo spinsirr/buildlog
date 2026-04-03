@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { generatePost, generateXhsPost } from "../_shared/ai.ts"
+import { generateIntroPost, generatePost, generateXhsPost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { fetchPrContext } from "../_shared/github.ts"
@@ -155,6 +155,34 @@ async function handleRegenerate(
 
   if (post.source_type === "manual") {
     return errorResponse("Cannot regenerate manual posts", 400, req)
+  }
+
+  // Intro posts use a different generation path
+  if (post.source_type === "intro") {
+    if (post.repo_id) {
+      const { data: repo } = await supabase
+        .from("connected_repos")
+        .select("full_name, project_context")
+        .eq("id", post.repo_id)
+        .single()
+
+      if (repo?.project_context) {
+        const content = await generateIntroPost(repo.full_name, repo.project_context)
+        const { data: updatedPost, error: updateError } = await supabase
+          .from("posts")
+          .update({ content, updated_at: new Date().toISOString() })
+          .eq("id", post.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          log.error("regenerate intro: update error: {error}", { error: String(updateError) })
+          return errorResponse("Failed to update post", 500, req)
+        }
+        return jsonResponse({ post: updatedPost }, req, { status: 200 })
+      }
+    }
+    return errorResponse("No project context available to regenerate intro post", 400, req)
   }
 
   // Get repo name from connected_repos
