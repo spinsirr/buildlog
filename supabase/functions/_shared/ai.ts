@@ -2,6 +2,42 @@ import { getLog } from "./logger.ts"
 
 const log = getLog("ai")
 
+// ---------------------------------------------------------------------------
+// Watermark / attribution
+// ---------------------------------------------------------------------------
+// Appended to AI-generated post content so published posts include a subtle
+// backlink. The watermark is part of the stored content, so users can manually
+// remove or edit it in the post editor before publishing.
+//
+// TODO: Pro/Team plan users should be able to opt out of the watermark as a
+// perk. When implementing, check the user's plan before appending and skip
+// the watermark for paid tiers. The generation functions accept no plan info
+// today — that will need to be threaded through when gating is added.
+// ---------------------------------------------------------------------------
+
+type WatermarkVariant = "short" | "long" | "xhs"
+
+const WATERMARKS: Record<WatermarkVariant, string> = {
+  /** Twitter / Bluesky — character-constrained platforms */
+  short: "\n\n🔧 buildlog.ink",
+  /** LinkedIn and other long-form platforms */
+  long: "\n\nBuilt with BuildLog — buildlog.ink",
+  /** 小红书 (XHS) — Chinese-language attribution */
+  xhs: "\n\n🔧 由 BuildLog 生成 — buildlog.ink",
+}
+
+function appendWatermark(content: string, variant: WatermarkVariant): string {
+  return content + WATERMARKS[variant]
+}
+
+/** Strip any BuildLog watermark so it doesn't leak into AI prompts (e.g. LinkedIn expansion). */
+function stripWatermark(content: string): string {
+  return Object.values(WATERMARKS).reduce((text, wm) => {
+    const idx = text.lastIndexOf(wm)
+    return idx !== -1 ? text.slice(0, idx) : text
+  }, content)
+}
+
 interface FileDiff {
   filename: string
   status: string
@@ -305,7 +341,7 @@ IMPORTANT: Write a COMPLETE post. Do not end mid-sentence.`,
     result = retry.text.trim()
   }
 
-  return result
+  return appendWatermark(result, "xhs")
 }
 
 /**
@@ -334,14 +370,16 @@ RULES:
 
 Output ONLY the LinkedIn post text, nothing else.`
 
-  const prompt = `Expand this tweet into a LinkedIn post:\n\n"${tweetContent}"`
+  // Strip any existing watermark from the tweet so the AI doesn't echo it
+  const cleanContent = stripWatermark(tweetContent)
+  const prompt = `Expand this tweet into a LinkedIn post:\n\n"${cleanContent}"`
 
   const { text } = await callGemini(system, prompt, {
     maxOutputTokens: 800,
     temperature: 0.7,
   })
 
-  return text.trim()
+  return appendWatermark(text.trim(), "long")
 }
 
 /**
@@ -396,7 +434,7 @@ Output ONLY the post text, nothing else.`
     result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
   }
 
-  return result
+  return appendWatermark(result, "short")
 }
 
 export async function generatePost(input: GeneratePostInput): Promise<string> {
@@ -516,5 +554,5 @@ Output ONLY the post text, nothing else.`
     result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
   }
 
-  return result
+  return appendWatermark(result, "short")
 }
