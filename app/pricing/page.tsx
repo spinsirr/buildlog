@@ -364,9 +364,23 @@ export default function PricingPage() {
             <LogoMark size={24} />
             <span className="font-display font-bold text-lg tracking-tight">buildlog</span>
           </div>
-          <span className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40">
-            &copy; {new Date().getFullYear()} buildlog
-          </span>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/privacy"
+              className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"
+            >
+              Terms
+            </Link>
+            <span className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40">
+              &copy; {new Date().getFullYear()} buildlog
+            </span>
+          </div>
         </div>
       </footer>
     </div>

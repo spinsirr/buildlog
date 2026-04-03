@@ -30,6 +30,13 @@ export function MobileMenuButton({ isLoggedIn }: { isLoggedIn: boolean }) {
           className="md:hidden absolute top-16 left-0 right-0 border-t-4 border-black px-6 py-6 flex flex-col gap-4 bg-neo-cream"
         >
           <Link
+            href="/examples"
+            onClick={() => setOpen(false)}
+            className="block border-4 border-black px-5 py-4 bg-neo-lime font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
+          >
+            Examples
+          </Link>
+          <Link
             href="/pricing"
             onClick={() => setOpen(false)}
             className="block border-4 border-black px-5 py-4 bg-neo-secondary font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
