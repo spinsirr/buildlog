@@ -429,6 +429,11 @@ Output ONLY the post text, nothing else.`
     }
   }
 
+  // Final safety net — guarantee we never return a mid-sentence result
+  if (!isComplete(result)) {
+    result = truncateToSentence(result)
+  }
+
   return appendWatermark(result, "default")
 }
 
@@ -568,6 +573,11 @@ Output ONLY the post text, nothing else.`
       const truncated = truncateToSentence(retryText.slice(0, 280))
       result = truncated.length > 0 ? truncated : retryText.slice(0, 279) + "…"
     }
+  }
+
+  // Final safety net — guarantee we never return a mid-sentence result
+  if (!isComplete(result)) {
+    result = truncateToSentence(result)
   }
 
   return appendWatermark(result, "default")
