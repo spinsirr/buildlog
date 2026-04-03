@@ -87,9 +87,46 @@ Deno.serve(async (req) => {
       repo_id?: number
       watched_branches?: string[] | null
       watched_events?: string[] | null
+      refresh_context?: boolean
     }>(req)
     if (!body?.repo_id) {
       return errorResponse("Missing repo_id", 400, req)
+    }
+
+    // Handle context refresh request
+    if (body.refresh_context) {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("github_installation_id")
+          .eq("id", user.id)
+          .single()
+
+        if (!profile?.github_installation_id) {
+          return errorResponse("GitHub not connected", 400, req)
+        }
+
+        const { data: repo } = await supabase
+          .from("connected_repos")
+          .select("id, full_name")
+          .eq("user_id", user.id)
+          .eq("github_repo_id", body.repo_id)
+          .single()
+
+        if (!repo) return errorResponse("Repo not found", 404, req)
+
+        const ctx = await fetchRepoContext(profile.github_installation_id, repo.full_name)
+        if (ctx) {
+          await supabase
+            .from("connected_repos")
+            .update({ project_context: ctx })
+            .eq("id", repo.id)
+        }
+
+        return jsonResponse({ ok: true, project_context: ctx }, req)
+      } catch {
+        return errorResponse("Failed to refresh context", 500, req)
+      }
     }
 
     // Build update payload — only include fields that were sent

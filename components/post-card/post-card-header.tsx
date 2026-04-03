@@ -86,8 +86,16 @@ export function PostCardMeta({
       >
         {post.status}
       </Badge>
-      <Badge variant="secondary" className="text-[10px] border-0 bg-zinc-800 text-zinc-400">
-        {post.source_type}
+      <Badge
+        variant="secondary"
+        className={cn(
+          'text-[10px] border-0',
+          post.source_type === 'intro'
+            ? 'bg-purple-500/10 text-purple-400'
+            : 'bg-zinc-800 text-zinc-400'
+        )}
+      >
+        {post.source_type === 'intro' ? 'intro' : post.source_type}
       </Badge>
       {post.connected_repos && (
         <span className="text-[11px] text-zinc-500 font-mono">

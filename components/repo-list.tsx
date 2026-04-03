@@ -1,5 +1,6 @@
 'use client'
 
+import { RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -283,6 +284,27 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
     setRepos((prev) => prev.map((r) => (r.id === repoId ? { ...r, watched_events: events } : r)))
   }
 
+  const [refreshing, setRefreshing] = useState<number | null>(null)
+
+  async function handleRefreshContext(repo: Repo) {
+    setRefreshing(repo.id)
+    try {
+      const result = await callEdgeFunction<{ ok: boolean }>('connect-repo', {
+        method: 'PATCH',
+        body: { repo_id: repo.id, refresh_context: true },
+      })
+      if (result.ok) {
+        toast.success('Context refreshed', {
+          description: `Updated project context for ${repo.full_name}`,
+        })
+      } else {
+        toast.error(result.error || 'Failed to refresh context')
+      }
+    } finally {
+      setRefreshing(null)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-2">
       {repos.map((repo) => (
@@ -332,6 +354,19 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
                 repo={repo}
                 onUpdate={(branches) => handleBranchUpdate(repo.id, branches)}
               />
+              <div className="mt-3 pt-3 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => handleRefreshContext(repo)}
+                  disabled={refreshing === repo.id}
+                  className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${refreshing === repo.id ? 'animate-spin' : ''}`}
+                  />
+                  {refreshing === repo.id ? 'Refreshing…' : 'Refresh project context'}
+                </button>
+              </div>
             </>
           )}
         </div>
