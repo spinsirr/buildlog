@@ -9,10 +9,11 @@ const log = getLog("ai")
 // backlink. The watermark is part of the stored content, so users can manually
 // remove or edit it in the post editor before publishing.
 //
-// TODO: Pro/Team plan users should be able to opt out of the watermark as a
-// perk. When implementing, check the user's plan before appending and skip
-// the watermark for paid tiers. The generation functions accept no plan info
-// today — that will need to be threaded through when gating is added.
+// TODO(@spinsirr): Pro/Team plan users should be able to opt out of the
+// watermark as a perk. When implementing, check the user's plan before
+// appending and skip the watermark for paid tiers. The generation functions
+// accept no plan info today — that will need to be threaded through when
+// gating is added.
 // ---------------------------------------------------------------------------
 
 type WatermarkVariant = "short" | "long" | "xhs"
