@@ -51,7 +51,7 @@ Developer Tools
 - **Pricing:** https://buildlog.ink/pricing
 - **Privacy Policy:** https://buildlog.ink/privacy
 - **Terms of Service:** https://buildlog.ink/terms
-- **Support:** support@buildlog.ink
+- **Support:** business@hmls.autos
 
 ## Screenshots needed
 

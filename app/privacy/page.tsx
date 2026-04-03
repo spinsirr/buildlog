@@ -133,10 +133,10 @@ export default function PrivacyPage() {
             <p>
               Questions about this policy? Email us at{' '}
               <a
-                href="mailto:support@buildlog.ink"
+                href="mailto:business@hmls.autos"
                 className="underline underline-offset-2 hover:text-neo-accent"
               >
-                support@buildlog.ink
+                business@hmls.autos
               </a>{' '}
               or open an issue on{' '}
               <a

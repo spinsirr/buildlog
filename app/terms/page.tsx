@@ -136,10 +136,10 @@ export default function TermsPage() {
             <p>
               Questions?{' '}
               <a
-                href="mailto:support@buildlog.ink"
+                href="mailto:business@hmls.autos"
                 className="underline underline-offset-2 hover:text-neo-accent"
               >
-                support@buildlog.ink
+                business@hmls.autos
               </a>
             </p>
           </Section>
