@@ -356,7 +356,8 @@ export async function generateIntroPost(
   const examples = toneExamples[tone]
   const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join("\n")
 
-  const system = `You are a content writer helping developers share what they're building on Twitter/X.
+  const system =
+    `You are a content writer helping developers share what they're building on Twitter/X.
 
 YOUR JOB: Write an introductory post about a project. This is NOT a shipping update — it's a "here's what I'm building" announcement.
 
@@ -378,7 +379,10 @@ ${fewShotBlock}
 
 Output ONLY the post text, nothing else.`
 
-  const prompt = `Write an introductory post for this project:\n\nProject: ${repoName}\n\nContext:\n${projectContext.slice(0, 2000)}`
+  const prompt =
+    `Write an introductory post for this project:\n\nProject: ${repoName}\n\nContext:\n${
+      projectContext.slice(0, 2000)
+    }`
 
   const initial = await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.8 })
   let result = initial.text.trim()
