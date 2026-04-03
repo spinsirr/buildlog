@@ -1,5 +1,6 @@
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
+import { fetchRepoContext } from "../_shared/github.ts"
 import { safeJson } from "../_shared/http.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 
@@ -39,6 +40,29 @@ Deno.serve(async (req) => {
     )
 
     if (error) return errorResponse(error.message, 500, req)
+
+    // Fetch project context (README + manifest) — best-effort, don't fail the connect
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("github_installation_id")
+        .eq("id", user.id)
+        .single()
+
+      if (profile?.github_installation_id) {
+        const ctx = await fetchRepoContext(profile.github_installation_id, body.full_name)
+        if (ctx) {
+          await supabase
+            .from("connected_repos")
+            .update({ project_context: ctx })
+            .eq("user_id", user.id)
+            .eq("github_repo_id", body.repo_id)
+        }
+      }
+    } catch {
+      // best-effort — connect still succeeded
+    }
+
     return jsonResponse({ ok: true }, req)
   }
 

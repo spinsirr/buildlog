@@ -136,7 +136,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   // Verify the repo is connected and active
   const { data: repo } = await supabase
     .from("connected_repos")
-    .select("id, watched_branches, watched_events")
+    .select("id, watched_branches, watched_events, project_context")
     .eq("user_id", profile.id)
     .eq("github_repo_id", repoId)
     .eq("is_active", true)
@@ -327,6 +327,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     sourceType,
     repoName: repoFullName,
     tone: profile.tone ?? "casual",
+    projectContext: repo.project_context,
     data: postData,
   })
 

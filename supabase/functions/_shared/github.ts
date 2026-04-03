@@ -197,6 +197,79 @@ export async function fetchTagContext(
   return result
 }
 
+/**
+ * Fetch repo README + manifest files to build a project context string.
+ * Used at connect time to give AI better understanding of the project.
+ */
+export async function fetchRepoContext(
+  installationId: number,
+  repoFullName: string,
+): Promise<string | null> {
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get token for repo context: {error}", { error: String(err) })
+    return null
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  const parts: string[] = []
+
+  // Fetch README (try common names)
+  for (const name of ["README.md", "README", "readme.md"]) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${repoFullName}/contents/${name}`,
+        { headers: { ...headers, Accept: "application/vnd.github.raw+json" } },
+      )
+      if (res.ok) {
+        const text = await res.text()
+        // Take first ~2000 chars of README — enough for description + overview
+        const trimmed = text.slice(0, 2000)
+        parts.push(`README:\n${trimmed}`)
+        break
+      }
+    } catch {
+      // continue to next name
+    }
+  }
+
+  // Fetch manifest files for tech stack info
+  const manifests = [
+    "package.json",
+    "deno.json",
+    "deno.jsonc",
+    "Cargo.toml",
+    "pyproject.toml",
+    "go.mod",
+  ]
+  for (const name of manifests) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${repoFullName}/contents/${name}`,
+        { headers: { ...headers, Accept: "application/vnd.github.raw+json" } },
+      )
+      if (res.ok) {
+        const text = await res.text()
+        // Only keep first ~500 chars — we just need name, description, deps overview
+        parts.push(`${name}:\n${text.slice(0, 500)}`)
+        break // one manifest is enough
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  if (parts.length === 0) return null
+  return parts.join("\n\n")
+}
+
 export async function fetchPrContext(
   installationId: number,
   repoFullName: string,

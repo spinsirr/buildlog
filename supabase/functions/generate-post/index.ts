@@ -83,10 +83,18 @@ async function handleGenerate(
 
   const tone = profile?.tone ?? "casual"
 
+  // Fetch project context for this repo
+  const { data: repoRow } = await supabase
+    .from("connected_repos")
+    .select("project_context")
+    .eq("id", repoId)
+    .single()
+
   const content = await generatePost({
     sourceType,
     repoName,
     tone,
+    projectContext: repoRow?.project_context,
     data: data as {
       message?: string
       title?: string
@@ -151,16 +159,18 @@ async function handleRegenerate(
 
   // Get repo name from connected_repos
   let repoName = "unknown/repo"
+  let projectContext: string | null = null
   if (post.repo_id) {
     const { data: repo } = await supabase
       .from("connected_repos")
-      .select("full_name")
+      .select("full_name, project_context")
       .eq("id", post.repo_id)
       .single()
 
     if (repo?.full_name) {
       repoName = repo.full_name
     }
+    projectContext = repo?.project_context ?? null
   }
 
   const { data: profile } = await supabase
@@ -198,6 +208,7 @@ async function handleRegenerate(
     sourceType: post.source_type as "commit" | "pr" | "release",
     repoName,
     tone,
+    projectContext,
     data: {
       ...(sourceData as {
         message?: string
@@ -255,16 +266,18 @@ async function handleXhsCopy(
   }
 
   let repoName = "unknown/repo"
+  let xhsProjectContext: string | null = null
   if (post.repo_id) {
     const { data: repo } = await supabase
       .from("connected_repos")
-      .select("full_name")
+      .select("full_name, project_context")
       .eq("id", post.repo_id)
       .single()
 
     if (repo?.full_name) {
       repoName = repo.full_name
     }
+    xhsProjectContext = repo?.project_context ?? null
   }
 
   const { data: xhsProfile } = await supabase
@@ -300,6 +313,7 @@ async function handleXhsCopy(
   const content = await generateXhsPost({
     sourceType: post.source_type as "commit" | "pr" | "release" | "tag",
     repoName,
+    projectContext: xhsProjectContext,
     data: {
       ...(sourceData as {
         message?: string
