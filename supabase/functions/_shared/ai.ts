@@ -378,30 +378,55 @@ Output ONLY the post text, nothing else.`
   const isComplete = (text: string) =>
     /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split("\n").pop() || "")
 
+  // Truncate to last complete sentence as a safety net
+  const truncateToSentence = (text: string): string => {
+    const match = text.match(/^([\s\S]*[.!?])(\s*#\S+)*/)
+    return match ? match[0].trim() : text
+  }
+
   const initial = await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.8 })
   let result = initial.text.trim()
 
   // Retry if truncated or incomplete
-  if (initial.truncated || (!isComplete(result) && result.length < 280)) {
+  if (initial.truncated || !isComplete(result)) {
     log.warn("Intro post was {reason}, retrying", {
       reason: initial.truncated ? "truncated by MAX_TOKENS" : "incomplete",
     })
     const retry = await callGemini(
       system,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence and hashtags. Do not end mid-word or mid-thought.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence. Do not end mid-word or mid-thought.`,
       { maxOutputTokens: 800, temperature: 0.5 },
     )
-    if (isComplete(retry.text.trim()) && retry.text.trim().length <= 280) result = retry.text.trim()
+    const retryText = retry.text.trim()
+    if (isComplete(retryText) && retryText.length <= 280) {
+      result = retryText
+    } else if (isComplete(retryText)) {
+      // Complete but too long — will be handled by length check below
+      result = retryText
+    } else {
+      // Both attempts incomplete — truncate to last complete sentence
+      result = truncateToSentence(retryText.length > result.length ? retryText : result)
+      log.warn("Both attempts incomplete, truncated to last sentence: {len} chars", {
+        len: result.length,
+      })
+    }
   }
 
   // Retry if over 280 chars
   if (result.length > 280) {
     const retry = await callGemini(
       system,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under 280 characters.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under 280 characters. End with a complete sentence.`,
       { maxOutputTokens: 800, temperature: 0.5 },
     )
-    result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
+    const retryText = retry.text.trim()
+    if (retryText.length <= 280) {
+      result = retryText
+    } else {
+      // Force-truncate to last sentence boundary under 280
+      const truncated = truncateToSentence(retryText.slice(0, 280))
+      result = truncated.length > 0 ? truncated : retryText.slice(0, 279) + "…"
+    }
   }
 
   return appendWatermark(result, "default")
@@ -498,20 +523,35 @@ Output ONLY the post text, nothing else.`
   const isComplete = (text: string) =>
     /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split("\n").pop() || "")
 
+  const truncateToSentence = (text: string): string => {
+    const match = text.match(/^([\s\S]*[.!?])(\s*#\S+)*/)
+    return match ? match[0].trim() : text
+  }
+
   const initial = await callGemini(system, prompt, { maxOutputTokens: 800, temperature: 0.7 })
   let result = initial.text.trim()
 
   // Retry if model hit token limit (truncated) or post looks incomplete
-  if (initial.truncated || (!isComplete(result) && result.length < 280)) {
+  if (initial.truncated || !isComplete(result)) {
     log.warn("Post was {reason}, retrying", {
       reason: initial.truncated ? "truncated by MAX_TOKENS" : "incomplete",
     })
     const retry = await callGemini(
       system,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence and hashtags. Do not end mid-word or mid-thought.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off: "${result}". Write a COMPLETE post that ends with a proper sentence. Do not end mid-word or mid-thought.`,
       { maxOutputTokens: 800, temperature: 0.5 },
     )
-    if (isComplete(retry.text.trim()) && retry.text.trim().length <= 280) result = retry.text.trim()
+    const retryText = retry.text.trim()
+    if (isComplete(retryText) && retryText.length <= 280) {
+      result = retryText
+    } else if (isComplete(retryText)) {
+      result = retryText
+    } else {
+      result = truncateToSentence(retryText.length > result.length ? retryText : result)
+      log.warn("Both attempts incomplete, truncated to last sentence: {len} chars", {
+        len: result.length,
+      })
+    }
   }
 
   // If AI exceeded 280 chars, re-generate with stricter instruction
@@ -521,7 +561,13 @@ Output ONLY the post text, nothing else.`
       `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under 280 characters while keeping it complete and engaging.`,
       { maxOutputTokens: 800, temperature: 0.5 },
     )
-    result = retry.text.trim().length <= 280 ? retry.text.trim() : result.slice(0, 279) + "…"
+    const retryText = retry.text.trim()
+    if (retryText.length <= 280) {
+      result = retryText
+    } else {
+      const truncated = truncateToSentence(retryText.slice(0, 280))
+      result = truncated.length > 0 ? truncated : retryText.slice(0, 279) + "…"
+    }
   }
 
   return appendWatermark(result, "default")
