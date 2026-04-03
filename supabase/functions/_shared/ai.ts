@@ -424,10 +424,13 @@ Output ONLY the post text, nothing else.`
 
   // Inject project context so AI understands what this repo actually is
   const projectBlock = input.projectContext
-    ? `\n\nProject background (for your understanding — do NOT expose raw details):\n${input.projectContext.slice(0, 1500)}`
+    ? `\n\nProject background (for your understanding — do NOT expose raw details):\n${
+      input.projectContext.slice(0, 1500)
+    }`
     : ""
 
-  const prompt = `Generate a shipping update post for this ${input.sourceType}:\n${context}${projectBlock}`
+  const prompt =
+    `Generate a shipping update post for this ${input.sourceType}:\n${context}${projectBlock}`
 
   const isComplete = (text: string) =>
     /[.!?](\s*#\S+)*\s*$/.test(text) || /^#\S+\s*$/.test(text.split("\n").pop() || "")
