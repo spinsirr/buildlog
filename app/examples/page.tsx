@@ -90,7 +90,7 @@ const EXAMPLES: Example[] = [
       detail: '2 files changed, 8 insertions(+), 8 deletions(-)',
     },
     twitter:
-      'Fixed: secondary buttons now pass WCAG AA contrast. 8 lines changed, 100% of users can read them. Accessibility isn\'t a feature — it\'s the baseline.',
+      "Fixed: secondary buttons now pass WCAG AA contrast. 8 lines changed, 100% of users can read them. Accessibility isn't a feature — it's the baseline.",
     linkedin:
       "Pushed a small but important fix today: our secondary buttons weren't meeting WCAG AA contrast ratios.\n\n8 lines of CSS. That's all it took to go from 3.8:1 to 4.6:1 contrast ratio.\n\nAccessibility fixes are often this simple. The hard part isn't the code — it's noticing the problem in the first place. Automated tools catch the obvious stuff, but nothing beats testing with real users.",
     accent: 'bg-neo-lime',
@@ -223,10 +223,7 @@ export default function ExamplesPage() {
         </section>
 
         {/* ── EXAMPLES ──────────────────────────────────────────────────────── */}
-        <section
-          aria-label="Example posts"
-          className="border-t-4 border-black py-16 px-6 relative"
-        >
+        <section aria-label="Example posts" className="border-t-4 border-black py-16 px-6 relative">
           <GridOverlay opacity="04" />
 
           <div className="max-w-5xl mx-auto relative space-y-8">

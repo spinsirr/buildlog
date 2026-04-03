@@ -46,9 +46,9 @@ export default function TermsPage() {
 
           <Section title="The basics">
             <p>
-              BuildLog (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides a service that connects to
-              your GitHub repositories and uses AI to generate social media posts from your code
-              changes. By using BuildLog, you agree to these terms.
+              BuildLog (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides a service that connects to your
+              GitHub repositories and uses AI to generate social media posts from your code changes.
+              By using BuildLog, you agree to these terms.
             </p>
           </Section>
 
@@ -109,8 +109,8 @@ export default function TermsPage() {
             <p>
               BuildLog is provided &ldquo;as is&rdquo;. We&apos;re not liable for any damages
               arising from your use of the service, including but not limited to: content published
-              to your social accounts, loss of data, or service interruptions. Our total liability is
-              limited to the amount you&apos;ve paid us in the last 12 months.
+              to your social accounts, loss of data, or service interruptions. Our total liability
+              is limited to the amount you&apos;ve paid us in the last 12 months.
             </p>
           </Section>
 

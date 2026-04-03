@@ -65,7 +65,8 @@ export default function PrivacyPage() {
           <Section title="How we use your data">
             <p>
               <strong>Diffs</strong> are sent to our AI provider (Google Gemini) to generate social
-              media posts. Diffs are processed in memory and not permanently stored after generation.
+              media posts. Diffs are processed in memory and not permanently stored after
+              generation.
             </p>
             <p>
               <strong>Generated posts</strong> are stored in our database so you can review, edit,
@@ -75,9 +76,7 @@ export default function PrivacyPage() {
               <strong>Project context</strong> (README summary, tech stack) is stored to improve the
               quality of generated posts.
             </p>
-            <p>
-              We do not sell your data. We do not use your code or posts to train AI models.
-            </p>
+            <p>We do not sell your data. We do not use your code or posts to train AI models.</p>
           </Section>
 
           <Section title="Third-party services">
