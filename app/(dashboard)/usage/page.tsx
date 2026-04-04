@@ -55,10 +55,17 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 
 async function fetchUsageData() {
   const supabase = createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
   // Check plan
   const { data: sub, error: subError } = await supabase
     .from('subscriptions')
     .select('status')
+    .eq('user_id', user.id)
     .maybeSingle()
 
   if (subError) {
@@ -75,13 +82,18 @@ async function fetchUsageData() {
     supabase
       .from('posts')
       .select('status, source_type, platforms, created_at')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(500),
     supabase
       .from('connected_repos')
       .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
       .eq('is_active', true),
-    supabase.from('platform_connections').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('platform_connections')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id),
   ])
 
   const posts = (allPosts ?? []) as {

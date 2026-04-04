@@ -23,9 +23,14 @@ export const navItems = [
 
 async function fetchDraftCount() {
   const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return 0
   const { count } = await supabase
     .from('posts')
     .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
     .eq('status', 'draft')
   return count ?? 0
 }

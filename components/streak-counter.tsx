@@ -7,9 +7,14 @@ import { calculateStreak, cn } from '@/lib/utils'
 
 async function fetchStreak() {
   const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return 0
   const { data } = await supabase
     .from('posts')
     .select('created_at')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(100)
   return calculateStreak((data as { created_at: string }[]) ?? [])

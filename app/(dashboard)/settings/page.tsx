@@ -17,7 +17,7 @@ function useSettingsData() {
 
     const [{ data: rows }, { data: profileData, error: profileError }, { data: sub }] =
       await Promise.all([
-        supabase.from('platform_connections').select('platform, platform_username'),
+        supabase.from('platform_connections').select('platform, platform_username').eq('user_id', user.id),
         supabase
           .from('profiles')
           .select('tone, auto_publish, email_notifications, publish_delay_minutes, github_username')
