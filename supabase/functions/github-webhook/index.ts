@@ -1,6 +1,7 @@
 import { generatePost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
+import { decidePostAction, type DecisionInput } from "../_shared/decision.ts"
 import { fetchPrContext, fetchTagContext } from "../_shared/github.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
@@ -125,7 +126,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   // Look up user by installation ID
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, tone, auto_publish")
+    .select("id, tone, auto_publish, decision_layer_enabled")
     .eq("github_installation_id", installationId)
     .single()
 
@@ -320,6 +321,55 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   const { allowed } = await checkLimit(profile.id, "posts", supabase)
   if (!allowed) {
     return jsonResponse({ ok: true, skipped: "post_limit_reached" }, req)
+  }
+
+  // Decision layer — evaluate whether this event is worth posting about
+  if (profile.decision_layer_enabled) {
+    const decisionInput: DecisionInput = {
+      sourceType,
+      repoName: repoFullName,
+      projectContext: repo.project_context,
+      data: postData,
+    }
+
+    const decision = await decidePostAction(decisionInput)
+
+    // Store the decision regardless of outcome
+    await supabase.from("post_decisions").insert({
+      user_id: profile.id,
+      repo_id: repo.id,
+      source_type: sourceType,
+      source_data: { ...postData, repo: repoFullName },
+      dedupe_key: dedupeKey,
+      decision: decision.decision,
+      reason: decision.reason,
+      confidence: decision.confidence,
+      angle: decision.angle,
+    })
+
+    if (decision.decision === "skip") {
+      log.info("decision layer skipped {sourceType} in {repo}: {reason}", {
+        sourceType,
+        repo: repoFullName,
+        reason: decision.reason,
+      })
+      return jsonResponse({ ok: true, skipped: "decision_skip", reason: decision.reason }, req)
+    }
+
+    if (decision.decision === "bundle_later") {
+      log.info("decision layer deferred {sourceType} in {repo}: {reason}", {
+        sourceType,
+        repo: repoFullName,
+        reason: decision.reason,
+      })
+      return jsonResponse(
+        { ok: true, skipped: "decision_bundle_later", reason: decision.reason },
+        req,
+      )
+    }
+
+    // decision === "post" — fall through to generation
+    // The angle is stored in post_decisions for future use by the generator
   }
 
   // Generate AI content
