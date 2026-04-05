@@ -19,7 +19,7 @@ A PreToolUse hook enforces this — npm commands will be blocked automatically.
 
 ## Architecture
 
-**Server Components + AI SDK Layer + Supabase Edge Functions**
+**Server Components + Agentic AI Layer + Supabase Edge Functions**
 
 ```
 Vercel (Next.js 16)
@@ -28,23 +28,18 @@ Vercel (Next.js 16)
 ├── Client Components — only for interactive leaves (buttons, forms, modals)
 ├── proxy.ts — redirects unauthed users from /dashboard to /login
 │
-├── app/api/ai/ — AI SDK orchestration layer (Vercel Functions)
-│   ├── decide/   — AI-powered event decision (post/skip/bundle)
-│   ├── generate/ — AI-powered content generation
-│   └── process/  — Full pipeline (context → decide → generate)
+├── app/api/agent/decide/ — Agentic decision + generation (Vercel Function)
+│   └── route.ts — ToolLoopAgent with Claude reasoning + Gemini generation
 │
-├── lib/ai/ — AI engine modules
-│   ├── engine.ts   — Pipeline orchestrator
-│   ├── decision.ts — Decision engine (AI SDK + structured output)
-│   ├── generate.ts — Content generator (AI SDK)
-│   ├── context.ts  — Product context + decision history retrieval
-│   ├── schemas.ts  — Zod schemas for all AI I/O
-│   └── prompts.ts  — System prompt templates
+├── lib/agent/ — Agent layer modules
+│   ├── orchestrator.ts — ToolLoopAgent with tools (decision, generation, memory)
+│   ├── prompts.ts      — System prompts, content templates, event formatting
+│   └── types.ts        — AgentEvent, AgentResult, shared types
 
 Supabase Edge Functions (Deno runtime)
-├── github-webhook — GitHub push/PR/release → AI post generation
+├── github-webhook — GitHub push/PR/release → calls agent API or direct Gemini
 ├── stripe-webhook — subscription lifecycle events
-├── generate-post — AI content generation (Gemini API, legacy)
+├── generate-post — AI content generation (Gemini API, used for manual/legacy)
 ├── create-post — manual post creation with limit checks
 ├── publish-post — publish to Twitter/LinkedIn/Bluesky
 ├── billing — Stripe checkout + portal sessions
@@ -58,8 +53,9 @@ Supabase Edge Functions (Deno runtime)
 
 - Next.js 16 + App Router + Turbopack
 - Supabase (auth + Postgres + Edge Functions)
-- AI SDK + @ai-sdk/google (Vercel Functions, Node.js runtime)
-- Gemini API (direct fetch in Edge Functions — legacy, being migrated)
+- AI SDK + @ai-sdk/anthropic + @ai-sdk/google (Vercel Functions, Node.js runtime)
+- Claude (agent reasoning + decision via ToolLoopAgent)
+- Gemini (content generation — via AI SDK in agent, direct fetch in legacy Edge Functions)
 - shadcn/ui + Geist
 - Dark mode by default
 
@@ -76,6 +72,9 @@ Supabase Edge Functions (Deno runtime)
 - Edge Function shared utilities live in `supabase/functions/_shared/`
 - proxy.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
 - No middleware
-- API routes exist only under `app/api/ai/` for AI SDK orchestration (Node.js runtime required)
-- AI engine modules live in `lib/ai/` — schemas, prompts, decision, generation, context retrieval
-- AI API routes authenticate via `AI_INTERNAL_SECRET` header for Edge Function → Vercel Function calls
+- API routes exist only under `app/api/agent/` for the agentic AI layer (Node.js runtime required)
+- Agent modules live in `lib/agent/` — orchestrator (ToolLoopAgent), prompts, types
+- Agent API authenticates via `x-agent-secret` header (AGENT_API_SECRET env var)
+- `lib/supabase/admin.ts` provides service-role client for API routes (bypasses RLS)
+- Agent memory stored in `agent_memory` table — durable product context per repo
+- Decision history in `post_decisions` table with reasoning traces

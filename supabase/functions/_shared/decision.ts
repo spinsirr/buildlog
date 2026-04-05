@@ -37,7 +37,8 @@ export interface PostDecision {
   angle: string | null
 }
 
-const DECISION_SYSTEM_PROMPT = `You are a developer content strategist. Your job is to evaluate GitHub events and decide whether they are worth sharing as a public "build in public" post.
+const DECISION_SYSTEM_PROMPT =
+  `You are a developer content strategist. Your job is to evaluate GitHub events and decide whether they are worth sharing as a public "build in public" post.
 
 You will receive context about a code change (commit, PR merge, release, or tag). Decide:
 
@@ -80,7 +81,9 @@ function buildDecisionPrompt(input: DecisionInput): string {
 
   if (input.data.additions !== undefined || input.data.deletions !== undefined) {
     parts.push(
-      `Scale: +${input.data.additions ?? 0} -${input.data.deletions ?? 0} lines, ${input.data.filesChanged ?? "?"} files`,
+      `Scale: +${input.data.additions ?? 0} -${input.data.deletions ?? 0} lines, ${
+        input.data.filesChanged ?? "?"
+      } files`,
     )
   }
 
