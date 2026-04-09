@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       source_type: "manual",
       content: body.content.trim(),
+      original_content: body.content.trim(),
       status: "draft",
     })
     .select("*, connected_repos(full_name)")

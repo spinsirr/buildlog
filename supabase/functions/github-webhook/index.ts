@@ -553,6 +553,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       "source_type": sourceType,
       source_data: strippedData,
       content,
+      original_content: content,
       status: "draft",
       published_at: null,
     })
