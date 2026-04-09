@@ -31,7 +31,7 @@ export interface FileDiff {
 }
 
 export interface AgentResult {
-  decision: 'post' | 'skip' | 'bundle_later'
+  decision: 'post' | 'skip' | 'error'
   reasoning: string
   confidence: 'high' | 'medium' | 'low'
   angle: string | null

@@ -1,4 +1,3 @@
-import { anthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateText, Output, stepCountIs, ToolLoopAgent, tool } from 'ai'
 import { z } from 'zod'
@@ -12,8 +11,8 @@ import {
 } from './prompts'
 import type { AgentEvent, AgentResult } from './types'
 
-const AGENT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-4.6'
-const CONTENT_MODEL = process.env.CONTENT_MODEL ?? 'gemini-2.0-flash'
+const AGENT_MODEL = process.env.AGENT_MODEL ?? 'gemini-3-flash-preview'
+const CONTENT_MODEL = process.env.CONTENT_MODEL ?? 'gemini-3-flash-preview'
 
 /**
  * Create a Google AI provider with the project's existing API key.
@@ -33,19 +32,23 @@ function getGoogleProvider() {
 }
 
 const agentResultSchema = z.object({
-  decision: z.enum(['post', 'skip', 'bundle_later']),
+  decision: z.enum(['post', 'skip']),
   reasoning: z.string().describe('Multi-step reasoning explaining this decision'),
   confidence: z.enum(['high', 'medium', 'low']),
   angle: z.string().nullable().describe('The angle/hook for the post, if posting'),
   content: z.string().nullable().describe('The generated post content, if posting'),
 })
 
+/** Max content length including the watermark suffix */
+const MAX_CONTENT_LENGTH = 280
+const CONTENT_BUDGET = MAX_CONTENT_LENGTH - WATERMARK.length
+
 /**
  * Run the BuildLog agent for a GitHub event.
  *
- * The agent uses Claude to reason about whether the event is worth posting,
+ * The agent uses Gemini to reason about whether the event is worth posting,
  * gathers context from product memory and history, and if posting, generates
- * content using Gemini. Returns a structured decision with reasoning trace.
+ * content. Returns a structured decision with reasoning trace.
  */
 export async function runAgent(event: AgentEvent): Promise<AgentResult> {
   const supabase = createAdminClient()
@@ -53,7 +56,7 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
 
   // Create the agent per-request so tools close over the event context
   const agent = new ToolLoopAgent({
-    model: anthropic(AGENT_MODEL),
+    model: google(AGENT_MODEL),
     instructions: AGENT_INSTRUCTIONS,
     stopWhen: stepCountIs(10),
     temperature: 0,
@@ -84,7 +87,7 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
 
       get_decision_history: tool({
         description:
-          'Get recent AI decisions for this repo to learn from patterns. Shows what was posted, skipped, or bundled.',
+          'Get recent AI decisions for this repo to learn from patterns. Shows what was posted or skipped.',
         inputSchema: z.object({
           limit: z.number().optional().describe('Number of recent decisions (default 10)'),
         }),
@@ -140,26 +143,31 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
 
           let content = text.trim()
 
-          // Retry if over 280 chars (before watermark)
-          if (content.length > 280) {
+          // Guard: empty or too-short output
+          if (content.length < 10) {
+            return { content: null, error: 'Generated content was empty or too short' }
+          }
+
+          // Retry if over budget (watermark-aware)
+          if (content.length > CONTENT_BUDGET) {
             const retry = await generateText({
               model: google(CONTENT_MODEL),
               system: systemPrompt,
-              prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under 280 characters while keeping it complete and engaging.`,
+              prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${CONTENT_BUDGET} characters while keeping it complete and engaging.`,
               maxOutputTokens: 800,
               temperature: 0.5,
             })
             const retryText = retry.text.trim()
-            if (retryText.length <= 280) {
+            if (retryText.length <= CONTENT_BUDGET) {
               content = retryText
             } else {
               // Force-truncate to last sentence boundary
-              const match = retryText.slice(0, 280).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
-              content = match ? match[0].trim() : retryText.slice(0, 279) + '\u2026'
+              const match = retryText.slice(0, CONTENT_BUDGET).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
+              content = match ? match[0].trim() : retryText.slice(0, CONTENT_BUDGET - 1) + '\u2026'
             }
           }
 
-          // Append watermark
+          // Append watermark — total is guaranteed ≤ MAX_CONTENT_LENGTH
           content = content + WATERMARK
 
           return { content, lengthBeforeWatermark: content.length - WATERMARK.length }
@@ -215,20 +223,17 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
 }
 
 /**
- * Run the agent with error handling. On failure, returns a fail-open default
- * (decision: "post" with no content) so the webhook can fall back to direct generation.
+ * Run the agent with error handling. On failure, returns an error decision
+ * so failures are visible in the dashboard rather than producing low-quality fallback posts.
  */
 export async function runAgentSafe(event: AgentEvent): Promise<AgentResult> {
   try {
     return await runAgent(event)
   } catch (err) {
-    console.error(
-      '[agent] failed, defaulting to post:',
-      err instanceof Error ? err.message : String(err)
-    )
+    console.error('[agent] failed:', err instanceof Error ? err.message : String(err))
     return {
-      decision: 'post',
-      reasoning: `Agent error: ${err instanceof Error ? err.message : String(err)} — defaulting to post`,
+      decision: 'error',
+      reasoning: `Agent error: ${err instanceof Error ? err.message : String(err)}`,
       confidence: 'low',
       angle: null,
       content: null,

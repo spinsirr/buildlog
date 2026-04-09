@@ -30,7 +30,7 @@ interface AgentApiEvent {
 }
 
 interface AgentApiResult {
-  decision: "post" | "skip" | "bundle_later"
+  decision: "post" | "skip" | "error"
   reasoning: string
   confidence: "high" | "medium" | "low"
   angle: string | null
@@ -442,14 +442,14 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         )
       }
 
-      if (agentResult.decision === "bundle_later") {
-        log.info("agent deferred {sourceType} in {repo}: {reason}", {
+      if (agentResult.decision === "error") {
+        log.error("agent error for {sourceType} in {repo}: {reason}", {
           sourceType,
           repo: repoFullName,
           reason: agentResult.reasoning,
         })
         return jsonResponse(
-          { ok: true, skipped: "agent_bundle_later", reason: agentResult.reasoning },
+          { ok: true, skipped: "agent_error", reason: agentResult.reasoning },
           req,
         )
       }

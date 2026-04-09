@@ -16,10 +16,6 @@ export async function POST(req: Request) {
   }
 
   // Verify required env vars for the agent
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
-  }
-
   const geminiKey =
     process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
     process.env.GEMINI_API_KEY ??
