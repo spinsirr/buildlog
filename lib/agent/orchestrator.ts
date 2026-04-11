@@ -39,7 +39,7 @@ const agentResultSchema = z.object({
   content: z.string().nullable().describe('The generated post content, if posting'),
 })
 
-const agentToolNames = ['get_repo_context', 'get_recent_posts', 'generate_content'] as const
+const _agentToolNames = ['get_repo_context', 'get_recent_posts', 'generate_content'] as const
 
 /** Default limits — used as fallback. Actual limits computed per-request from event.xPremium. */
 
@@ -150,7 +150,7 @@ export async function runAgent(
             } else {
               // Force-truncate to last sentence boundary
               const match = retryText.slice(0, contentBudget).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
-              content = match ? match[0].trim() : retryText.slice(0, contentBudget - 1) + '\u2026'
+              content = match ? match[0].trim() : `${retryText.slice(0, contentBudget - 1)}\u2026`
             }
           }
 

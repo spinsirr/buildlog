@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { runAgent, runAgentSafe } from '@/lib/agent/orchestrator'
+import { runAgentSafe } from '@/lib/agent/orchestrator'
 import { evaluate, evaluateDecisionAccuracy } from '../fixtures/evaluator'
 import { createMockModel } from '../fixtures/mock-model'
 import { createMockTools } from '../fixtures/mock-tools'

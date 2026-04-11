@@ -9,27 +9,20 @@
  * 5. Error handling tests
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { runAgent, runAgentSafe } from '@/lib/agent/orchestrator'
-import {
-  AGENT_INSTRUCTIONS,
-  buildContentPrompt,
-  buildEventPrompt,
-  classifyChange,
-} from '@/lib/agent/prompts'
+import { AGENT_INSTRUCTIONS, buildEventPrompt, classifyChange } from '@/lib/agent/prompts'
 import type { AgentEvent } from '@/lib/agent/types'
 import { DECISION_SYSTEM_PROMPT } from '@/lib/ai/prompts'
-import { getContentLimit, PLATFORM_CHAR_LIMITS } from '@/lib/platforms'
+import { getContentLimit } from '@/lib/platforms'
 import { evaluate, evaluateDecisionAccuracy } from './fixtures/evaluator'
 import {
-  BIG_REFACTOR,
   BUG_FIX_COMMIT,
   CI_CONFIG,
   DEPENDENCY_BUMP,
   FEATURE_COMMIT,
   FEATURE_PR,
   LINT_FIX,
-  LOCKFILE_UPDATE,
   MERGE_COMMIT,
   PERFORMANCE_COMMIT,
   PROFESSIONAL_TONE,
@@ -39,11 +32,10 @@ import {
   SHOULD_SKIP,
   TECHNICAL_TONE,
   TYPO_FIX,
-  UI_IMPROVEMENT,
   VAGUE_COMMIT,
   X_PREMIUM_EVENT,
 } from './fixtures/events'
-import { createMockModel, mockModels } from './fixtures/mock-model'
+import { mockModels } from './fixtures/mock-model'
 import { createMockTools, createMockToolsForScenario } from './fixtures/mock-tools'
 
 // ═══════════════════════════════════════════════════════════════════════

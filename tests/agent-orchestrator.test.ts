@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getContentLimit, PLATFORM_CHAR_LIMITS } from '@/lib/platforms'
+import { getContentLimit } from '@/lib/platforms'
 
 describe('platform character limits', () => {
   it('twitter standard limit is 280', () => {
