@@ -9,17 +9,18 @@ import { PostCard } from '@/components/post-card'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
+import { getEffectiveLimit } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-function NewPostForm({ onCreated }: { onCreated: () => void }) {
+function NewPostForm({ onCreated, charLimit }: { onCreated: () => void; charLimit: number }) {
   const [content, setContent] = useState('')
   const [busy, setBusy] = useState(false)
   const [step, setStep] = useState<'write' | 'confirm'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const charCount = content.length
-  const overLimit = charCount > 280
+  const overLimit = charCount > charLimit
   const canSubmit = content.trim().length > 0 && !overLimit
 
   useEffect(() => {
@@ -87,7 +88,7 @@ function NewPostForm({ onCreated }: { onCreated: () => void }) {
             <span
               className={cn('text-[11px] font-mono', overLimit ? 'text-red-400' : 'text-zinc-500')}
             >
-              {charCount}/280
+              {charCount}/{charLimit}
             </span>
             <Button
               type="button"
@@ -168,9 +169,11 @@ function EmptyState() {
 export function PostsClient({
   initialPosts,
   initialConnectedPlatforms,
+  xPremium,
 }: {
   initialPosts: Post[]
   initialConnectedPlatforms: string[]
+  xPremium: boolean
 }) {
   const supabase = useMemo(() => createClient(), [])
   const publishingRef = useRef(false)
@@ -180,6 +183,7 @@ export function PostsClient({
   const [posts, setPosts] = useState(initialPosts)
   const [search, setSearch] = useState('')
   const connectedPlatforms = initialConnectedPlatforms
+  const charLimit = getEffectiveLimit(connectedPlatforms, xPremium)
 
   // Handle keyboard shortcut deep links
   useEffect(() => {
@@ -293,6 +297,7 @@ export function PostsClient({
             onGenerateXhs={handleGenerateXhs}
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
+            charLimit={charLimit}
           />
         ))}
       </div>
@@ -337,6 +342,7 @@ export function PostsClient({
             refreshPosts()
             setShowNewPost(false)
           }}
+          charLimit={charLimit}
         />
       )}
 

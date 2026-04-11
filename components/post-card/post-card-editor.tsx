@@ -8,6 +8,7 @@ export function PostCardEditor({
   editContent,
   onEditContentChange,
   charCount,
+  charLimit = 280,
   overLimit,
   busy,
   onSave,
@@ -16,6 +17,7 @@ export function PostCardEditor({
   editContent: string
   onEditContentChange: (value: string) => void
   charCount: number
+  charLimit?: number
   overLimit: boolean
   busy: boolean
   onSave: () => void
@@ -57,7 +59,7 @@ export function PostCardEditor({
           </Button>
         </div>
         <span className={cn('text-[11px] font-mono', overLimit ? 'text-red-400' : 'text-zinc-500')}>
-          {charCount}/280
+          {charCount}/{charLimit}
         </span>
       </div>
     </div>

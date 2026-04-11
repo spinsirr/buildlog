@@ -20,6 +20,7 @@ export function PostCard({
   onGenerateXhs,
   onSchedule,
   connectedPlatforms,
+  charLimit = 280,
 }: {
   post: Post
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
@@ -28,6 +29,7 @@ export function PostCard({
   onGenerateXhs: (id: string) => Promise<string>
   onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
+  charLimit?: number
 }) {
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState(post.content)
@@ -39,7 +41,7 @@ export function PostCard({
   const [xhsLoading, setXhsLoading] = useState(false)
 
   const charCount = (editing ? editContent : post.content).length
-  const overLimit = charCount > 280
+  const overLimit = charCount > charLimit
 
   const handleSave = useCallback(async () => {
     setBusy(true)
@@ -128,6 +130,7 @@ export function PostCard({
             editContent={editContent}
             onEditContentChange={setEditContent}
             charCount={charCount}
+            charLimit={charLimit}
             overLimit={overLimit}
             busy={busy}
             onSave={handleSave}
@@ -139,12 +142,24 @@ export function PostCard({
           </p>
         )}
 
-        <PostCardHeader post={post} charCount={charCount} overLimit={overLimit} editing={editing} />
+        <PostCardHeader
+          post={post}
+          charCount={charCount}
+          charLimit={charLimit}
+          overLimit={overLimit}
+          editing={editing}
+        />
 
         <Separator className="bg-zinc-800" />
 
         <div className="flex items-center justify-between">
-          <PostCardMeta post={post} charCount={charCount} overLimit={overLimit} editing={editing} />
+          <PostCardMeta
+            post={post}
+            charCount={charCount}
+            charLimit={charLimit}
+            overLimit={overLimit}
+            editing={editing}
+          />
 
           <PostCardActions
             post={post}
@@ -170,6 +185,7 @@ export function PostCard({
         onConfirmPublish={handleConfirmPublish}
         busy={busy}
         connectedPlatforms={connectedPlatforms}
+        charLimit={charLimit}
       />
 
       <XhsCopyModal

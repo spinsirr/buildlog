@@ -9,11 +9,13 @@ import { cn, draftAgeBucket, draftAgeText, timeAgo } from '@/lib/utils'
 export function PostCardHeader({
   post,
   charCount,
+  charLimit,
   overLimit,
   editing,
 }: {
   post: Post
   charCount: number
+  charLimit?: number
   overLimit: boolean
   editing: boolean
 }) {
@@ -58,11 +60,13 @@ export function PostCardHeader({
 export function PostCardMeta({
   post,
   charCount,
+  charLimit = 280,
   overLimit,
   editing,
 }: {
   post: Post
   charCount: number
+  charLimit?: number
   overLimit: boolean
   editing: boolean
 }) {
@@ -105,7 +109,7 @@ export function PostCardMeta({
       )}
       {!editing && (
         <span className={cn('text-[11px] font-mono', overLimit ? 'text-red-400' : 'text-zinc-500')}>
-          {charCount}/280
+          {charCount}/{charLimit}
         </span>
       )}
       {/* Time anchor — explicit age for ADHD time blindness */}

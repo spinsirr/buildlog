@@ -18,7 +18,9 @@ export default async function SettingsPage() {
         .eq('user_id', user.id),
       supabase
         .from('profiles')
-        .select('tone, auto_publish, email_notifications, publish_delay_minutes, github_username')
+        .select(
+          'tone, auto_publish, email_notifications, publish_delay_minutes, github_username, x_premium'
+        )
         .eq('id', user.id)
         .single(),
       supabase.from('subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
@@ -40,6 +42,7 @@ export default async function SettingsPage() {
     auto_publish: profileData?.auto_publish ?? false,
     email_notifications: profileData?.email_notifications ?? true,
     publish_delay_minutes: profileData?.publish_delay_minutes ?? 0,
+    x_premium: profileData?.x_premium ?? false,
   }
 
   const plan: Plan = sub?.status === 'active' ? 'pro' : 'free'
