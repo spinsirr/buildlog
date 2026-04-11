@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.2.0] - 2026-04-11
+
+### Added
+- Weekly Recap: generate a recap draft from your week's bundled events and published posts
+- "Weekly Recap" button on the posts dashboard
+- `generate-recap` Edge Function aggregates bundle_later decisions + published posts into one recap
+- `generateWithRetry` shared helper for Gemini calls with retry/truncation logic
+- 13 unit tests for recap prompt builders
+- Deduplication: only one recap per week (Monday-aligned)
+
 ## [0.0.1.0] - 2026-04-11
 
 ### Added
