@@ -29,12 +29,12 @@ No file changes needed. Continue to Task 2.
 
 ---
 
-### Task 2: Export `callGemini` from `_shared/ai.ts`
+### Task 2: Export `callGemini` + extract `generateWithRetry` from `_shared/ai.ts`
 
 **Files:**
 - Modify: `supabase/functions/_shared/ai.ts`
 
-The `callGemini` function is currently private. The recap Edge Function needs to call it directly (not through `generatePost`, since recap has its own prompt structure).
+Export `callGemini` and extract the retry/truncate pattern into a shared `generateWithRetry()` function. This avoids duplicating 15 lines of retry logic between `generatePost` and `generate-recap`.
 
 - [ ] **Step 1: Export callGemini**
 
@@ -48,16 +48,76 @@ async function callGemini(
 export async function callGemini(
 ```
 
-- [ ] **Step 2: Verify no breakage**
+- [ ] **Step 2: Add generateWithRetry helper**
+
+Add this function after `callGemini` in `supabase/functions/_shared/ai.ts`:
+
+```typescript
+/**
+ * Generate text via Gemini with automatic retry if over char limit.
+ * Shared between generatePost and generate-recap.
+ */
+export async function generateWithRetry(
+  system: string,
+  prompt: string,
+  charLimit: number,
+  opts?: { maxOutputTokens?: number; temperature?: number; retryTemperature?: number },
+): Promise<string> {
+  const { text, truncated } = await callGemini(system, prompt, {
+    maxOutputTokens: opts?.maxOutputTokens ?? 800,
+    temperature: opts?.temperature ?? 0.7,
+  })
+
+  let content = text.trim()
+
+  // Retry if truncated or incomplete
+  const isComplete = (t: string) =>
+    /[.!?](\s*#\S+)*\s*$/.test(t) || /^#\S+\s*$/.test(t.split("\n").pop() || "")
+
+  if (truncated || !isComplete(content)) {
+    const retry = await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off. Write a COMPLETE post that ends with a proper sentence.`,
+      { maxOutputTokens: opts?.maxOutputTokens ?? 800, temperature: opts?.retryTemperature ?? 0.5 },
+    )
+    const retryText = retry.text.trim()
+    if (isComplete(retryText) && retryText.length <= charLimit) {
+      content = retryText
+    } else if (isComplete(retryText)) {
+      content = retryText
+    }
+  }
+
+  // Retry if over char limit
+  if (content.length > charLimit) {
+    const retry = await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${charLimit} characters while keeping it complete and engaging.`,
+      { maxOutputTokens: opts?.maxOutputTokens ?? 800, temperature: opts?.retryTemperature ?? 0.5 },
+    )
+    const retryText = retry.text.trim()
+    if (retryText.length <= charLimit) {
+      content = retryText
+    } else {
+      const match = retryText.slice(0, charLimit).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
+      content = match ? match[0].trim() : retryText.slice(0, charLimit - 1) + "\u2026"
+    }
+  }
+
+  return content
+}
+```
+
+- [ ] **Step 3: Verify no breakage**
 
 Run: `bun run backend:check`
-Expected: PASS (exporting a previously-private function is additive)
+Expected: PASS (new exports are additive)
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add supabase/functions/_shared/ai.ts
-git commit -m "refactor: export callGemini for reuse by generate-recap"
+git commit -m "refactor: export callGemini + add generateWithRetry helper"
 ```
 
 ---
@@ -71,7 +131,7 @@ git commit -m "refactor: export callGemini for reuse by generate-recap"
 
 ```typescript
 import { requireUser } from "../_shared/auth.ts"
-import { callGemini } from "../_shared/ai.ts"
+import { generateWithRetry } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 
@@ -151,36 +211,18 @@ Deno.serve(async (req) => {
     const tone = profile?.tone ?? "casual"
     const charLimit = profile?.x_premium ? 4000 : 280
 
-    // 5. Build prompt
+    // 5. Build prompt + generate via shared helper
     const systemPrompt = buildRecapSystemPrompt(tone, charLimit)
     const userPrompt = buildRecapUserPrompt(bundles ?? [], recentPosts ?? [])
 
-    // 6. Generate via Gemini
-    const { text } = await callGemini(systemPrompt, userPrompt, {
+    const content = await generateWithRetry(systemPrompt, userPrompt, charLimit, {
       maxOutputTokens: profile?.x_premium ? 2000 : 800,
       temperature: 0.8,
+      retryTemperature: 0.5,
     })
 
-    let content = text.trim()
     if (content.length < 10) {
       return jsonResponse({ ok: false, reason: "generation_error", error: "Generated content was too short" }, req)
-    }
-
-    // Retry if over char limit
-    if (content.length > charLimit) {
-      const retry = await callGemini(
-        systemPrompt,
-        `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${charLimit} characters.`,
-        { maxOutputTokens: profile?.x_premium ? 2000 : 800, temperature: 0.5 },
-      )
-      const retryText = retry.text.trim()
-      if (retryText.length <= charLimit) {
-        content = retryText
-      } else {
-        // Force-truncate to last sentence
-        const match = retryText.slice(0, charLimit).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
-        content = match ? match[0].trim() : retryText.slice(0, charLimit - 1) + "\u2026"
-      }
     }
 
     // 7. Insert recap draft
@@ -398,7 +440,208 @@ git commit -m "feat: add Weekly Recap button to posts dashboard"
 
 ---
 
-### Task 5: Test Edge Function locally
+### Task 5: Unit tests for recap prompt builders
+
+**Files:**
+- Create: `tests/recap.test.ts`
+
+- [ ] **Step 1: Write tests for buildRecapSystemPrompt and buildRecapUserPrompt**
+
+The prompt builder functions need to be importable from the Edge Function. Since they're in Deno-land (`supabase/functions/generate-recap/index.ts`), extract them to a shared file or duplicate the pure functions in a testable location. Simplest approach: copy the two pure functions to `lib/recap-prompts.ts` (Node-side) and import from both the Edge Function and tests.
+
+Create `lib/recap-prompts.ts`:
+
+```typescript
+export const recapToneInstructions: Record<string, string> = {
+  casual: "Use a friendly, conversational tone. Sound like a developer tweeting to friends.",
+  professional: "Use a polished, professional tone. Sound like a founder giving a confident product update.",
+  technical: "Use a technical tone with specifics. Sound like a senior engineer sharing knowledge.",
+}
+
+export interface BundleDecision {
+  id: string
+  source_type: string
+  source_data: Record<string, unknown>
+  reason: string
+  angle: string | null
+  created_at: string
+}
+
+export interface RecapPost {
+  id: string
+  content: string
+  source_type: string
+  source_data: Record<string, unknown> | null
+  created_at: string
+}
+
+export function buildRecapSystemPrompt(tone: string, charLimit: number): string {
+  return `You are a weekly recap writer for a developer's "build in public" social media.
+
+TONE:
+${recapToneInstructions[tone] ?? recapToneInstructions.casual}
+
+YOUR JOB: Read the developer's week of activity below and write a single recap post summarizing what they shipped. Weave bundled (deferred) events into a coherent narrative alongside already-published updates.
+
+CRITICAL RULES:
+- MUST be under ${charLimit} characters
+- Highlight the overall theme or direction of the week
+- Mention 2-4 key things shipped or worked on
+- End with 1-2 relevant hashtags
+- Sound like a real person, not a bot
+- Do NOT expose file names, function names, or internal architecture
+- Talk about what the USER can now do or what PROGRESS was made
+- If there are bundled events, weave them into the narrative naturally
+- This is a WEEKLY SUMMARY, not individual updates
+
+Output ONLY the post text, nothing else.`
+}
+
+export function buildRecapUserPrompt(bundles: BundleDecision[], posts: RecapPost[]): string {
+  const parts: string[] = []
+
+  if (bundles.length > 0) {
+    const bundleLines = bundles.map((b) => {
+      const msg = (b.source_data?.message ?? b.source_data?.title ?? "unknown change") as string
+      return `- [${b.source_type}] ${msg} — reason deferred: "${b.reason}"${b.angle ? ` (angle: ${b.angle})` : ""}`
+    })
+    parts.push(`BUNDLED EVENTS (deferred from individual posts, not yet shared publicly):\n${bundleLines.join("\n")}`)
+  }
+
+  if (posts.length > 0) {
+    const postLines = posts.map((p) => `- "${p.content}"`)
+    parts.push(`ALREADY SHARED THIS WEEK:\n${postLines.join("\n")}`)
+  }
+
+  parts.push("Generate ONE weekly recap post that covers the full week.")
+  return parts.join("\n\n")
+}
+```
+
+Create `tests/recap.test.ts`:
+
+```typescript
+import { describe, expect, it } from 'vitest'
+import {
+  buildRecapSystemPrompt,
+  buildRecapUserPrompt,
+  type BundleDecision,
+  type RecapPost,
+} from '@/lib/recap-prompts'
+
+describe('buildRecapSystemPrompt', () => {
+  it('includes char limit in system prompt', () => {
+    const prompt = buildRecapSystemPrompt('casual', 280)
+    expect(prompt).toContain('under 280 characters')
+  })
+
+  it('uses x_premium char limit', () => {
+    const prompt = buildRecapSystemPrompt('casual', 4000)
+    expect(prompt).toContain('under 4000 characters')
+  })
+
+  it('includes casual tone instructions', () => {
+    const prompt = buildRecapSystemPrompt('casual', 280)
+    expect(prompt).toContain('friendly, conversational')
+  })
+
+  it('includes professional tone instructions', () => {
+    const prompt = buildRecapSystemPrompt('professional', 280)
+    expect(prompt).toContain('polished, professional')
+  })
+
+  it('includes technical tone instructions', () => {
+    const prompt = buildRecapSystemPrompt('technical', 280)
+    expect(prompt).toContain('technical tone')
+  })
+
+  it('falls back to casual for unknown tone', () => {
+    const prompt = buildRecapSystemPrompt('unknown', 280)
+    expect(prompt).toContain('friendly, conversational')
+  })
+})
+
+describe('buildRecapUserPrompt', () => {
+  const mockBundle: BundleDecision = {
+    id: '1',
+    source_type: 'commit',
+    source_data: { message: 'feat: add CSV export' },
+    reason: 'meaningful but incomplete',
+    angle: 'data export feature',
+    created_at: '2026-04-10T00:00:00Z',
+  }
+
+  const mockPost: RecapPost = {
+    id: '2',
+    content: 'Shipped dark mode for the dashboard. #buildinpublic',
+    source_type: 'commit',
+    source_data: null,
+    created_at: '2026-04-09T00:00:00Z',
+  }
+
+  it('includes bundles section when bundles exist', () => {
+    const prompt = buildRecapUserPrompt([mockBundle], [])
+    expect(prompt).toContain('BUNDLED EVENTS')
+    expect(prompt).toContain('feat: add CSV export')
+    expect(prompt).toContain('meaningful but incomplete')
+  })
+
+  it('includes angle in bundle line when present', () => {
+    const prompt = buildRecapUserPrompt([mockBundle], [])
+    expect(prompt).toContain('(angle: data export feature)')
+  })
+
+  it('omits angle when null', () => {
+    const noAngle = { ...mockBundle, angle: null }
+    const prompt = buildRecapUserPrompt([noAngle], [])
+    expect(prompt).not.toContain('(angle:')
+  })
+
+  it('includes published posts section when posts exist', () => {
+    const prompt = buildRecapUserPrompt([], [mockPost])
+    expect(prompt).toContain('ALREADY SHARED THIS WEEK')
+    expect(prompt).toContain('Shipped dark mode')
+  })
+
+  it('includes both sections when both exist', () => {
+    const prompt = buildRecapUserPrompt([mockBundle], [mockPost])
+    expect(prompt).toContain('BUNDLED EVENTS')
+    expect(prompt).toContain('ALREADY SHARED THIS WEEK')
+  })
+
+  it('handles empty data gracefully', () => {
+    const prompt = buildRecapUserPrompt([], [])
+    expect(prompt).toContain('Generate ONE weekly recap post')
+    expect(prompt).not.toContain('BUNDLED EVENTS')
+    expect(prompt).not.toContain('ALREADY SHARED')
+  })
+
+  it('uses title fallback when message is missing', () => {
+    const prBundle = { ...mockBundle, source_data: { title: 'Fix login bug' } }
+    const prompt = buildRecapUserPrompt([prBundle], [])
+    expect(prompt).toContain('Fix login bug')
+  })
+})
+```
+
+- [ ] **Step 2: Run tests**
+
+```bash
+bun run test
+```
+
+Expected: All tests pass (existing 67 + new ~13 = ~80 tests)
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add lib/recap-prompts.ts tests/recap.test.ts
+git commit -m "test: add unit tests for recap prompt builders"
+```
+
+---
+
+### Task 6: Verify everything works together
 
 - [ ] **Step 1: Run backend checks**
 
@@ -439,7 +682,7 @@ git add -A && git commit -m "chore: lock files and format fixes for generate-rec
 
 ---
 
-### Task 6: Version bump + changelog
+### Task 7: Version bump + changelog
 
 **Files:**
 - Modify: `VERSION`
