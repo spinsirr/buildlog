@@ -1,0 +1,228 @@
+{
+  "mode": "mocked",
+  "total": 6,
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "name": "bundle-later-feature-prep",
+      "expected": "bundle_later",
+      "actual": "bundle_later",
+      "passed": true,
+      "checks": [
+        {
+          "name": "decision_accuracy",
+          "passed": true
+        },
+        {
+          "name": "valid_decision",
+          "passed": true
+        },
+        {
+          "name": "has_reasoning",
+          "passed": true
+        },
+        {
+          "name": "valid_confidence",
+          "passed": true
+        },
+        {
+          "name": "skip_no_content",
+          "passed": true
+        }
+      ],
+      "reasoning": "This refactor matters, but the story is incomplete on its own. Better to bundle it with the related user-facing work.",
+      "angle": null,
+      "contentLength": null,
+      "contentPreview": null,
+      "stepCount": 4,
+      "explanation": "Decision matched expected outcome (bundle_later). All harness checks passed. Agent reasoning: This refactor matters, but the story is incomplete on its own. Better to bundle it with the related user-facing work."
+    },
+    {
+      "name": "bundle-later-incremental-feature",
+      "expected": "bundle_later",
+      "actual": "bundle_later",
+      "passed": true,
+      "checks": [
+        {
+          "name": "decision_accuracy",
+          "passed": true
+        },
+        {
+          "name": "valid_decision",
+          "passed": true
+        },
+        {
+          "name": "has_reasoning",
+          "passed": true
+        },
+        {
+          "name": "valid_confidence",
+          "passed": true
+        },
+        {
+          "name": "skip_no_content",
+          "passed": true
+        }
+      ],
+      "reasoning": "This refactor matters, but the story is incomplete on its own. Better to bundle it with the related user-facing work.",
+      "angle": null,
+      "contentLength": null,
+      "contentPreview": null,
+      "stepCount": 4,
+      "explanation": "Decision matched expected outcome (bundle_later). All harness checks passed. Agent reasoning: This refactor matters, but the story is incomplete on its own. Better to bundle it with the related user-facing work."
+    },
+    {
+      "name": "bundle-later-refactor",
+      "expected": "bundle_later",
+      "actual": "bundle_later",
+      "passed": true,
+      "checks": [
+        {
+          "name": "decision_accuracy",
+          "passed": true
+        },
+        {
+          "name": "valid_decision",
+          "passed": true
+        },
+        {
+          "name": "has_reasoning",
+          "passed": true
+        },
+        {
+          "name": "valid_confidence",
+          "passed": true
+        },
+        {
+          "name": "skip_no_content",
+          "passed": true
+        }
+      ],
+      "reasoning": "This refactor matters, but the story is incomplete on its own. Better to bundle it with the related user-facing work.",
+      "angle": null,
+      "contentLength": null,
+      "contentPreview": null,
+      "stepCount": 4,
+      "explanation": "Decision matched expected outcome (bundle_later). All harness checks passed. Agent reasoning: This refactor matters, but the story is incomplete on its own. Better to bundle it with the related user-facing work."
+    },
+    {
+      "name": "error-garbage-model",
+      "expected": "error",
+      "actual": "error",
+      "passed": true,
+      "checks": [
+        {
+          "name": "decision_accuracy",
+          "passed": true
+        },
+        {
+          "name": "valid_decision",
+          "passed": true
+        },
+        {
+          "name": "has_reasoning",
+          "passed": true
+        },
+        {
+          "name": "valid_confidence",
+          "passed": true
+        }
+      ],
+      "reasoning": "Agent error: No object generated: could not parse the response.",
+      "angle": null,
+      "contentLength": null,
+      "contentPreview": null,
+      "stepCount": 0,
+      "explanation": "Decision matched expected outcome (error). All harness checks passed. Agent reasoning: Agent error: No object generated: could not parse the response."
+    },
+    {
+      "name": "post-feature",
+      "expected": "post",
+      "actual": "post",
+      "passed": true,
+      "checks": [
+        {
+          "name": "decision_accuracy",
+          "passed": true
+        },
+        {
+          "name": "valid_decision",
+          "passed": true
+        },
+        {
+          "name": "has_reasoning",
+          "passed": true
+        },
+        {
+          "name": "valid_confidence",
+          "passed": true
+        },
+        {
+          "name": "has_content",
+          "passed": true
+        },
+        {
+          "name": "has_angle",
+          "passed": true
+        },
+        {
+          "name": "content_length",
+          "passed": true
+        },
+        {
+          "name": "no_exposed_paths",
+          "passed": true
+        },
+        {
+          "name": "no_exposed_functions",
+          "passed": true
+        },
+        {
+          "name": "has_hashtags",
+          "passed": true
+        }
+      ],
+      "reasoning": "Mock reasoning: analyzed the event and decided to post.",
+      "angle": "harness-generated angle",
+      "contentLength": 46,
+      "contentPreview": "Harness generated a valid post. #buildinpublic",
+      "stepCount": 4,
+      "explanation": "Decision matched expected outcome (post). All harness checks passed. Agent reasoning: Mock reasoning: analyzed the event and decided to post."
+    },
+    {
+      "name": "skip-lint",
+      "expected": "skip",
+      "actual": "skip",
+      "passed": true,
+      "checks": [
+        {
+          "name": "decision_accuracy",
+          "passed": true
+        },
+        {
+          "name": "valid_decision",
+          "passed": true
+        },
+        {
+          "name": "has_reasoning",
+          "passed": true
+        },
+        {
+          "name": "valid_confidence",
+          "passed": true
+        },
+        {
+          "name": "skip_no_content",
+          "passed": true
+        }
+      ],
+      "reasoning": "Mock reasoning: analyzed the event and decided to skip.",
+      "angle": null,
+      "contentLength": null,
+      "contentPreview": null,
+      "stepCount": 4,
+      "explanation": "Decision matched expected outcome (skip). All harness checks passed. Agent reasoning: Mock reasoning: analyzed the event and decided to skip."
+    }
+  ]
+}

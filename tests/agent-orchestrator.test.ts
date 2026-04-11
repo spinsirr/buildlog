@@ -1,29 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import { WATERMARK } from '@/lib/agent/prompts'
+import { getContentLimit, PLATFORM_CHAR_LIMITS } from '@/lib/platforms'
 
-const MAX_CONTENT_LENGTH = 280
-const CONTENT_BUDGET = MAX_CONTENT_LENGTH - WATERMARK.length
-
-describe('watermark character budget', () => {
-  it('watermark is non-empty', () => {
-    expect(WATERMARK.length).toBeGreaterThan(0)
+describe('platform character limits', () => {
+  it('twitter standard limit is 280', () => {
+    expect(getContentLimit('twitter', false)).toBe(280)
   })
 
-  it('content budget leaves room for watermark within 280 chars', () => {
-    expect(CONTENT_BUDGET).toBeLessThan(280)
-    expect(CONTENT_BUDGET).toBeGreaterThan(200)
+  it('twitter premium limit is 4000', () => {
+    expect(getContentLimit('twitter', true)).toBe(4000)
   })
 
-  it('content at exactly budget + watermark = 280', () => {
-    const content = 'x'.repeat(CONTENT_BUDGET)
-    const withWatermark = content + WATERMARK
-    expect(withWatermark.length).toBe(MAX_CONTENT_LENGTH)
+  it('bluesky limit is 300', () => {
+    expect(getContentLimit('bluesky', false)).toBe(300)
   })
 
-  it('content one char over budget + watermark exceeds 280', () => {
-    const content = 'x'.repeat(CONTENT_BUDGET + 1)
-    const withWatermark = content + WATERMARK
-    expect(withWatermark.length).toBeGreaterThan(MAX_CONTENT_LENGTH)
+  it('linkedin limit is 3000', () => {
+    expect(getContentLimit('linkedin', false)).toBe(3000)
+  })
+
+  it('unknown platform defaults to twitter limit', () => {
+    expect(getContentLimit('unknown', false)).toBe(280)
   })
 })
 

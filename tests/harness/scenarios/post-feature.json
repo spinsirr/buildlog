@@ -1,0 +1,26 @@
+{
+  "name": "post-feature",
+  "expected": "post",
+  "event": {
+    "sourceType": "commit",
+    "repoName": "acme/widget-app",
+    "repoId": "test-repo-1",
+    "userId": "test-user-1",
+    "projectContext": "Widget App is a React dashboard for managing e-commerce widgets.",
+    "tone": "casual",
+    "autoPublish": false,
+    "xPremium": false,
+    "data": {
+      "message": "feat: add bulk export to CSV for inventory management",
+      "files": ["app/dashboard/export.tsx", "lib/csv-generator.ts", "components/export-dialog.tsx"],
+      "additions": 287,
+      "deletions": 12,
+      "filesChanged": 3
+    }
+  },
+  "toolContext": {
+    "memory": [],
+    "decisions": [],
+    "posts": []
+  }
+}

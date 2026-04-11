@@ -1,0 +1,26 @@
+{
+  "name": "bundle-later-refactor",
+  "expected": "bundle_later",
+  "event": {
+    "sourceType": "commit",
+    "repoName": "acme/widget-app",
+    "repoId": "test-repo-1",
+    "userId": "test-user-1",
+    "projectContext": "Widget App is a React dashboard for managing e-commerce widgets.",
+    "tone": "casual",
+    "autoPublish": false,
+    "xPremium": false,
+    "data": {
+      "message": "refactor: extract error handling into shared utility",
+      "files": ["lib/errors/handler.ts", "lib/errors/types.ts", "lib/api/client.ts"],
+      "additions": 67,
+      "deletions": 45,
+      "filesChanged": 3
+    }
+  },
+  "toolContext": {
+    "memory": [],
+    "decisions": [],
+    "posts": []
+  }
+}

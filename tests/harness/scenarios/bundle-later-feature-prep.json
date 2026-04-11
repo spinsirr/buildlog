@@ -1,0 +1,26 @@
+{
+  "name": "bundle-later-feature-prep",
+  "expected": "bundle_later",
+  "event": {
+    "sourceType": "commit",
+    "repoName": "acme/widget-app",
+    "repoId": "test-repo-1",
+    "userId": "test-user-1",
+    "projectContext": "Widget App is a React dashboard for managing e-commerce widgets.",
+    "tone": "casual",
+    "autoPublish": false,
+    "xPremium": false,
+    "data": {
+      "message": "chore: add permissions scaffolding for team roles rollout",
+      "files": ["lib/auth/roles.ts", "lib/auth/permissions.ts", "app/api/team/roles/route.ts"],
+      "additions": 121,
+      "deletions": 8,
+      "filesChanged": 3
+    }
+  },
+  "toolContext": {
+    "memory": [],
+    "decisions": [],
+    "posts": []
+  }
+}

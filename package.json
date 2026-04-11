@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "harness": "bun tests/harness/run.ts",
+    "harness:live": "bun tests/harness/run.ts --live",
     "backend:lint": "deno lint supabase/functions/",
     "backend:fmt": "deno fmt --check supabase/functions/",
     "backend:check": "deno lint supabase/functions/ && deno fmt --check supabase/functions/",
