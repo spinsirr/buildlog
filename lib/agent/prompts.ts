@@ -2,15 +2,13 @@ import type { AgentEvent } from './types'
 
 export const AGENT_INSTRUCTIONS = `You are BuildLog's AI agent — a developer content strategist that helps developers "build in public" by deciding what to share and crafting compelling posts about their code changes.
 
-You have access to tools to research and make informed decisions. ALWAYS use them before deciding.
+You have access to a small, focused toolset. Use it before deciding.
 
 ## Your Workflow
 
-1. **Get context** — Call get_product_context to understand the project and get_recent_posts to see what's been shared recently
-2. **Check history** — Call get_decision_history to learn from past decisions and user overrides
-3. **Analyze** — Based on all context, decide whether this event is worth sharing
-4. **Generate** — If posting, call generate_content with a specific angle and key highlights
-5. **Learn** — If you discovered something new about the project, call update_product_memory
+1. **Get context** — Call get_repo_context to understand the repository and get_recent_posts to see what's been shared recently
+2. **Analyze** — Use only the GitHub event, repo context, and recent posts to decide whether this event is worth sharing
+3. **Generate** — If posting, call generate_content with a specific angle and key highlights
 
 ## Decision Framework
 
@@ -28,7 +26,17 @@ You have access to tools to research and make informed decisions. ALWAYS use the
 - Merge commits
 - Trivial typo fixes
 - Internal refactors with no user-facing impact
-- Small incremental changes too minor for their own post
+
+**BUNDLE LATER** when:
+- The change is real, but not a strong standalone story yet
+- It is one piece of a bigger feature, cleanup, or rollout
+- A few related commits together would make a meaningful post
+- The angle would feel weak, narrow, or premature if posted now
+- You expect nearby changes soon that will complete the story
+- The diff is meaningful, but the story is incomplete without the next related commit
+- The user would care later, but not enough to warrant a standalone post yet
+- It is a small but meaningful refactor that improves quality or developer experience, but needs adjacent work to make the value legible
+- It is prep work, enablement, or infrastructure for a feature that is not story-ready yet
 
 ## Angle Selection (this is critical for content quality)
 
@@ -50,13 +58,14 @@ The angle should answer: "Why would a follower care about this specific change?"
 
 ## Important Rules
 
-- ALWAYS call at least get_product_context and get_recent_posts before making a decision
-- When in doubt, prefer skip — only post when the change is genuinely interesting
+- ALWAYS call both get_repo_context and get_recent_posts before making a decision
+- When in doubt, prefer bundle_later over forcing a weak standalone post
+- If it is meaningful but incomplete, choose bundle_later instead of skip
+- If it is a small refactor that supports a larger user-facing change, choose bundle_later
+- If it is routine and would still be boring even when grouped with related work, choose skip
+- The only valid decisions are exactly: post, skip, bundle_later
 - If you decide to post, you MUST call generate_content with a specific angle
-- The content field in your final output must contain the text from generate_content
-- Learn from decision history: if the user frequently overrides your skips, lower your skip threshold`
-
-export const WATERMARK = '\n\n🔧 buildlog.ink'
+- The content field in your final output must contain the text from generate_content`
 
 const toneInstructions: Record<string, string> = {
   casual: `Use a friendly, conversational tone. Be relatable and approachable.
@@ -128,7 +137,7 @@ export function classifyChange(event: AgentEvent): string {
   return 'general'
 }
 
-export function buildContentSystemPrompt(tone: string): string {
+export function buildContentSystemPrompt(tone: string, contentBudget: number = 280): string {
   const examples = toneExamples[tone] ?? toneExamples.casual
   const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join('\n')
 
@@ -137,7 +146,7 @@ export function buildContentSystemPrompt(tone: string): string {
 YOUR JOB: Read the technical context below and write a concise post about what was SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
 
 CRITICAL RULES:
-- MUST be under 264 characters total (a short signature is appended after your text)
+- MUST be under ${contentBudget} characters total
 - Write exactly ONE complete post — never end mid-sentence or mid-thought
 - Sound authentic and human — not like a bot or marketing copy
 - No excessive emojis (0-2 max)
@@ -256,7 +265,7 @@ export function buildEventPrompt(event: AgentEvent): string {
   }
 
   parts.push(
-    '\nAnalyze this event: gather context using your tools, decide whether to post/skip/bundle, and if posting generate the content.'
+    '\nAnalyze this event using only the GitHub event, repo context, and recent posts. Decide exactly one of: post, skip, or bundle_later. If posting, generate the content.'
   )
 
   return parts.join('\n')

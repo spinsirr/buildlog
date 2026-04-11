@@ -16,8 +16,8 @@ const google = createGoogleGenerativeAI({
 })
 
 const WATERMARKS = {
-  default: '\n\n\u{1f527} buildlog.ink',
-  xhs: '\n\n\u{1f527} 由 BuildLog 生成 — buildlog.ink',
+  default: '',
+  xhs: '',
 } as const
 
 /**
@@ -36,9 +36,10 @@ export async function generate(input: GenerateInput): Promise<string> {
 
 async function generatePost(input: GenerateInput): Promise<string> {
   const tone = input.tone ?? 'casual'
+  const charLimit = input.contentBudget ?? 280
   const changeType = classifyChange(input)
   const context = buildEventContext(input)
-  const systemPrompt = buildGenerationSystemPrompt(tone, changeType)
+  const systemPrompt = buildGenerationSystemPrompt(tone, changeType, charLimit)
 
   const projectBlock = input.projectContext
     ? `\n\nProject background (for your understanding — do NOT expose raw details):\n${input.projectContext.slice(0, 1500)}`
@@ -51,17 +52,17 @@ async function generatePost(input: GenerateInput): Promise<string> {
 
   let result = await callGenerate(systemPrompt, prompt, { temperature: 0.7 })
 
-  // Retry if over 280 chars
-  if (result.length > 280) {
+  // Retry if over char limit
+  if (result.length > charLimit) {
     result = await callGenerate(
       systemPrompt,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under 280 characters while keeping it complete and engaging.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under ${charLimit} characters while keeping it complete and engaging.`,
       { temperature: 0.5 }
     )
 
-    if (result.length > 280) {
-      const truncated = truncateToSentence(result.slice(0, 280))
-      result = truncated.length > 0 ? truncated : `${result.slice(0, 279)}\u2026`
+    if (result.length > charLimit) {
+      const truncated = truncateToSentence(result.slice(0, charLimit))
+      result = truncated.length > 0 ? truncated : `${result.slice(0, charLimit - 1)}\u2026`
     }
   }
 
@@ -75,22 +76,23 @@ async function generatePost(input: GenerateInput): Promise<string> {
 
 async function generateIntro(input: GenerateInput): Promise<string> {
   const tone = input.tone ?? 'casual'
-  const systemPrompt = buildIntroSystemPrompt(tone)
+  const charLimit = input.contentBudget ?? 280
+  const systemPrompt = buildIntroSystemPrompt(tone, charLimit)
   const prompt = `Write an introductory post for this project:\n\nProject: ${input.repoName}\n\nContext:\n${(input.projectContext ?? '').slice(0, 2000)}`
 
   let result = await callGenerate(systemPrompt, prompt, { temperature: 0.8 })
 
-  // Retry if over 280 chars
-  if (result.length > 280) {
+  // Retry if over char limit
+  if (result.length > charLimit) {
     result = await callGenerate(
       systemPrompt,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under 280 characters. End with a complete sentence.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under ${charLimit} characters. End with a complete sentence.`,
       { temperature: 0.5 }
     )
 
-    if (result.length > 280) {
-      const truncated = truncateToSentence(result.slice(0, 280))
-      result = truncated.length > 0 ? truncated : `${result.slice(0, 279)}\u2026`
+    if (result.length > charLimit) {
+      const truncated = truncateToSentence(result.slice(0, charLimit))
+      result = truncated.length > 0 ? truncated : `${result.slice(0, charLimit - 1)}\u2026`
     }
   }
 

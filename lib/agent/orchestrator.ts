@@ -1,13 +1,13 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateText, Output, stepCountIs, ToolLoopAgent, tool } from 'ai'
 import { z } from 'zod'
+import { getContentLimit } from '@/lib/platforms'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   AGENT_INSTRUCTIONS,
   buildContentPrompt,
   buildContentSystemPrompt,
   buildEventPrompt,
-  WATERMARK,
 } from './prompts'
 import type { AgentEvent, AgentResult } from './types'
 
@@ -32,75 +32,61 @@ function getGoogleProvider() {
 }
 
 const agentResultSchema = z.object({
-  decision: z.enum(['post', 'skip']),
+  decision: z.enum(['post', 'skip', 'bundle_later']),
   reasoning: z.string().describe('Multi-step reasoning explaining this decision'),
   confidence: z.enum(['high', 'medium', 'low']),
   angle: z.string().nullable().describe('The angle/hook for the post, if posting'),
   content: z.string().nullable().describe('The generated post content, if posting'),
 })
 
-/** Max content length including the watermark suffix */
-const MAX_CONTENT_LENGTH = 280
-const CONTENT_BUDGET = MAX_CONTENT_LENGTH - WATERMARK.length
+const agentToolNames = ['get_repo_context', 'get_recent_posts', 'generate_content'] as const
+
+/** Default limits — used as fallback. Actual limits computed per-request from event.xPremium. */
+
+export interface AgentOverrides {
+  /** Replace all Supabase/Gemini-backed tools with mock implementations */
+  tools?: Record<
+    string,
+    { description: string; inputSchema: any; execute: (...args: any[]) => Promise<any> }
+  >
+  /** Override the agent model (for testing with mock LLMs) */
+  model?: any
+  /** Override the content model */
+  contentModel?: any
+}
 
 /**
  * Run the BuildLog agent for a GitHub event.
  *
  * The agent uses Gemini to reason about whether the event is worth posting,
- * gathers context from product memory and history, and if posting, generates
- * content. Returns a structured decision with reasoning trace.
+ * gathers repo context plus recent posts, and if posting, generates content.
+ * Returns a structured decision with reasoning trace.
  */
-export async function runAgent(event: AgentEvent): Promise<AgentResult> {
-  const supabase = createAdminClient()
-  const google = getGoogleProvider()
+export async function runAgent(
+  event: AgentEvent,
+  overrides?: AgentOverrides
+): Promise<AgentResult> {
+  const supabase = overrides?.tools ? null : createAdminClient()
+  const google = overrides?.model ? null : getGoogleProvider()
 
   // Create the agent per-request so tools close over the event context
   const agent = new ToolLoopAgent({
-    model: google(AGENT_MODEL),
+    model: overrides?.model ?? google!(AGENT_MODEL),
     instructions: AGENT_INSTRUCTIONS,
     stopWhen: stepCountIs(10),
     temperature: 0,
     output: Output.object({ schema: agentResultSchema }),
 
-    tools: {
-      get_product_context: tool({
+    tools: overrides?.tools ?? {
+      get_repo_context: tool({
         description:
-          'Retrieve stored product memory and project context for this repository. Call this first to understand the project.',
+          'Get the current repository context for this event. Use this alongside the GitHub event details before deciding.',
         inputSchema: z.object({}),
-        execute: async () => {
-          const { data: memory } = await supabase
-            .from('agent_memory')
-            .select('key, value, category, updated_at')
-            .eq('user_id', event.userId)
-            .eq('repo_id', event.repoId)
-            .order('updated_at', { ascending: false })
-            .limit(20)
-
-          return {
-            memory: memory ?? [],
-            projectContext: event.projectContext,
-            repoName: event.repoName,
-            tone: event.tone,
-          }
-        },
-      }),
-
-      get_decision_history: tool({
-        description:
-          'Get recent AI decisions for this repo to learn from patterns. Shows what was posted or skipped.',
-        inputSchema: z.object({
-          limit: z.number().optional().describe('Number of recent decisions (default 10)'),
+        execute: async () => ({
+          projectContext: event.projectContext,
+          repoName: event.repoName,
+          tone: event.tone,
         }),
-        execute: async ({ limit = 10 }) => {
-          const { data } = await supabase
-            .from('post_decisions')
-            .select('decision, reason, source_type, angle, confidence, created_at')
-            .eq('user_id', event.userId)
-            .eq('repo_id', event.repoId)
-            .order('created_at', { ascending: false })
-            .limit(limit)
-          return { decisions: data ?? [], count: data?.length ?? 0 }
-        },
       }),
 
       get_recent_posts: tool({
@@ -110,7 +96,7 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
           limit: z.number().optional().describe('Number of recent posts (default 5)'),
         }),
         execute: async ({ limit = 5 }) => {
-          const { data } = await supabase
+          const { data } = await supabase!
             .from('posts')
             .select('content, source_type, created_at')
             .eq('user_id', event.userId)
@@ -130,14 +116,15 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
           highlights: z.string().describe('Key points to emphasize'),
         }),
         execute: async ({ angle, highlights }) => {
-          const systemPrompt = buildContentSystemPrompt(event.tone)
+          const contentBudget = getContentLimit('twitter', event.xPremium)
+          const systemPrompt = buildContentSystemPrompt(event.tone, contentBudget)
           const userPrompt = buildContentPrompt(event, angle, highlights)
 
           const { text } = await generateText({
-            model: google(CONTENT_MODEL),
+            model: google!(CONTENT_MODEL),
             system: systemPrompt,
             prompt: userPrompt,
-            maxOutputTokens: 800,
+            maxOutputTokens: event.xPremium ? 2000 : 800,
             temperature: 0.7,
           })
 
@@ -149,60 +136,25 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
           }
 
           // Retry if over budget (watermark-aware)
-          if (content.length > CONTENT_BUDGET) {
+          if (content.length > contentBudget) {
             const retry = await generateText({
-              model: google(CONTENT_MODEL),
+              model: google!(CONTENT_MODEL),
               system: systemPrompt,
-              prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${CONTENT_BUDGET} characters while keeping it complete and engaging.`,
-              maxOutputTokens: 800,
+              prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${contentBudget} characters while keeping it complete and engaging.`,
+              maxOutputTokens: event.xPremium ? 2000 : 800,
               temperature: 0.5,
             })
             const retryText = retry.text.trim()
-            if (retryText.length <= CONTENT_BUDGET) {
+            if (retryText.length <= contentBudget) {
               content = retryText
             } else {
               // Force-truncate to last sentence boundary
-              const match = retryText.slice(0, CONTENT_BUDGET).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
-              content = match ? match[0].trim() : retryText.slice(0, CONTENT_BUDGET - 1) + '\u2026'
+              const match = retryText.slice(0, contentBudget).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
+              content = match ? match[0].trim() : retryText.slice(0, contentBudget - 1) + '\u2026'
             }
           }
 
-          // Append watermark — total is guaranteed ≤ MAX_CONTENT_LENGTH
-          content = content + WATERMARK
-
-          return { content, lengthBeforeWatermark: content.length - WATERMARK.length }
-        },
-      }),
-
-      update_product_memory: tool({
-        description:
-          'Update durable product memory. Call when you learn something new about the project from the code changes — what it does, who uses it, current development theme, etc.',
-        inputSchema: z.object({
-          updates: z.array(
-            z.object({
-              key: z
-                .string()
-                .describe('Memory key (e.g. "product_description", "current_theme", "tech_stack")'),
-              value: z.string().describe('The value to store'),
-              category: z.enum(['product_identity', 'narrative', 'audience', 'pattern']),
-            })
-          ),
-        }),
-        execute: async ({ updates }) => {
-          for (const update of updates) {
-            await supabase.from('agent_memory').upsert(
-              {
-                user_id: event.userId,
-                repo_id: event.repoId,
-                key: update.key,
-                value: update.value,
-                category: update.category,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'user_id,repo_id,key' }
-            )
-          }
-          return { updated: updates.length }
+          return { content, lengthBeforeWatermark: content.length }
         },
       }),
     },
@@ -211,6 +163,19 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
   const result = await agent.generate({
     prompt: buildEventPrompt(event),
   })
+
+  if (
+    result.output.decision === 'post' &&
+    !result.steps.some((step) => {
+      const toolCalls = (step as any)?.toolCalls ?? []
+      return (
+        Array.isArray(toolCalls) &&
+        toolCalls.some((call: any) => call.toolName === 'generate_content')
+      )
+    })
+  ) {
+    throw new Error('Agent post decision must use generate_content after gathering context')
+  }
 
   return {
     decision: result.output.decision,
@@ -226,9 +191,12 @@ export async function runAgent(event: AgentEvent): Promise<AgentResult> {
  * Run the agent with error handling. On failure, returns an error decision
  * so failures are visible in the dashboard rather than producing low-quality fallback posts.
  */
-export async function runAgentSafe(event: AgentEvent): Promise<AgentResult> {
+export async function runAgentSafe(
+  event: AgentEvent,
+  overrides?: AgentOverrides
+): Promise<AgentResult> {
   try {
-    return await runAgent(event)
+    return await runAgent(event, overrides)
   } catch (err) {
     console.error('[agent] failed:', err instanceof Error ? err.message : String(err))
     return {

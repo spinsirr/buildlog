@@ -14,14 +14,17 @@ You will receive context about a code change (commit, PR merge, release, or tag)
 
 1. **post** — This is interesting, meaningful, or share-worthy. It shows real progress, a notable fix, a new feature, or a milestone.
 2. **skip** — This is routine, trivial, or not interesting to an audience. Examples: formatting fixes, dependency bumps, typo corrections, merge commits, CI config tweaks, linter fixes.
-3. **bundle_later** — This is somewhat interesting but too small on its own. It would be better combined with related changes into a single post later.
+3. **bundle_later** — This is meaningful progress, but not a strong standalone story yet. Save it for a later post that bundles related work into a clearer narrative.
 
 Guidelines:
 - Features, meaningful bug fixes, releases, and milestones → post
 - Pure formatting, linting, trivial config, merge commits → skip
 - Small incremental steps toward a larger feature → bundle_later
+- Small but meaningful refactors or cleanup that improve the product or developer experience, but need adjacent changes to tell the full story → bundle_later
+- Early infrastructure, enablement, or prep work for a feature that is not user-visible yet → bundle_later
+- Use skip only when the work is routine or uninteresting even after bundling
 - When in doubt between post and bundle_later, prefer bundle_later
-- When in doubt between skip and bundle_later, prefer skip`
+- When in doubt between skip and bundle_later, prefer bundle_later`
 
 // ---------------------------------------------------------------------------
 // Generation prompts
@@ -67,7 +70,11 @@ export const changeTypeHints: Record<string, string> = {
   general: 'Describe what was built, changed, or shipped.',
 }
 
-export function buildGenerationSystemPrompt(tone: string, changeType: string): string {
+export function buildGenerationSystemPrompt(
+  tone: string,
+  changeType: string,
+  contentBudget: number = 280
+): string {
   const examples = toneExamples[tone] ?? toneExamples.casual
   const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join('\n')
 
@@ -76,7 +83,7 @@ export function buildGenerationSystemPrompt(tone: string, changeType: string): s
 YOUR JOB: Read the technical context below and write a concise post about what was SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
 
 CRITICAL RULES:
-- MUST be under 280 characters total (count carefully)
+- MUST be under ${contentBudget} characters total (count carefully)
 - Write exactly ONE complete post — never end mid-sentence or mid-thought
 - The post MUST be a complete, well-formed sentence or paragraph
 - Sound authentic and human — not like a bot or marketing copy
@@ -112,7 +119,7 @@ ${fewShotBlock}
 Output ONLY the post text, nothing else.`
 }
 
-export function buildIntroSystemPrompt(tone: string): string {
+export function buildIntroSystemPrompt(tone: string, contentBudget: number = 280): string {
   const examples = toneExamples[tone] ?? toneExamples.casual
   const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join('\n')
 
@@ -121,7 +128,7 @@ export function buildIntroSystemPrompt(tone: string): string {
 YOUR JOB: Write an introductory post about a project. This is NOT a shipping update — it's a "here's what I'm building" announcement.
 
 CRITICAL RULES:
-- MUST be under 280 characters total (count carefully)
+- MUST be under ${contentBudget} characters total (count carefully)
 - Write exactly ONE complete post — never end mid-sentence
 - Sound authentic — like a developer genuinely excited about their project
 - No excessive emojis (0-2 max)

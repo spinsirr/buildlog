@@ -6,6 +6,7 @@ export interface AgentEvent {
   projectContext: string | null
   tone: 'casual' | 'professional' | 'technical'
   autoPublish: boolean
+  xPremium: boolean
   data: EventData
 }
 
@@ -31,7 +32,7 @@ export interface FileDiff {
 }
 
 export interface AgentResult {
-  decision: 'post' | 'skip' | 'error'
+  decision: 'post' | 'skip' | 'bundle_later' | 'error'
   reasoning: string
   confidence: 'high' | 'medium' | 'low'
   angle: string | null

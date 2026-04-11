@@ -86,6 +86,7 @@ export const generateInputSchema = z.object({
     .nullable()
     .optional(),
   angle: z.string().nullable().optional(),
+  contentBudget: z.number().optional(),
   variant: z.enum(['default', 'xhs']).default('default'),
   data: z.object({
     message: z.string().optional(),
