@@ -45,13 +45,16 @@ const _agentToolNames = ['get_repo_context', 'get_recent_posts', 'generate_conte
 
 export interface AgentOverrides {
   /** Replace all Supabase/Gemini-backed tools with mock implementations */
-  tools?: Record<
-    string,
-    { description: string; inputSchema: any; execute: (...args: any[]) => Promise<any> }
-  >
+  // biome-ignore lint/suspicious/noExplicitAny: AI SDK tool types require any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools?: Record<string, any>
   /** Override the agent model (for testing with mock LLMs) */
+  // biome-ignore lint/suspicious/noExplicitAny: AI SDK model types require any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   model?: any
   /** Override the content model */
+  // biome-ignore lint/suspicious/noExplicitAny: AI SDK model types require any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   contentModel?: any
 }
 
@@ -166,10 +169,13 @@ export async function runAgent(
 
   if (
     result.output.decision === 'post' &&
-    !result.steps.some((step) => {
-      const toolCalls = (step as any)?.toolCalls ?? []
+    // biome-ignore lint/suspicious/noExplicitAny: AI SDK step internals not typed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    !result.steps.some((step: any) => {
+      const toolCalls = step?.toolCalls ?? []
       return (
         Array.isArray(toolCalls) &&
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         toolCalls.some((call: any) => call.toolName === 'generate_content')
       )
     })
