@@ -22,6 +22,7 @@ export type ProfileSettings = {
   auto_publish: boolean
   email_notifications: boolean
   publish_delay_minutes: number
+  x_premium: boolean
 }
 
 export type Connection = {

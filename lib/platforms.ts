@@ -32,3 +32,32 @@ export const platformConfig: Record<string, PlatformConfig> = {
 export const platformLabels: Record<string, string> = Object.fromEntries(
   Object.entries(platformConfig).map(([id, cfg]) => [id, cfg.label])
 )
+
+/** Max characters per platform */
+export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
+  twitter: 280,
+  twitter_premium: 4000,
+  linkedin: 3000,
+  bluesky: 300,
+}
+
+/**
+ * Get the full content character limit for a platform (no watermark deduction).
+ */
+export function getContentLimit(platform: string, xPremium: boolean): number {
+  if (platform === 'twitter' && xPremium) {
+    return PLATFORM_CHAR_LIMITS.twitter_premium
+  }
+  return PLATFORM_CHAR_LIMITS[platform] ?? PLATFORM_CHAR_LIMITS.twitter
+}
+
+/**
+ * Get the tightest content limit across all connected platforms.
+ * Content must fit the most restrictive platform it's posted to.
+ */
+export function getEffectiveLimit(platforms: string[], xPremium: boolean): number {
+  return Math.min(
+    ...platforms.map((p) => getContentLimit(p, xPremium)),
+    getContentLimit('twitter', xPremium)
+  )
+}
