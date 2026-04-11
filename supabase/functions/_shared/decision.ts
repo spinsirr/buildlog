@@ -44,14 +44,17 @@ You will receive context about a code change (commit, PR merge, release, or tag)
 
 1. **post** — This is interesting, meaningful, or share-worthy. It shows real progress, a notable fix, a new feature, or a milestone.
 2. **skip** — This is routine, trivial, or not interesting to an audience. Examples: formatting fixes, dependency bumps, typo corrections, merge commits, CI config tweaks, linter fixes.
-3. **bundle_later** — This is somewhat interesting but too small on its own. It would be better combined with related changes into a single post later.
+3. **bundle_later** — This is meaningful progress, but not a strong standalone story yet. Save it for a later post that bundles related work into a clearer narrative.
 
 Guidelines:
 - Features, meaningful bug fixes, releases, and milestones → post
 - Pure formatting, linting, trivial config, merge commits → skip
 - Small incremental steps toward a larger feature → bundle_later
+- Small but meaningful refactors or cleanup that improve the product or developer experience, but need adjacent changes to tell the full story → bundle_later
+- Early infrastructure, enablement, or prep work for a feature that is not user-visible yet → bundle_later
+- Use skip only when the work is routine or uninteresting even after bundling
 - When in doubt between post and bundle_later, prefer bundle_later
-- When in doubt between skip and bundle_later, prefer skip
+- When in doubt between skip and bundle_later, prefer bundle_later
 
 You MUST respond with valid JSON matching this exact schema:
 {

@@ -2,31 +2,10 @@ import { getLog } from "./logger.ts"
 
 const log = getLog("ai")
 
-// ---------------------------------------------------------------------------
-// Watermark / attribution
-// ---------------------------------------------------------------------------
-// Appended to AI-generated post content so published posts include a subtle
-// backlink. The watermark is part of the stored content, so users can manually
-// remove or edit it in the post editor before publishing.
-//
-// TODO(@spinsirr): Pro/Team plan users should be able to opt out of the
-// watermark as a perk. When implementing, check the user's plan before
-// appending and skip the watermark for paid tiers. The generation functions
-// accept no plan info today — that will need to be threaded through when
-// gating is added.
-// ---------------------------------------------------------------------------
+// Watermark removed — posts no longer include attribution suffix.
 
-type WatermarkVariant = "default" | "xhs"
-
-const WATERMARKS: Record<WatermarkVariant, string> = {
-  /** All English platforms (Twitter, LinkedIn, Bluesky) */
-  default: "\n\n🔧 buildlog.ink",
-  /** 小红书 (XHS) — Chinese-language attribution */
-  xhs: "\n\n🔧 由 BuildLog 生成 — buildlog.ink",
-}
-
-function appendWatermark(content: string, variant: WatermarkVariant): string {
-  return content + WATERMARKS[variant]
+function appendWatermark(content: string, _variant: string): string {
+  return content
 }
 
 interface FileDiff {
@@ -42,6 +21,7 @@ interface GeneratePostInput {
   repoName: string
   tone?: "casual" | "professional" | "technical"
   projectContext?: string | null
+  contentBudget?: number
   data: {
     message?: string
     title?: string
@@ -343,6 +323,7 @@ export async function generateIntroPost(
   repoName: string,
   projectContext: string,
   tone: "casual" | "professional" | "technical" = "casual",
+  contentBudget: number = 280,
 ): Promise<string> {
   const examples = toneExamples[tone]
   const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join("\n")
@@ -353,7 +334,7 @@ export async function generateIntroPost(
 YOUR JOB: Write an introductory post about a project. This is NOT a shipping update — it's a "here's what I'm building" announcement.
 
 CRITICAL RULES:
-- MUST be under 280 characters total (count carefully)
+- MUST be under ${contentBudget} characters total (count carefully)
 - Write exactly ONE complete post — never end mid-sentence
 - Sound authentic — like a developer genuinely excited about their project
 - No excessive emojis (0-2 max)
@@ -398,7 +379,7 @@ Output ONLY the post text, nothing else.`
       { maxOutputTokens: 800, temperature: 0.5 },
     )
     const retryText = retry.text.trim()
-    if (isComplete(retryText) && retryText.length <= 280) {
+    if (isComplete(retryText) && retryText.length <= contentBudget) {
       result = retryText
     } else if (isComplete(retryText)) {
       // Complete but too long — will be handled by length check below
@@ -412,20 +393,20 @@ Output ONLY the post text, nothing else.`
     }
   }
 
-  // Retry if over 280 chars
-  if (result.length > 280) {
+  // Retry if over char limit
+  if (result.length > contentBudget) {
     const retry = await callGemini(
       system,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under 280 characters. End with a complete sentence.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under ${contentBudget} characters. End with a complete sentence.`,
       { maxOutputTokens: 800, temperature: 0.5 },
     )
     const retryText = retry.text.trim()
-    if (retryText.length <= 280) {
+    if (retryText.length <= contentBudget) {
       result = retryText
     } else {
-      // Force-truncate to last sentence boundary under 280
-      const truncated = truncateToSentence(retryText.slice(0, 280))
-      result = truncated.length > 0 ? truncated : retryText.slice(0, 279) + "…"
+      // Force-truncate to last sentence boundary
+      const truncated = truncateToSentence(retryText.slice(0, contentBudget))
+      result = truncated.length > 0 ? truncated : retryText.slice(0, contentBudget - 1) + "…"
     }
   }
 
@@ -439,6 +420,7 @@ Output ONLY the post text, nothing else.`
 
 export async function generatePost(input: GeneratePostInput): Promise<string> {
   const tone = input.tone ?? "casual"
+  const charLimit = input.contentBudget ?? 280
   const changeType = classifyChange(input)
   const changeContext = buildChangeContext(input)
 
@@ -480,7 +462,7 @@ export async function generatePost(input: GeneratePostInput): Promise<string> {
 YOUR JOB: Read the technical context below and write a concise post about what was SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
 
 CRITICAL RULES:
-- MUST be under 280 characters total (count carefully)
+- MUST be under ${charLimit} characters total (count carefully)
 - Write exactly ONE complete post — never end mid-sentence or mid-thought
 - The post MUST be a complete, well-formed sentence or paragraph
 - Sound authentic and human — not like a bot or marketing copy
@@ -547,7 +529,7 @@ Output ONLY the post text, nothing else.`
       { maxOutputTokens: 800, temperature: 0.5 },
     )
     const retryText = retry.text.trim()
-    if (isComplete(retryText) && retryText.length <= 280) {
+    if (isComplete(retryText) && retryText.length <= charLimit) {
       result = retryText
     } else if (isComplete(retryText)) {
       result = retryText
@@ -559,19 +541,19 @@ Output ONLY the post text, nothing else.`
     }
   }
 
-  // If AI exceeded 280 chars, re-generate with stricter instruction
-  if (result.length > 280) {
+  // If AI exceeded char limit, re-generate with stricter instruction
+  if (result.length > charLimit) {
     const retry = await callGemini(
       system,
-      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under 280 characters while keeping it complete and engaging.`,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite it to fit under ${charLimit} characters while keeping it complete and engaging.`,
       { maxOutputTokens: 800, temperature: 0.5 },
     )
     const retryText = retry.text.trim()
-    if (retryText.length <= 280) {
+    if (retryText.length <= charLimit) {
       result = retryText
     } else {
-      const truncated = truncateToSentence(retryText.slice(0, 280))
-      result = truncated.length > 0 ? truncated : retryText.slice(0, 279) + "…"
+      const truncated = truncateToSentence(retryText.slice(0, charLimit))
+      result = truncated.length > 0 ? truncated : retryText.slice(0, charLimit - 1) + "…"
     }
   }
 

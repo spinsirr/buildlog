@@ -26,11 +26,12 @@ interface AgentApiEvent {
   projectContext: string | null
   tone: string
   autoPublish: boolean
+  xPremium: boolean
   data: Record<string, unknown>
 }
 
 interface AgentApiResult {
-  decision: "post" | "skip" | "error"
+  decision: "post" | "skip" | "bundle_later" | "error"
   reasoning: string
   confidence: "high" | "medium" | "low"
   angle: string | null
@@ -192,7 +193,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   // Look up user by installation ID
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, tone, auto_publish, decision_layer_enabled")
+    .select("id, tone, auto_publish, decision_layer_enabled, x_premium")
     .eq("github_installation_id", installationId)
     .single()
 
@@ -406,6 +407,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       projectContext: repo.project_context,
       tone: profile.tone ?? "casual",
       autoPublish: profile.auto_publish === true,
+      xPremium: profile.x_premium === true,
       data: postData,
     })
 
@@ -426,7 +428,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
           model: "agent",
           reasoning: agentResult.reasoning,
         },
-        agent_model: "claude-sonnet",
+        agent_model: "gemini-3-flash-preview",
         step_count: agentResult.stepCount,
       })
 
@@ -438,6 +440,18 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         })
         return jsonResponse(
           { ok: true, skipped: "agent_skip", reason: agentResult.reasoning },
+          req,
+        )
+      }
+
+      if (agentResult.decision === "bundle_later") {
+        log.info("agent deferred {sourceType} in {repo}: {reason}", {
+          sourceType,
+          repo: repoFullName,
+          reason: agentResult.reasoning,
+        })
+        return jsonResponse(
+          { ok: true, skipped: "agent_bundle_later", reason: agentResult.reasoning },
           req,
         )
       }
@@ -505,6 +519,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       repoName: repoFullName,
       tone: profile.tone ?? "casual",
       projectContext: repo.project_context,
+      contentBudget: profile.x_premium === true ? 4000 : 280,
       data: postData,
     })
   }
