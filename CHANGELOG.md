@@ -5,21 +5,19 @@ All notable changes to this project will be documented in this file.
 ## [0.0.1.0] - 2026-04-11
 
 ### Added
-- X Premium support: users can toggle X Premium in settings to unlock 4,000-character posts instead of 280
-- `bundle_later` decision type: agent can defer events that are meaningful but not yet story-ready
-- Multi-platform character limit: UI enforces the tightest limit across all connected platforms
-- `getEffectiveLimit()` and `getContentLimit()` utilities in `lib/platforms.ts`
+- X Premium support: toggle in settings to write posts up to 4,000 characters instead of 280
+- Smart bundling: agent can defer events that aren't story-ready yet, saving them for a stronger post later
+- Multi-platform awareness: character limits now respect every connected platform, not just Twitter
+- Platform character limit utilities (`getContentLimit`, `getEffectiveLimit`)
 - `x_premium` column on profiles table (migration included)
-- Agent test harness with mock model, mock tools, fixture events, and evaluator
-- Harness scenarios for post, skip, bundle_later, and error paths
-- `bun run harness` and `bun run harness:live` scripts
+- Agent test harness with mock model, fixture events, evaluator, and `bun run harness` scripts
 
 ### Changed
-- Agent now uses 3 focused tools (get_repo_context, get_recent_posts, generate_content) instead of 5
-- Agent tool validation strictly requires `generate_content` for post decisions
-- Decision prompts favor `bundle_later` over `skip` for meaningful but incomplete work
-- Content generation accepts dynamic `contentBudget` parameter across all paths (agent, Edge Function, Node-side)
-- Removed watermark suffix from generated posts
+- Agent simplified from 5 tools to 3 focused tools (context, recent posts, content generation)
+- Agent now verifies content was actually generated before allowing a "post" decision
+- Decision engine favors bundling over skipping for meaningful but incomplete work
+- Character limits are now dynamic across all generation paths, not hardcoded to 280
+- Posts no longer include the "buildlog.ink" watermark suffix
 
 ### Fixed
 - Removed broken Deno-module fallback from Node.js Vercel Function route

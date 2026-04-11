@@ -67,7 +67,7 @@ bun run dev
 Next.js 16 (Vercel)
 ├── Server Components — data fetching via server-side Supabase client
 ├── Client Components — interactive UI (forms, modals, toggles)
-└── No API routes — all writes go through Supabase Edge Functions
+└── app/api/agent/decide — Agentic decision engine (Gemini via AI SDK)
 
 Supabase Edge Functions (Deno)
 ├── github-webhook    — GitHub events → AI post generation
@@ -88,7 +88,7 @@ Supabase Edge Functions (Deno)
 1. Sign in with GitHub (Supabase OAuth)
 2. Install the BuildLog GitHub App on your repos
 3. GitHub sends events (push, PR, release) to the webhook Edge Function
-4. Gemini generates a post draft from the event data
+4. An AI agent decides whether to post, skip, or bundle for later, then generates content
 5. Review and edit drafts in the dashboard
 6. Publish to connected social platforms
 
