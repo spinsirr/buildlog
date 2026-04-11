@@ -19,6 +19,7 @@ const google = createGoogleGenerativeAI({
 export async function decide(input: DecisionInput): Promise<DecisionOutput> {
   const prompt = buildDecisionPrompt(input)
 
+  /* eslint-disable vercel-ai-security/no-dynamic-system-prompt -- system prompt built from trusted server-side config, not user input */
   const { output } = await generateText({
     model: google('gemini-2.5-flash'),
     system: buildSystemPromptWithContext(input),
@@ -41,6 +42,7 @@ export async function decide(input: DecisionInput): Promise<DecisionOutput> {
       }),
     }),
   })
+  /* eslint-enable vercel-ai-security/no-dynamic-system-prompt */
 
   if (!output) {
     return {

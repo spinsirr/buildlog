@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Agent Harness — comprehensive tests for the BuildLog decision agent.
  *

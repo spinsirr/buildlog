@@ -123,6 +123,7 @@ export async function runAgent(
           const systemPrompt = buildContentSystemPrompt(event.tone, contentBudget)
           const userPrompt = buildContentPrompt(event, angle, highlights)
 
+          /* eslint-disable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt -- prompts are agent-constructed from trusted server-side data */
           const { text } = await generateText({
             model: google!(CONTENT_MODEL),
             system: systemPrompt,
@@ -157,6 +158,7 @@ export async function runAgent(
             }
           }
 
+          /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
           return { content, lengthBeforeWatermark: content.length }
         },
       }),
