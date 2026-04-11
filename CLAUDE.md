@@ -29,10 +29,10 @@ Vercel (Next.js 16)
 ├── proxy.ts — redirects unauthed users from /dashboard to /login
 │
 ├── app/api/agent/decide/ — Agentic decision + generation (Vercel Function)
-│   └── route.ts — ToolLoopAgent with Claude reasoning + Gemini generation
+│   └── route.ts — Forwards to runAgentSafe, returns structured decision
 │
 ├── lib/agent/ — Agent layer modules
-│   ├── orchestrator.ts — ToolLoopAgent with tools (decision, generation, memory)
+│   ├── orchestrator.ts — ToolLoopAgent with 3 tools (context, posts, generation)
 │   ├── prompts.ts      — System prompts, content templates, event formatting
 │   └── types.ts        — AgentEvent, AgentResult, shared types
 
@@ -53,9 +53,9 @@ Supabase Edge Functions (Deno runtime)
 
 - Next.js 16 + App Router + Turbopack
 - Supabase (auth + Postgres + Edge Functions)
-- AI SDK + @ai-sdk/anthropic + @ai-sdk/google (Vercel Functions, Node.js runtime)
-- Claude (agent reasoning + decision via ToolLoopAgent)
-- Gemini (content generation — via AI SDK in agent, direct fetch in legacy Edge Functions)
+- AI SDK + @ai-sdk/google (Vercel Functions, Node.js runtime)
+- Gemini (agent reasoning + decision + content generation via ToolLoopAgent)
+- Gemini (legacy content generation via direct fetch in Edge Functions)
 - shadcn/ui + Geist
 - Dark mode by default
 
@@ -76,8 +76,8 @@ Supabase Edge Functions (Deno runtime)
 - Agent modules live in `lib/agent/` — orchestrator (ToolLoopAgent), prompts, types
 - Agent API authenticates via `x-agent-secret` header (AGENT_API_SECRET env var)
 - `lib/supabase/admin.ts` provides service-role client for API routes (bypasses RLS)
-- Agent memory stored in `agent_memory` table — durable product context per repo
-- Decision history in `post_decisions` table with reasoning traces
+- Decision history in `post_decisions` table with reasoning traces (includes bundle_later decisions)
+- Platform character limits in `lib/platforms.ts`, X Premium support via `profiles.x_premium`
 
 ## Skill routing
 
