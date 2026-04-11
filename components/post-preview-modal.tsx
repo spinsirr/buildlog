@@ -45,6 +45,7 @@ export function PostPreviewModal({
   onConfirmPublish,
   busy,
   connectedPlatforms,
+  charLimit = 280,
 }: {
   content: string
   open: boolean
@@ -52,12 +53,13 @@ export function PostPreviewModal({
   onConfirmPublish: () => void
   busy: boolean
   connectedPlatforms: string[]
+  charLimit?: number
 }) {
   const charCount = content.length
-  const overLimit = charCount > 280
-  const remaining = 280 - charCount
+  const overLimit = charCount > charLimit
+  const remaining = charLimit - charCount
 
-  const pct = Math.min(charCount / 280, 1)
+  const pct = Math.min(charCount / charLimit, 1)
   const radius = 10
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference * (1 - pct)
@@ -155,8 +157,8 @@ export function PostPreviewModal({
 
         {overLimit && (
           <div className="text-xs text-red-400 bg-red-500/10 rounded-md px-3 py-2">
-            Post exceeds the 280 character limit by {charCount - 280} characters. Edit the post
-            before publishing.
+            Post exceeds the {charLimit} character limit by {charCount - charLimit} characters. Edit
+            the post before publishing.
           </div>
         )}
 

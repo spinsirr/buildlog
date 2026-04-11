@@ -1,6 +1,7 @@
 import { generatePost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
+import { decidePostAction, type DecisionInput } from "../_shared/decision.ts"
 import { fetchPrContext, fetchTagContext } from "../_shared/github.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
@@ -12,6 +13,73 @@ await setupLogger()
 const log = getLog("github-webhook")
 
 const MAX_BODY_SIZE = 1024 * 1024 // 1MB
+
+// ---------------------------------------------------------------------------
+// Agent API — calls the Vercel Function for agentic decision + generation
+// ---------------------------------------------------------------------------
+
+interface AgentApiEvent {
+  sourceType: string
+  repoName: string
+  repoId: string
+  userId: string
+  projectContext: string | null
+  tone: string
+  autoPublish: boolean
+  xPremium: boolean
+  data: Record<string, unknown>
+}
+
+interface AgentApiResult {
+  decision: "post" | "skip" | "bundle_later" | "error"
+  reasoning: string
+  confidence: "high" | "medium" | "low"
+  angle: string | null
+  content: string | null
+  stepCount: number
+}
+
+async function callAgentApi(event: AgentApiEvent): Promise<AgentApiResult | null> {
+  const appUrl = Deno.env.get("BUILDLOG_APP_URL")
+  const secret = Deno.env.get("AGENT_API_SECRET")
+
+  if (!appUrl || !secret) {
+    log.warn("agent API not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)")
+    return null
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 45_000) // 45s timeout
+
+    const res = await fetch(`${appUrl}/api/agent/decide`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-agent-secret": secret,
+      },
+      body: JSON.stringify(event),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (!res.ok) {
+      const text = await res.text()
+      log.error("agent API error: {status} {body}", {
+        status: res.status,
+        body: text.slice(0, 200),
+      })
+      return null
+    }
+
+    return (await res.json()) as AgentApiResult
+  } catch (err) {
+    log.error("agent API call failed: {error}", {
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return null
+  }
+}
 
 async function verifySignature(body: string, signature: string): Promise<boolean> {
   const secret = Deno.env.get("GITHUB_WEBHOOK_SECRET")
@@ -125,7 +193,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   // Look up user by installation ID
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, tone, auto_publish")
+    .select("id, tone, auto_publish, decision_layer_enabled, x_premium")
     .eq("github_installation_id", installationId)
     .single()
 
@@ -322,14 +390,139 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     return jsonResponse({ ok: true, skipped: "post_limit_reached" }, req)
   }
 
-  // Generate AI content
-  const content = await generatePost({
-    sourceType,
-    repoName: repoFullName,
-    tone: profile.tone ?? "casual",
-    projectContext: repo.project_context,
-    data: postData,
-  })
+  // ---------------------------------------------------------------------------
+  // Decision + generation layer
+  // When decision_layer_enabled, call the Vercel Agent API for multi-step
+  // reasoning (Claude) + content generation (Gemini via AI SDK). Falls back
+  // to the direct Gemini generation path if the agent is unavailable.
+  // ---------------------------------------------------------------------------
+  let content: string | undefined
+
+  if (profile.decision_layer_enabled) {
+    const agentResult = await callAgentApi({
+      sourceType,
+      repoName: repoFullName,
+      repoId: repo.id,
+      userId: profile.id,
+      projectContext: repo.project_context,
+      tone: profile.tone ?? "casual",
+      autoPublish: profile.auto_publish === true,
+      xPremium: profile.x_premium === true,
+      data: postData,
+    })
+
+    if (agentResult) {
+      // Store the decision with reasoning trace
+      await supabase.from("post_decisions").insert({
+        user_id: profile.id,
+        repo_id: repo.id,
+        source_type: sourceType,
+        source_data: { ...postData, repo: repoFullName },
+        dedupe_key: dedupeKey,
+        decision: agentResult.decision,
+        reason: agentResult.reasoning,
+        confidence: agentResult.confidence,
+        angle: agentResult.angle,
+        reasoning_trace: {
+          steps: agentResult.stepCount,
+          model: "agent",
+          reasoning: agentResult.reasoning,
+        },
+        agent_model: "gemini-3-flash-preview",
+        step_count: agentResult.stepCount,
+      })
+
+      if (agentResult.decision === "skip") {
+        log.info("agent skipped {sourceType} in {repo}: {reason}", {
+          sourceType,
+          repo: repoFullName,
+          reason: agentResult.reasoning,
+        })
+        return jsonResponse(
+          { ok: true, skipped: "agent_skip", reason: agentResult.reasoning },
+          req,
+        )
+      }
+
+      if (agentResult.decision === "bundle_later") {
+        log.info("agent deferred {sourceType} in {repo}: {reason}", {
+          sourceType,
+          repo: repoFullName,
+          reason: agentResult.reasoning,
+        })
+        return jsonResponse(
+          { ok: true, skipped: "agent_bundle_later", reason: agentResult.reasoning },
+          req,
+        )
+      }
+
+      if (agentResult.decision === "error") {
+        log.error("agent error for {sourceType} in {repo}: {reason}", {
+          sourceType,
+          repo: repoFullName,
+          reason: agentResult.reasoning,
+        })
+        return jsonResponse(
+          { ok: true, skipped: "agent_error", reason: agentResult.reasoning },
+          req,
+        )
+      }
+
+      // decision === "post" — use agent-generated content if available
+      if (agentResult.content) {
+        content = agentResult.content
+        log.info("agent generated content for {sourceType} in {repo} ({steps} steps)", {
+          sourceType,
+          repo: repoFullName,
+          steps: agentResult.stepCount,
+        })
+      }
+    } else {
+      // Agent API unavailable — fall back to legacy decision layer
+      log.warn("agent API unavailable, falling back to legacy decision")
+      const decisionInput: DecisionInput = {
+        sourceType,
+        repoName: repoFullName,
+        projectContext: repo.project_context,
+        data: postData,
+      }
+      const decision = await decidePostAction(decisionInput)
+
+      await supabase.from("post_decisions").insert({
+        user_id: profile.id,
+        repo_id: repo.id,
+        source_type: sourceType,
+        source_data: { ...postData, repo: repoFullName },
+        dedupe_key: dedupeKey,
+        decision: decision.decision,
+        reason: decision.reason,
+        confidence: decision.confidence,
+        angle: decision.angle,
+      })
+
+      if (decision.decision === "skip") {
+        return jsonResponse({ ok: true, skipped: "decision_skip", reason: decision.reason }, req)
+      }
+      if (decision.decision === "bundle_later") {
+        return jsonResponse(
+          { ok: true, skipped: "decision_bundle_later", reason: decision.reason },
+          req,
+        )
+      }
+    }
+  }
+
+  // Generate AI content via direct Gemini if agent didn't produce content
+  if (!content) {
+    content = await generatePost({
+      sourceType,
+      repoName: repoFullName,
+      tone: profile.tone ?? "casual",
+      projectContext: repo.project_context,
+      contentBudget: profile.x_premium === true ? 4000 : 280,
+      data: postData,
+    })
+  }
 
   const shouldPublish = profile.auto_publish === true
 
@@ -375,6 +568,7 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       "source_type": sourceType,
       source_data: strippedData,
       content,
+      original_content: content,
       status: "draft",
       published_at: null,
     })

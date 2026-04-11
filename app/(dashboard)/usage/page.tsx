@@ -1,14 +1,10 @@
-'use client'
-
-import useSWR from 'swr'
-import { ErrorState } from '@/components/error-state'
+import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PLANS } from '@/lib/plans'
 import { platformLabels } from '@/lib/platforms'
-import { createClient } from '@/lib/supabase/client'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
-import { UsageSkeleton } from './loading'
 
 const sourceLabels: Record<string, string> = {
   commit: 'Commits',
@@ -53,15 +49,13 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   )
 }
 
-async function fetchUsageData() {
-  const supabase = createClient()
-
+export default async function UsagePage() {
+  const supabase = await createServerSupabaseClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  if (!user) redirect('/login')
 
-  // Check plan
   const { data: sub, error: subError } = await supabase
     .from('subscriptions')
     .select('status')
@@ -118,29 +112,14 @@ async function fetchUsageData() {
     sourceCounts[post.source_type] = (sourceCounts[post.source_type] ?? 0) + 1
   }
 
-  return {
-    plan,
-    limits,
-    usage: {
-      posts_this_month: postsThisMonth.length,
-      total_posts: posts.length,
-      published_posts: publishedPosts.length,
-      draft_posts: draftPosts.length,
-      repos: repoCount ?? 0,
-      platforms: platformCount ?? 0,
-    },
-    platformCounts,
-    sourceCounts,
+  const usage = {
+    posts_this_month: postsThisMonth.length,
+    total_posts: posts.length,
+    published_posts: publishedPosts.length,
+    draft_posts: draftPosts.length,
+    repos: repoCount ?? 0,
+    platforms: platformCount ?? 0,
   }
-}
-
-export default function UsagePage() {
-  const { data, error, isLoading, mutate } = useSWR('usage-data', fetchUsageData)
-
-  if (isLoading) return <UsageSkeleton />
-  if (error || !data) return <ErrorState retry={() => mutate()} />
-
-  const { plan, limits, usage, platformCounts, sourceCounts } = data
 
   return (
     <div className="flex flex-col gap-6">
@@ -158,7 +137,6 @@ export default function UsagePage() {
         </Badge>
       </div>
 
-      {/* Plan limits */}
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-zinc-50 text-base">Plan Limits</CardTitle>
@@ -174,7 +152,6 @@ export default function UsagePage() {
         </CardContent>
       </Card>
 
-      {/* Stats — inline, no generic card grid */}
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl font-semibold text-zinc-50 tabular-nums">
@@ -202,9 +179,7 @@ export default function UsagePage() {
         </div>
       </div>
 
-      {/* Breakdowns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {/* Platform breakdown */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-zinc-50 text-base">By Platform</CardTitle>
@@ -243,7 +218,6 @@ export default function UsagePage() {
           </CardContent>
         </Card>
 
-        {/* Source breakdown */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-zinc-50 text-base">By Source</CardTitle>

@@ -121,6 +121,7 @@ async function handleGenerate(
       source_type: sourceType,
       source_data: data,
       content,
+      original_content: content,
       status: "draft",
     })
     .select()
@@ -176,7 +177,7 @@ async function handleRegenerate(
         const content = await generateIntroPost(repo.full_name, repo.project_context)
         const { data: updatedPost, error: updateError } = await supabase
           .from("posts")
-          .update({ content, updated_at: new Date().toISOString() })
+          .update({ content, original_content: content, updated_at: new Date().toISOString() })
           .eq("id", post.id)
           .select()
           .single()
@@ -261,7 +262,7 @@ async function handleRegenerate(
 
   const { data: updatedPost, error: updateError } = await supabase
     .from("posts")
-    .update({ content, updated_at: new Date().toISOString() })
+    .update({ content, original_content: content, updated_at: new Date().toISOString() })
     .eq("id", post.id)
     .select()
     .single()

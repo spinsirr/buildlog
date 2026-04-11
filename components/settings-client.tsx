@@ -180,6 +180,24 @@ export function SettingsClient({
     }
   }
 
+  async function handleXPremiumToggle(checked: boolean) {
+    const prev = profile.x_premium
+    setProfile((p) => ({ ...p, x_premium: checked }))
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ x_premium: checked })
+        .eq('id', user.id)
+      if (error) {
+        setProfile((p) => ({ ...p, x_premium: prev }))
+        toast.error('Update failed', { description: 'Failed to update X Premium setting' })
+      }
+    }
+  }
+
   async function handleToneChange(newTone: string) {
     setSavingTone(true)
     try {
@@ -284,10 +302,16 @@ export function SettingsClient({
   }
 
   const getConnection = (id: string) => connections.find((c) => c.platform === id)
-  const { tone, auto_publish: autoPublish, email_notifications: emailNotifications } = profile
+  const {
+    tone,
+    auto_publish: autoPublish,
+    email_notifications: emailNotifications,
+    x_premium: xPremium,
+  } = profile
 
   const isPro = initialPlan === 'pro'
   const limits = PLANS[initialPlan]
+  const isTwitterConnected = connections.find((c) => c.platform === 'twitter')?.connected ?? false
 
   return (
     <div className="flex flex-col gap-6">
@@ -589,6 +613,23 @@ export function SettingsClient({
                 <Switch
                   checked={emailNotifications}
                   onCheckedChange={handleEmailNotificationsToggle}
+                />
+              </div>
+              <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                <div>
+                  <Label className="text-sm font-medium text-zinc-200">
+                    X Premium (longer posts)
+                  </Label>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {isTwitterConnected
+                      ? 'Generate posts up to 4,000 characters instead of 280.'
+                      : 'Requires an X Premium subscription. Connect your X account first.'}
+                  </p>
+                </div>
+                <Switch
+                  checked={xPremium}
+                  onCheckedChange={handleXPremiumToggle}
+                  disabled={!isTwitterConnected}
                 />
               </div>
             </CardContent>

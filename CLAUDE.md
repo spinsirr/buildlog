@@ -19,7 +19,7 @@ A PreToolUse hook enforces this — npm commands will be blocked automatically.
 
 ## Architecture
 
-**Server Components + Supabase Edge Functions**
+**Server Components + Agentic AI Layer + Supabase Edge Functions**
 
 ```
 Vercel (Next.js 16)
@@ -27,12 +27,19 @@ Vercel (Next.js 16)
 ├── Dashboard layout — server-side auth check (redirect if not logged in)
 ├── Client Components — only for interactive leaves (buttons, forms, modals)
 ├── proxy.ts — redirects unauthed users from /dashboard to /login
-└── No API routes, no middleware
+│
+├── app/api/agent/decide/ — Agentic decision + generation (Vercel Function)
+│   └── route.ts — ToolLoopAgent with Claude reasoning + Gemini generation
+│
+├── lib/agent/ — Agent layer modules
+│   ├── orchestrator.ts — ToolLoopAgent with tools (decision, generation, memory)
+│   ├── prompts.ts      — System prompts, content templates, event formatting
+│   └── types.ts        — AgentEvent, AgentResult, shared types
 
 Supabase Edge Functions (Deno runtime)
-├── github-webhook — GitHub push/PR/release → AI post generation
+├── github-webhook — GitHub push/PR/release → calls agent API or direct Gemini
 ├── stripe-webhook — subscription lifecycle events
-├── generate-post — AI content generation (Gemini API)
+├── generate-post — AI content generation (Gemini API, used for manual/legacy)
 ├── create-post — manual post creation with limit checks
 ├── publish-post — publish to Twitter/LinkedIn/Bluesky
 ├── billing — Stripe checkout + portal sessions
@@ -46,7 +53,9 @@ Supabase Edge Functions (Deno runtime)
 
 - Next.js 16 + App Router + Turbopack
 - Supabase (auth + Postgres + Edge Functions)
-- Gemini API (direct fetch in Edge Functions, not AI SDK)
+- AI SDK + @ai-sdk/anthropic + @ai-sdk/google (Vercel Functions, Node.js runtime)
+- Claude (agent reasoning + decision via ToolLoopAgent)
+- Gemini (content generation — via AI SDK in agent, direct fetch in legacy Edge Functions)
 - shadcn/ui + Geist
 - Dark mode by default
 
@@ -62,4 +71,30 @@ Supabase Edge Functions (Deno runtime)
 - For Edge Functions with path routing, use raw `fetch()` to `NEXT_PUBLIC_SUPABASE_URL/functions/v1/<name>/<path>`
 - Edge Function shared utilities live in `supabase/functions/_shared/`
 - proxy.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
-- No middleware, no API routes
+- No middleware
+- API routes exist only under `app/api/agent/` for the agentic AI layer (Node.js runtime required)
+- Agent modules live in `lib/agent/` — orchestrator (ToolLoopAgent), prompts, types
+- Agent API authenticates via `x-agent-secret` header (AGENT_API_SECRET env var)
+- `lib/supabase/admin.ts` provides service-role client for API routes (bypasses RLS)
+- Agent memory stored in `agent_memory` table — durable product context per repo
+- Decision history in `post_decisions` table with reasoning traces
+
+## Skill routing
+
+When the user's request matches an available skill, ALWAYS invoke it using the Skill
+tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
+The skill has specialized workflows that produce better results than ad-hoc answers.
+
+Key routing rules:
+- Product ideas, "is this worth building", brainstorming → invoke office-hours
+- Bugs, errors, "why is this broken", 500 errors → invoke investigate
+- Ship, deploy, push, create PR → invoke ship
+- QA, test the site, find bugs → invoke qa
+- Code review, check my diff → invoke review
+- Update docs after shipping → invoke document-release
+- Weekly retro → invoke retro
+- Design system, brand → invoke design-consultation
+- Visual audit, design polish → invoke design-review
+- Architecture review → invoke plan-eng-review
+- Save progress, checkpoint, resume → invoke checkpoint
+- Code quality, health check → invoke health

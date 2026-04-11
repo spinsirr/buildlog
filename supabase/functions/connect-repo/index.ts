@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
               repo_id: repoRow.id,
               source_type: "intro",
               content,
+              original_content: content,
               status: "draft",
             })
           }

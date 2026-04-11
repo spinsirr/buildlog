@@ -1,0 +1,26 @@
+{
+  "name": "skip-lint",
+  "expected": "skip",
+  "event": {
+    "sourceType": "commit",
+    "repoName": "acme/widget-app",
+    "repoId": "test-repo-1",
+    "userId": "test-user-1",
+    "projectContext": "Widget App is a React dashboard for managing e-commerce widgets.",
+    "tone": "casual",
+    "autoPublish": false,
+    "xPremium": false,
+    "data": {
+      "message": "style: fix linting errors and format with prettier",
+      "files": ["src/utils.ts", "src/components/button.tsx", ".prettierrc"],
+      "additions": 12,
+      "deletions": 14,
+      "filesChanged": 3
+    }
+  },
+  "toolContext": {
+    "memory": [],
+    "decisions": [],
+    "posts": []
+  }
+}

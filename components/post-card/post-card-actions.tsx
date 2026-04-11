@@ -83,7 +83,7 @@ export function PostCardActions({
           className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-purple-400 disabled:cursor-not-allowed"
           aria-label={
             overLimit
-              ? 'Post exceeds 280 characters'
+              ? 'Post exceeds character limit'
               : connectedPlatforms.length === 0
                 ? 'No platforms connected'
                 : `Publish to ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(' + ')}`
