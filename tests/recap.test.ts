@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  type BundleDecision,
   buildRecapSystemPrompt,
   buildRecapUserPrompt,
-  type BundleDecision,
   type RecapPost,
 } from '@/lib/recap-prompts'
 
