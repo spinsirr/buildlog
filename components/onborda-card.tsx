@@ -38,8 +38,8 @@ export function OnbordaCard({
           </button>
         </div>
       </CardHeader>
-      <CardContent className="text-sm text-zinc-400 pb-3">{step.content}</CardContent>
-      <CardFooter className="pt-0">
+      <CardContent className="text-sm text-zinc-400 pb-2">{step.content}</CardContent>
+      <CardFooter className="pt-0 pb-3">
         <div className="flex justify-between w-full gap-2">
           {currentStep !== 0 && (
             <Button
