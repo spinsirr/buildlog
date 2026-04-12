@@ -1,7 +1,8 @@
 export const recapToneInstructions: Record<string, string> = {
-  casual: "Use a friendly, conversational tone. Sound like a developer tweeting to friends.",
-  professional: "Use a polished, professional tone. Sound like a founder giving a confident product update.",
-  technical: "Use a technical tone with specifics. Sound like a senior engineer sharing knowledge.",
+  casual: 'Use a friendly, conversational tone. Sound like a developer tweeting to friends.',
+  professional:
+    'Use a polished, professional tone. Sound like a founder giving a confident product update.',
+  technical: 'Use a technical tone with specifics. Sound like a senior engineer sharing knowledge.',
 }
 
 export interface BundleDecision {
@@ -48,17 +49,19 @@ export function buildRecapUserPrompt(bundles: BundleDecision[], posts: RecapPost
 
   if (bundles.length > 0) {
     const bundleLines = bundles.map((b) => {
-      const msg = (b.source_data?.message ?? b.source_data?.title ?? "unknown change") as string
-      return `- [${b.source_type}] ${msg} — reason deferred: "${b.reason}"${b.angle ? ` (angle: ${b.angle})` : ""}`
+      const msg = (b.source_data?.message ?? b.source_data?.title ?? 'unknown change') as string
+      return `- [${b.source_type}] ${msg} — reason deferred: "${b.reason}"${b.angle ? ` (angle: ${b.angle})` : ''}`
     })
-    parts.push(`BUNDLED EVENTS (deferred from individual posts, not yet shared publicly):\n${bundleLines.join("\n")}`)
+    parts.push(
+      `BUNDLED EVENTS (deferred from individual posts, not yet shared publicly):\n${bundleLines.join('\n')}`
+    )
   }
 
   if (posts.length > 0) {
     const postLines = posts.map((p) => `- "${p.content}"`)
-    parts.push(`ALREADY SHARED THIS WEEK:\n${postLines.join("\n")}`)
+    parts.push(`ALREADY SHARED THIS WEEK:\n${postLines.join('\n')}`)
   }
 
-  parts.push("Generate ONE weekly recap post that covers the full week.")
-  return parts.join("\n\n")
+  parts.push('Generate ONE weekly recap post that covers the full week.')
+  return parts.join('\n\n')
 }
