@@ -117,12 +117,17 @@ export function SettingsClient({
   const handleUpgrade = useCallback(async () => {
     setBillingLoading(true)
     try {
-      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'checkout' })
-      if (!result.ok) {
-        toast.error('Checkout failed', { description: result.error ?? 'Failed to start checkout' })
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ return_url: window.location.origin }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error('Checkout failed', { description: data.error ?? 'Failed to start checkout' })
         return
       }
-      window.location.href = result.data.url
+      window.location.href = data.url
     } finally {
       setBillingLoading(false)
     }
@@ -131,14 +136,19 @@ export function SettingsClient({
   async function handleManageSubscription() {
     setBillingLoading(true)
     try {
-      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'portal' })
-      if (!result.ok) {
+      const res = await fetch('/api/billing/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ return_url: window.location.origin }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
         toast.error('Billing portal failed', {
-          description: result.error ?? 'Failed to open billing portal',
+          description: data.error ?? 'Failed to open billing portal',
         })
         return
       }
-      window.location.href = result.data.url
+      window.location.href = data.url
     } finally {
       setBillingLoading(false)
     }
