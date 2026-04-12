@@ -19,7 +19,7 @@ export const tours: Tour[] = [
           </>
         ),
         selector: '#onborda-nav-dashboard',
-        side: 'right',
+        side: 'bottom',
         showControls: true,
         pointerPadding: 6,
         pointerRadius: 8,
