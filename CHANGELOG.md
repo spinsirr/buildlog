@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.3.0] - 2026-04-11
+
+### Added
+- Recap v2: GitHub API as primary data source — recaps now pull commits, merged PRs, and releases directly from connected repos
+- Branch-based recap: generate a post summarizing a specific feature branch's activity
+- Recap dropdown menu: "Weekly Recap" and "From Branch..." options on the posts dashboard
+- Branch picker dialog: select repo + branch to generate a targeted recap
+- 4 new GitHub fetch helpers: `fetchRecentCommits`, `fetchMergedPrs`, `fetchRecentReleases`, `fetchRepoRecapData`
+- Examples page redesign: platform tab switcher (Twitter/LinkedIn/Bluesky), weekly recap and branch recap examples
+- 15 new unit tests for v2 prompt builders (28 total recap tests)
+
+### Changed
+- Recap prompts are now mode-aware (`week` vs `branch`) with different framing
+- Examples page cards show one platform at a time instead of side-by-side split
+
 ## [0.0.2.0] - 2026-04-11
 
 ### Added

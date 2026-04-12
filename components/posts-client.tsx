@@ -1,12 +1,20 @@
 'use client'
 
-import { FileText, Loader2, Plus, Search, Sparkles } from 'lucide-react'
+import { ChevronDown, FileText, GitBranch, Loader2, Plus, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { PostCard } from '@/components/post-card'
+import { RecapBranchPicker } from '@/components/recap-branch-picker'
 import { Button, buttonVariants } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
 import { getEffectiveLimit } from '@/lib/platforms'
@@ -185,12 +193,19 @@ export function PostsClient({
   const connectedPlatforms = initialConnectedPlatforms
   const charLimit = getEffectiveLimit(connectedPlatforms, xPremium)
   const [recapLoading, setRecapLoading] = useState(false)
+  const [branchPickerOpen, setBranchPickerOpen] = useState(false)
 
-  async function handleGenerateRecap() {
+  async function handleGenerateRecap(opts?: {
+    mode?: 'week' | 'branch'
+    repo?: string
+    branch?: string
+  }) {
     setRecapLoading(true)
     try {
+      const body = opts?.mode ? opts : undefined
       const res = await callEdgeFunction<{ ok: boolean; reason?: string; post?: Post }>(
-        'generate-recap'
+        'generate-recap',
+        body ? { body } : undefined
       )
       if (!res.ok) {
         toast.error('Failed to generate recap', { description: res.error })
@@ -199,15 +214,18 @@ export function PostsClient({
       const data = res.data
       if (!data.ok) {
         if (data.reason === 'no_activity') {
-          toast('No activity to recap this week')
+          toast('No activity to recap — nothing found in the last 7 days')
         } else if (data.reason === 'recap_exists') {
-          toast('You already have a recap for this week. Delete it to regenerate.')
+          toast('You already have a recap for this. Delete it to regenerate.')
+        } else if (data.reason === 'invalid_request') {
+          toast.error('Invalid request', { description: data.reason })
         } else {
           toast.error('Recap generation failed', { description: data.reason })
         }
         return
       }
-      toast.success('Weekly recap generated!')
+      const label = opts?.mode === 'branch' ? 'Branch recap' : 'Weekly recap'
+      toast.success(`${label} generated!`)
       refreshPosts()
     } catch {
       toast.error('Failed to generate recap')
@@ -345,20 +363,46 @@ export function PostsClient({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleGenerateRecap}
-            disabled={recapLoading}
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-          >
-            {recapLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <FileText className="h-3.5 w-3.5" />
-            )}
-            Weekly Recap
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={recapLoading}
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-transparent px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
+            >
+              {recapLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              Recap
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-zinc-200">
+              <DropdownMenuItem
+                onClick={() => handleGenerateRecap({ mode: 'week' })}
+                className="focus:bg-zinc-800"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-2" />
+                Weekly Recap
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-800" />
+              <DropdownMenuItem
+                onClick={() => setBranchPickerOpen(true)}
+                className="focus:bg-zinc-800"
+              >
+                <GitBranch className="h-3.5 w-3.5 mr-2" />
+                From Branch...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <RecapBranchPicker
+            open={branchPickerOpen}
+            onOpenChange={setBranchPickerOpen}
+            onGenerate={(repo, branch) => {
+              setBranchPickerOpen(false)
+              handleGenerateRecap({ mode: 'branch', repo, branch })
+            }}
+            loading={recapLoading}
+          />
           <Button
             size="sm"
             onClick={() => setShowNewPost((v) => !v)}

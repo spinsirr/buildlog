@@ -1,6 +1,7 @@
-import { ArrowRight, GitCommit, GitMerge, Rocket, Star } from 'lucide-react'
+import { ArrowRight, Star } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ExampleCard, type ExampleData } from '@/components/example-card'
 import { LandingNav } from '@/components/landing-nav'
 import { LogoMark } from '@/components/logo-mark'
 
@@ -28,17 +29,7 @@ function GridOverlay({ opacity = '08' }: { opacity?: string }) {
   )
 }
 
-type Example = {
-  type: 'commit' | 'pr' | 'release'
-  repo: string
-  stack: string
-  trigger: { title: string; detail: string }
-  twitter: string
-  linkedin: string
-  accent: string
-}
-
-const EXAMPLES: Example[] = [
+const EXAMPLES: ExampleData[] = [
   {
     type: 'commit',
     repo: 'saas-starter',
@@ -47,10 +38,14 @@ const EXAMPLES: Example[] = [
       title: 'feat: add team billing dashboard with per-seat usage',
       detail: '4 files changed, 142 insertions(+), 18 deletions(-)',
     },
-    twitter:
-      'Shipped team billing — every seat now has usage visibility and spend controls. Small feature, big trust signal for enterprise buyers. #buildinpublic',
-    linkedin:
-      "We just shipped team billing with per-seat usage visibility.\n\nWhy this matters: enterprise buyers don't just want a product that works — they need to justify the spend internally. Giving every team member a clear view of their usage and costs removes the biggest objection in procurement conversations.\n\nSmall feature. Big unlock for sales.",
+    posts: {
+      twitter:
+        'Shipped team billing — every seat now has usage visibility and spend controls. Small feature, big trust signal for enterprise buyers. #buildinpublic',
+      linkedin:
+        "We just shipped team billing with per-seat usage visibility.\n\nWhy this matters: enterprise buyers don't just want a product that works — they need to justify the spend internally. Giving every team member a clear view of their usage and costs removes the biggest objection in procurement conversations.\n\nSmall feature. Big unlock for sales.",
+      bluesky:
+        'Shipped team billing with per-seat usage visibility. Enterprise buyers need to justify spend — now every team member can see exactly what they use. Small feature, big trust signal.',
+    },
     accent: 'bg-neo-secondary',
   },
   {
@@ -61,10 +56,14 @@ const EXAMPLES: Example[] = [
       title: 'PR #47: Parallel file processing with rayon',
       detail: '3 files changed, 89 insertions(+), 34 deletions(-)',
     },
-    twitter:
-      'Just landed parallel file processing in cli-toolkit. Went from 12s to 0.8s on a 10k-file directory. Rayon makes this embarrassingly easy in Rust.',
-    linkedin:
-      "Merged a performance PR that changed one number: processing time went from 12 seconds to 0.8 seconds on 10,000 files.\n\nThe change was surprisingly simple — replaced sequential iteration with Rayon's parallel iterators. Three files changed. The hardest part was writing the benchmark to prove it worked.\n\nSometimes the best optimization isn't algorithmic — it's just using all your cores.",
+    posts: {
+      twitter:
+        'Just landed parallel file processing in cli-toolkit. Went from 12s to 0.8s on a 10k-file directory. Rayon makes this embarrassingly easy in Rust.',
+      linkedin:
+        "Merged a performance PR that changed one number: processing time went from 12 seconds to 0.8 seconds on 10,000 files.\n\nThe change was surprisingly simple — replaced sequential iteration with Rayon's parallel iterators. Three files changed. The hardest part was writing the benchmark to prove it worked.\n\nSometimes the best optimization isn't algorithmic — it's just using all your cores.",
+      bluesky:
+        'Landed parallel file processing — 12s down to 0.8s on 10k files. Rayon makes parallelism in Rust almost too easy. Three files changed.',
+    },
     accent: 'bg-neo-muted',
   },
   {
@@ -75,11 +74,51 @@ const EXAMPLES: Example[] = [
       title: 'v2.0.0 — Complete rewrite with Zod validation',
       detail: '28 files changed, 2,104 insertions(+), 1,847 deletions(-)',
     },
-    twitter:
-      'openapi-gen v2.0 is out. Full rewrite — now generates Zod schemas alongside TypeScript types. Runtime validation from your OpenAPI spec, zero config. Breaking changes in the README.',
-    linkedin:
-      "After 3 months of work, openapi-gen v2.0 is live.\n\nThe big change: generated SDKs now include Zod schemas for runtime validation, not just TypeScript types. Your OpenAPI spec becomes both compile-time AND runtime safety.\n\nWhat's new:\n• Zod schema generation from any OpenAPI 3.x spec\n• Tree-shaking friendly output\n• 40% smaller bundle than v1\n• Breaking: new config format (migration guide included)\n\nThis started as a weekend project and now has 200+ stars. Open source continues to surprise me.",
+    posts: {
+      twitter:
+        'openapi-gen v2.0 is out. Full rewrite — now generates Zod schemas alongside TypeScript types. Runtime validation from your OpenAPI spec, zero config. Breaking changes in the README.',
+      linkedin:
+        "After 3 months of work, openapi-gen v2.0 is live.\n\nThe big change: generated SDKs now include Zod schemas for runtime validation, not just TypeScript types. Your OpenAPI spec becomes both compile-time AND runtime safety.\n\nWhat's new:\n• Zod schema generation from any OpenAPI 3.x spec\n• Tree-shaking friendly output\n• 40% smaller bundle than v1\n• Breaking: new config format (migration guide included)\n\nThis started as a weekend project and now has 200+ stars. Open source continues to surprise me.",
+      bluesky:
+        'openapi-gen v2.0 is live — full rewrite with Zod schema generation. Your OpenAPI spec now gives you compile-time AND runtime safety. 40% smaller bundles too.',
+    },
     accent: 'bg-neo-accent',
+  },
+  {
+    type: 'recap',
+    repo: 'saas-starter',
+    stack: 'Next.js + Stripe + Supabase',
+    trigger: {
+      title: 'Week of April 7 — 14 commits, 3 PRs merged, 1 release',
+      detail: 'Auto-generated weekly recap from GitHub activity',
+    },
+    posts: {
+      twitter:
+        'Big week for saas-starter: shipped team billing, fixed Stripe webhook reliability, and released v1.2 with per-seat usage dashboards. Enterprise-ready just got real. #buildinpublic',
+      linkedin:
+        'Weekly shipping update for saas-starter:\n\nThis week we crossed a major milestone — the product is now enterprise-ready.\n\n• Team billing with per-seat usage tracking\n• Stripe webhook reliability overhaul (99.9% delivery rate)\n• v1.2 release with usage dashboards\n• 3 PRs merged, 14 commits across the week\n\nThe biggest unlock: procurement teams can now self-serve usage reports. That removes the #1 blocker in our sales pipeline.',
+      bluesky:
+        'Week in review for saas-starter: team billing shipped, Stripe webhooks overhauled, v1.2 released. 14 commits, 3 PRs merged. Enterprise-ready just got real.',
+    },
+    accent: 'bg-neo-secondary',
+  },
+  {
+    type: 'branch',
+    repo: 'saas-starter',
+    stack: 'Next.js + Stripe + Supabase',
+    trigger: {
+      title: 'feat/team-billing — 8 commits, 1 PR merged',
+      detail: 'Branch recap: summarize a feature branch before or after merge',
+    },
+    posts: {
+      twitter:
+        'Just merged the team billing branch — per-seat usage tracking, spend controls, and a billing dashboard. 8 commits, one feature that changes our enterprise story. #buildinpublic',
+      linkedin:
+        "Just merged feat/team-billing into main.\n\nWhat this branch delivered:\n• Per-seat usage tracking across the entire team\n• Spend controls with configurable alerts\n• A new billing dashboard for team admins\n\n8 commits over 4 days. The feature that makes us enterprise-ready.\n\nThe hardest part wasn't the code — it was getting the Stripe metered billing API to play nice with our usage aggregation. Lesson learned: always read the rate limiting docs first.",
+      bluesky:
+        'Merged feat/team-billing — per-seat usage tracking, spend controls, billing dashboard. 8 commits, 4 days. The feature that makes us enterprise-ready.',
+    },
+    accent: 'bg-neo-lime',
   },
   {
     type: 'commit',
@@ -89,10 +128,14 @@ const EXAMPLES: Example[] = [
       title: 'fix: color contrast ratio on secondary buttons (WCAG AA)',
       detail: '2 files changed, 8 insertions(+), 8 deletions(-)',
     },
-    twitter:
-      "Fixed: secondary buttons now pass WCAG AA contrast. 8 lines changed, 100% of users can read them. Accessibility isn't a feature — it's the baseline.",
-    linkedin:
-      "Pushed a small but important fix today: our secondary buttons weren't meeting WCAG AA contrast ratios.\n\n8 lines of CSS. That's all it took to go from 3.8:1 to 4.6:1 contrast ratio.\n\nAccessibility fixes are often this simple. The hard part isn't the code — it's noticing the problem in the first place. Automated tools catch the obvious stuff, but nothing beats testing with real users.",
+    posts: {
+      twitter:
+        "Fixed: secondary buttons now pass WCAG AA contrast. 8 lines changed, 100% of users can read them. Accessibility isn't a feature — it's the baseline.",
+      linkedin:
+        "Pushed a small but important fix today: our secondary buttons weren't meeting WCAG AA contrast ratios.\n\n8 lines of CSS. That's all it took to go from 3.8:1 to 4.6:1 contrast ratio.\n\nAccessibility fixes are often this simple. The hard part isn't the code — it's noticing the problem in the first place. Automated tools catch the obvious stuff, but nothing beats testing with real users.",
+      bluesky:
+        'Fixed secondary button contrast to pass WCAG AA. 8 lines of CSS, 3.8:1 → 4.6:1 ratio. Accessibility is the baseline, not a feature.',
+    },
     accent: 'bg-neo-lime',
   },
   {
@@ -103,77 +146,17 @@ const EXAMPLES: Example[] = [
       title: 'PR #112: Streaming responses with Server-Sent Events',
       detail: '6 files changed, 203 insertions(+), 67 deletions(-)',
     },
-    twitter:
-      'Added streaming to our AI chatbot. Response starts in <200ms instead of waiting 3-8s for the full answer. SSE + LangChain streaming callbacks. Night and day UX difference.',
-    linkedin:
-      "Just merged streaming responses into our AI chatbot and the UX improvement is dramatic.\n\nBefore: users stared at a spinner for 3-8 seconds waiting for GPT to finish thinking.\n\nAfter: first tokens appear in under 200ms. The response builds in real-time.\n\nThe implementation: Server-Sent Events on the backend, LangChain's streaming callbacks piped through FastAPI's StreamingResponse. The trickiest part was handling tool calls mid-stream — you need to buffer those and only stream the final text.\n\nIf your AI product doesn't stream yet, it should. Users don't mind waiting if they can see progress.",
+    posts: {
+      twitter:
+        'Added streaming to our AI chatbot. Response starts in <200ms instead of waiting 3-8s for the full answer. SSE + LangChain streaming callbacks. Night and day UX difference.',
+      linkedin:
+        "Just merged streaming responses into our AI chatbot and the UX improvement is dramatic.\n\nBefore: users stared at a spinner for 3-8 seconds waiting for GPT to finish thinking.\n\nAfter: first tokens appear in under 200ms. The response builds in real-time.\n\nThe implementation: Server-Sent Events on the backend, LangChain's streaming callbacks piped through FastAPI's StreamingResponse. The trickiest part was handling tool calls mid-stream — you need to buffer those and only stream the final text.\n\nIf your AI product doesn't stream yet, it should. Users don't mind waiting if they can see progress.",
+      bluesky:
+        'Added streaming to our AI chatbot — first tokens in <200ms instead of 3-8s wait. SSE + LangChain streaming callbacks. Night and day UX difference.',
+    },
     accent: 'bg-neo-mint',
   },
 ]
-
-const TYPE_CONFIG = {
-  commit: { Icon: GitCommit, label: 'Push' },
-  pr: { Icon: GitMerge, label: 'PR Merged' },
-  release: { Icon: Rocket, label: 'Release' },
-}
-
-function ExampleCard({ example }: { example: Example }) {
-  const { Icon, label } = TYPE_CONFIG[example.type]
-
-  return (
-    <article className="border-4 border-black bg-neo-cream">
-      {/* Header */}
-      <div className={`px-6 py-4 border-b-4 border-black ${example.accent}`}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4" strokeWidth={3} />
-            <span className="font-mono-ui text-xs font-bold uppercase tracking-wider">{label}</span>
-          </div>
-          <span className="font-mono-ui text-xs font-bold uppercase tracking-wider opacity-60">
-            {example.stack}
-          </span>
-        </div>
-        <p className="font-code text-sm font-bold">{example.trigger.title}</p>
-        <p className="font-code text-xs opacity-60 mt-1">{example.trigger.detail}</p>
-      </div>
-
-      {/* Generated posts */}
-      <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-black/20">
-        {/* Twitter */}
-        <div className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div
-              className="border-2 border-black px-2 py-0.5 bg-neo-secondary"
-              style={{ boxShadow: '2px 2px 0 0 #000' }}
-            >
-              <span className="font-mono-ui text-[10px] font-bold uppercase tracking-wider">
-                Twitter / X
-              </span>
-            </div>
-          </div>
-          <p className="font-mono-ui text-sm leading-relaxed">{example.twitter}</p>
-        </div>
-
-        {/* LinkedIn */}
-        <div className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div
-              className="border-2 border-black px-2 py-0.5 bg-[#0A66C2]"
-              style={{ boxShadow: '2px 2px 0 0 #000' }}
-            >
-              <span className="font-mono-ui text-[10px] font-bold uppercase tracking-wider text-white">
-                LinkedIn
-              </span>
-            </div>
-          </div>
-          <p className="font-mono-ui text-sm leading-relaxed whitespace-pre-line">
-            {example.linkedin}
-          </p>
-        </div>
-      </div>
-    </article>
-  )
-}
 
 export default function ExamplesPage() {
   return (
@@ -181,7 +164,7 @@ export default function ExamplesPage() {
       <LandingNav />
 
       <main id="main-content">
-        {/* ── HERO ─────────────────────────────────────────────────────────── */}
+        {/* -- HERO -- */}
         <section
           aria-labelledby="examples-heading"
           className="relative py-20 md:py-28 px-6 overflow-hidden"
@@ -195,7 +178,7 @@ export default function ExamplesPage() {
                 style={{ boxShadow: '3px 3px 0 0 #000000' }}
               >
                 <span className="font-mono-ui text-xs font-bold uppercase tracking-[0.2em]">
-                  ✦ See it in action
+                  See it in action
                 </span>
               </div>
             </div>
@@ -216,13 +199,13 @@ export default function ExamplesPage() {
             </h1>
 
             <p className="font-mono-ui text-base md:text-lg max-w-lg mx-auto leading-relaxed opacity-70">
-              Every example below was generated by BuildLog from actual code changes. Different
-              repos, different stacks, same workflow.
+              Every example below was generated by BuildLog from actual code changes, weekly recaps,
+              and branch summaries. Different repos, different stacks, same workflow.
             </p>
           </div>
         </section>
 
-        {/* ── EXAMPLES ──────────────────────────────────────────────────────── */}
+        {/* -- EXAMPLES -- */}
         <section aria-label="Example posts" className="border-t-4 border-black py-16 px-6 relative">
           <GridOverlay opacity="04" />
 
@@ -233,7 +216,7 @@ export default function ExamplesPage() {
           </div>
         </section>
 
-        {/* ── HOW IT WORKS (mini) ───────────────────────────────────────────── */}
+        {/* -- HOW IT WORKS -- */}
         <section className="border-t-4 border-black py-16 px-6 bg-neo-dark relative overflow-hidden">
           <GridOverlay opacity="15" />
 
@@ -245,7 +228,7 @@ export default function ExamplesPage() {
               {[
                 { num: '1', text: 'Connect GitHub' },
                 { num: '2', text: 'Push code' },
-                { num: '3', text: 'Posts appear' },
+                { num: '3', text: 'Posts + recaps appear' },
               ].map((step) => (
                 <div key={step.num} className="border-2 border-white/20 bg-white/5 p-4">
                   <div className="font-display font-black text-3xl text-neo-lime mb-1">
@@ -259,11 +242,12 @@ export default function ExamplesPage() {
             </div>
             <p className="font-mono-ui text-sm text-white/50 mb-8">
               BuildLog reads diffs, not commit messages. It understands what you actually shipped.
+              Weekly recaps and branch summaries are generated from your GitHub activity.
             </p>
           </div>
         </section>
 
-        {/* ── CTA ──────────────────────────────────────────────────────────── */}
+        {/* -- CTA -- */}
         <section className="border-t-4 border-black py-20 px-6 relative overflow-hidden bg-neo-secondary">
           <GridOverlay opacity="06" />
 
@@ -296,7 +280,7 @@ export default function ExamplesPage() {
         </section>
       </main>
 
-      {/* ── FOOTER ────────────────────────────────────────────────────────── */}
+      {/* -- FOOTER -- */}
       <footer className="border-t-4 border-black py-8 px-6 bg-neo-cream">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
