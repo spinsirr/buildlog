@@ -88,7 +88,6 @@ export function ReposClient({
               Connect GitHub repos to auto-generate posts from your activity.
             </p>
           </div>
-          {!needsInstall && repos.length > 0 && null}
         </div>
 
         {needsInstall || repos.length === 0 ? (

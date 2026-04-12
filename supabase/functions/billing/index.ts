@@ -1,6 +1,6 @@
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { parsePathParts, safeJson } from "../_shared/http.ts"
+import { parsePathParts, safeJson, sanitizeReturnUrl } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { getStripe } from "../_shared/stripe.ts"
 import type { SupabaseClient, User } from "npm:@supabase/supabase-js@2"
@@ -20,13 +20,17 @@ async function ensureCustomer(
   supabase: SupabaseClient,
   user: User,
 ): Promise<string> {
-  const { data: profile } = await supabase
+  const { data: profile, error: profileErr } = await supabase
     .from("profiles")
     .select("stripe_customer_id, github_username")
     .eq("id", user.id)
     .single()
 
-  let customerId = profile?.stripe_customer_id as string | null
+  if (profileErr || !profile) {
+    throw new Error(`Failed to fetch profile: ${profileErr?.message ?? "not found"}`)
+  }
+
+  let customerId = profile.stripe_customer_id as string | null
 
   // Verify existing customer is valid
   if (customerId) {
@@ -50,10 +54,14 @@ async function ensureCustomer(
     })
     customerId = customer.id
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("profiles")
       .update({ stripe_customer_id: customerId })
       .eq("id", user.id)
+
+    if (updateErr) {
+      throw new Error(`Failed to save stripe_customer_id: ${updateErr.message}`)
+    }
 
     log.info("created customer {cid} for user {uid}", {
       cid: customerId,
@@ -79,9 +87,9 @@ Deno.serve(async (req) => {
   const action = parts[0]
 
   const body = await safeJson<{ return_url?: string }>(req)
-  const frontendUrl = body?.return_url ??
-    Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ??
-    "http://localhost:3000"
+  const frontendUrl = sanitizeReturnUrl(
+    body?.return_url ?? Deno.env.get("FRONTEND_URL") ?? "https://buildlog.ink",
+  )
   const stripe = getStripe()
 
   try {
@@ -112,10 +120,18 @@ Deno.serve(async (req) => {
 
       return jsonResponse({ url: session.url }, req, { status: 200 })
     } else if (action === "portal") {
-      const customerId = await ensureCustomer(stripe, supabase, user)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", user.id)
+        .single()
+
+      if (!profile?.stripe_customer_id) {
+        return errorResponse("No billing account found", 404, req)
+      }
 
       const session = await stripe.billingPortal.sessions.create({
-        customer: customerId,
+        customer: profile.stripe_customer_id,
         return_url: `${frontendUrl}/settings`,
       })
 
@@ -130,6 +146,6 @@ Deno.serve(async (req) => {
       userId: user.id,
       msg,
     })
-    return errorResponse(`Internal server error: ${msg}`, 500, req)
+    return errorResponse("Internal server error", 500, req)
   }
 })

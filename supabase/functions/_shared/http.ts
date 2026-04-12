@@ -28,3 +28,40 @@ export async function safeJson<T = unknown>(req: Request): Promise<T | null> {
     return null
   }
 }
+
+/** Validate return_url against allowed origins to prevent open redirect */
+export function sanitizeReturnUrl(url: string): string {
+  const fallback = "https://buildlog.ink"
+  try {
+    const parsed = new URL(url)
+    const allowed = getAllowedReturnOrigins()
+    if (allowed.has(parsed.origin)) return parsed.origin
+  } catch {
+    // invalid URL
+  }
+  return fallback
+}
+
+export function getAllowedReturnOrigins(): Set<string> {
+  const origins = new Set(["https://buildlog.ink"])
+  const appUrl = Deno.env.get("APP_URL")
+  if (appUrl) {
+    try {
+      origins.add(new URL(appUrl).origin)
+    } catch { /* ignore */ }
+  }
+  const corsOrigin = Deno.env.get("CORS_ORIGIN")
+  if (corsOrigin) {
+    for (const o of corsOrigin.split(",")) {
+      const trimmed = o.trim()
+      if (trimmed) {
+        try {
+          origins.add(new URL(trimmed).origin)
+        } catch { /* ignore */ }
+      }
+    }
+  }
+  // Allow localhost for development
+  origins.add("http://localhost:3000")
+  return origins
+}
