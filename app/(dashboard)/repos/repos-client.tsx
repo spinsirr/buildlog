@@ -88,19 +88,7 @@ export function ReposClient({
               Connect GitHub repos to auto-generate posts from your activity.
             </p>
           </div>
-          {GITHUB_APP_NAME ? (
-            <a
-              href={getInstallUrl()!}
-              className={buttonVariants({
-                size: 'sm',
-                className: 'shrink-0 bg-zinc-100 text-zinc-900 hover:bg-white border-0',
-              })}
-            >
-              + Add repos
-            </a>
-          ) : (
-            <span className="text-sm text-red-400">GitHub App not configured</span>
-          )}
+          {!needsInstall && repos.length > 0 && null}
         </div>
 
         {needsInstall || repos.length === 0 ? (
