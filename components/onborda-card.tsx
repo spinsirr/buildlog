@@ -17,7 +17,7 @@ export function OnbordaCard({
   const { closeOnborda } = useOnborda()
 
   return (
-    <Card className="border-zinc-700 bg-zinc-900 max-w-xs rounded-xl shadow-2xl">
+    <Card className="border-zinc-700 bg-zinc-900 w-80 rounded-xl shadow-2xl">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between w-full">
           <div>
