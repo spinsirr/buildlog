@@ -32,16 +32,19 @@ export function DesktopSidebar() {
         <NotificationBell />
       </div>
 
-      {/* Scrollable middle section */}
+      {/* Navigation */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <SidebarNav />
-        <QuickCapture />
-        <StreakCounter />
       </div>
 
-      <Separator className="bg-zinc-800/50" />
+      {/* Pinned to bottom */}
+      <div className="shrink-0">
+        <QuickCapture />
+        <StreakCounter />
+        <Separator className="bg-zinc-800/50" />
+      </div>
 
-      {/* User — pinned to bottom */}
+      {/* User */}
       <div className="px-3 py-3">
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar className="h-7 w-7">
