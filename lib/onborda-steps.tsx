@@ -14,7 +14,8 @@ export const tours: Tour[] = [
         title: 'Welcome to BuildLog',
         content: (
           <>
-            Turn your GitHub commits into social posts. Let&apos;s get you set up in 3 quick steps.
+            BuildLog turns your GitHub activity into ready-to-publish social posts. Here&apos;s a
+            quick tour of how it works.
           </>
         ),
         selector: '#onborda-stats',
@@ -25,26 +26,26 @@ export const tours: Tour[] = [
       },
       {
         icon: <>&#128279;</>,
-        title: 'Connect a repo',
+        title: 'Your repos',
         content: (
           <>
-            First, connect a GitHub repo. BuildLog watches your commits and generates posts from
-            them.
+            Manage your connected GitHub repos here. BuildLog watches commits, PRs, and releases to
+            generate posts automatically.
           </>
         ),
-        selector: '#onborda-connect-repo',
-        side: 'bottom',
+        selector: '#onborda-nav-repos',
+        side: 'right',
         showControls: true,
-        pointerPadding: 8,
-        pointerRadius: 10,
+        pointerPadding: 6,
+        pointerRadius: 8,
       },
       {
         icon: <>&#128225;</>,
-        title: 'Link your socials',
+        title: 'Your socials',
         content: (
           <>
-            Head to Settings to connect Twitter/X, LinkedIn, or Bluesky &mdash; wherever you build
-            in public.
+            Connect Twitter/X, LinkedIn, or Bluesky in Settings to publish your posts across
+            platforms.
           </>
         ),
         selector: '#onborda-nav-settings',
@@ -55,11 +56,11 @@ export const tours: Tour[] = [
       },
       {
         icon: <>&#10024;</>,
-        title: 'Generate posts',
+        title: 'Your posts',
         content: (
           <>
-            Once connected, go to Posts to generate AI-written content from your commits and publish
-            it.
+            All your AI-generated drafts and published posts live here. Review, edit, and publish
+            with one click.
           </>
         ),
         selector: '#onborda-nav-posts',
