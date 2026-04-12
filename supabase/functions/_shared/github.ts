@@ -340,3 +340,229 @@ export async function fetchPrContext(
 
   return result
 }
+
+// ---------------------------------------------------------------------------
+// Recap data fetchers — used by generate-recap to pull GitHub activity
+// ---------------------------------------------------------------------------
+
+export interface RecentCommit {
+  sha: string
+  message: string
+  author: string
+  date: string
+}
+
+export async function fetchRecentCommits(
+  installationId: number,
+  repoFullName: string,
+  since: string,
+  branch?: string,
+): Promise<RecentCommit[]> {
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get token for recent commits: {error}", { error: String(err) })
+    return []
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  try {
+    const params = new URLSearchParams({ since, per_page: "30" })
+    if (branch) params.set("sha", branch)
+    const res = await fetch(
+      `https://api.github.com/repos/${repoFullName}/commits?${params}`,
+      { headers },
+    )
+    if (!res.ok) {
+      log.warn("failed to fetch commits for {repo}: {status}", {
+        repo: repoFullName,
+        status: String(res.status),
+      })
+      return []
+    }
+    const commits = (await res.json()) as Array<{
+      sha: string
+      commit: { message: string; author: { name: string; date: string } | null }
+    }>
+    return commits.map((c) => ({
+      sha: c.sha.slice(0, 7),
+      message: c.commit.message.split("\n")[0],
+      author: c.commit.author?.name ?? "unknown",
+      date: c.commit.author?.date ?? "",
+    }))
+  } catch (err) {
+    log.warn("error fetching commits for {repo}: {error}", {
+      repo: repoFullName,
+      error: String(err),
+    })
+    return []
+  }
+}
+
+export interface MergedPr {
+  number: number
+  title: string
+  "merged_at": string
+  additions: number
+  deletions: number
+}
+
+export async function fetchMergedPrs(
+  installationId: number,
+  repoFullName: string,
+  since: string,
+): Promise<MergedPr[]> {
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get token for merged PRs: {error}", { error: String(err) })
+    return []
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repoFullName}/pulls?state=closed&sort=updated&direction=desc&per_page=20`,
+      { headers },
+    )
+    if (!res.ok) {
+      log.warn("failed to fetch PRs for {repo}: {status}", {
+        repo: repoFullName,
+        status: String(res.status),
+      })
+      return []
+    }
+    const prs = (await res.json()) as Array<{
+      number: number
+      title: string
+      merged_at: string | null
+      additions?: number
+      deletions?: number
+    }>
+    return prs
+      .filter((pr) => pr.merged_at && pr.merged_at >= since)
+      .map((pr) => ({
+        number: pr.number,
+        title: pr.title,
+        merged_at: pr.merged_at!,
+        additions: pr.additions ?? 0,
+        deletions: pr.deletions ?? 0,
+      }))
+  } catch (err) {
+    log.warn("error fetching PRs for {repo}: {error}", {
+      repo: repoFullName,
+      error: String(err),
+    })
+    return []
+  }
+}
+
+export interface RecentRelease {
+  "tag_name": string
+  name: string
+  "published_at": string
+  body: string | null
+}
+
+export async function fetchRecentReleases(
+  installationId: number,
+  repoFullName: string,
+  since: string,
+): Promise<RecentRelease[]> {
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get token for releases: {error}", { error: String(err) })
+    return []
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repoFullName}/releases?per_page=5`,
+      { headers },
+    )
+    if (!res.ok) {
+      log.warn("failed to fetch releases for {repo}: {status}", {
+        repo: repoFullName,
+        status: String(res.status),
+      })
+      return []
+    }
+    const releases = (await res.json()) as Array<{
+      tag_name: string
+      name: string | null
+      published_at: string | null
+      body: string | null
+    }>
+    return releases
+      .filter((r) => r.published_at && r.published_at >= since)
+      .map((r) => ({
+        tag_name: r.tag_name,
+        name: r.name ?? r.tag_name,
+        published_at: r.published_at!,
+        body: r.body?.slice(0, 500) ?? null,
+      }))
+  } catch (err) {
+    log.warn("error fetching releases for {repo}: {error}", {
+      repo: repoFullName,
+      error: String(err),
+    })
+    return []
+  }
+}
+
+export interface RepoRecapData {
+  repoName: string
+  commits: RecentCommit[]
+  mergedPrs: MergedPr[]
+  releases: RecentRelease[]
+}
+
+export async function fetchRepoRecapData(
+  installationId: number,
+  repoFullName: string,
+  since: string,
+  branch?: string,
+): Promise<RepoRecapData> {
+  const result: RepoRecapData = {
+    repoName: repoFullName,
+    commits: [],
+    mergedPrs: [],
+    releases: [],
+  }
+
+  const promises = [
+    fetchRecentCommits(installationId, repoFullName, since, branch),
+    branch ? Promise.resolve([]) : fetchMergedPrs(installationId, repoFullName, since),
+    branch ? Promise.resolve([]) : fetchRecentReleases(installationId, repoFullName, since),
+  ] as const
+
+  const [commitsResult, prsResult, releasesResult] = await Promise.allSettled(promises)
+
+  if (commitsResult.status === "fulfilled") result.commits = commitsResult.value
+  if (prsResult.status === "fulfilled") result.mergedPrs = prsResult.value as MergedPr[]
+  if (releasesResult.status === "fulfilled") {
+    result.releases = releasesResult.value as RecentRelease[]
+  }
+
+  return result
+}
