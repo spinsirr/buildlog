@@ -2,7 +2,7 @@
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { base64UrlEncode, encrypt, randomBytes, rfc6749BasicAuth } from "../_shared/crypto.ts"
-import { parsePathParts, safeJson } from "../_shared/http.ts"
+import { parsePathParts, safeJson, sanitizeReturnUrl } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { OAUTH_PROVIDERS, type OAuthProviderConfig } from "../_shared/providers.ts"
 import { checkLimit, getUserPlan } from "../_shared/subscription.ts"
@@ -23,43 +23,6 @@ function getEdgeFunctionBaseUrl(): string {
 
 function redirectResponse(url: string): Response {
   return new Response(null, { status: 302, headers: { Location: url } })
-}
-
-/** Validate return_url against allowed origins to prevent open redirect */
-function sanitizeReturnUrl(url: string): string {
-  const fallback = "https://buildlog.ink"
-  try {
-    const parsed = new URL(url)
-    const allowed = getAllowedReturnOrigins()
-    if (allowed.has(parsed.origin)) return parsed.origin
-  } catch {
-    // invalid URL
-  }
-  return fallback
-}
-
-function getAllowedReturnOrigins(): Set<string> {
-  const origins = new Set(["https://buildlog.ink"])
-  const appUrl = Deno.env.get("APP_URL")
-  if (appUrl) {
-    try {
-      origins.add(new URL(appUrl).origin)
-    } catch { /* ignore */ }
-  }
-  const corsOrigin = Deno.env.get("CORS_ORIGIN")
-  if (corsOrigin) {
-    for (const o of corsOrigin.split(",")) {
-      const trimmed = o.trim()
-      if (trimmed) {
-        try {
-          origins.add(new URL(trimmed).origin)
-        } catch { /* ignore */ }
-      }
-    }
-  }
-  // Allow localhost for development
-  origins.add("http://localhost:3000")
-  return origins
 }
 
 // ---------------------------------------------------------------------------

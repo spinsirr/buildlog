@@ -117,7 +117,10 @@ export function SettingsClient({
   const handleUpgrade = useCallback(async () => {
     setBillingLoading(true)
     try {
-      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'checkout' })
+      const result = await callEdgeFunction<{ url: string }>('billing', {
+        path: 'checkout',
+        body: { return_url: window.location.origin },
+      })
       if (!result.ok) {
         toast.error('Checkout failed', { description: result.error ?? 'Failed to start checkout' })
         return
@@ -131,7 +134,10 @@ export function SettingsClient({
   async function handleManageSubscription() {
     setBillingLoading(true)
     try {
-      const result = await callEdgeFunction<{ url: string }>('billing', { path: 'portal' })
+      const result = await callEdgeFunction<{ url: string }>('billing', {
+        path: 'portal',
+        body: { return_url: window.location.origin },
+      })
       if (!result.ok) {
         toast.error('Billing portal failed', {
           description: result.error ?? 'Failed to open billing portal',

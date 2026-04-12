@@ -1,9 +1,17 @@
 'use client'
 
-import { RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { callEdgeFunction } from '@/lib/edge-function'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
@@ -232,19 +240,16 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   const router = useRouter()
   const [repos, setRepos] = useState(initialRepos)
   const [pending, setPending] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [refreshing, setRefreshing] = useState<number | null>(null)
 
-  async function toggle(repo: Repo) {
+  async function connectRepo(repo: Repo) {
     setPending(repo.id)
     try {
-      const result = repo.connected
-        ? await callEdgeFunction('connect-repo', {
-            method: 'DELETE',
-            body: { repo_id: repo.id },
-          })
-        : await callEdgeFunction('connect-repo', {
-            body: { repo_id: repo.id, full_name: repo.full_name },
-          })
-
+      const result = await callEdgeFunction('connect-repo', {
+        body: { repo_id: repo.id, full_name: repo.full_name },
+      })
       if (!result.ok) {
         if (result.code === 'plan_limit') {
           toast.error(result.error, {
@@ -255,16 +260,30 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
         }
         return
       }
+      setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, connected: true } : r)))
+      setSearch('')
+      setModalOpen(false)
+      router.refresh()
+    } finally {
+      setPending(null)
+    }
+  }
 
+  async function disconnectRepo(repo: Repo) {
+    setPending(repo.id)
+    try {
+      const result = await callEdgeFunction('connect-repo', {
+        method: 'DELETE',
+        body: { repo_id: repo.id },
+      })
+      if (!result.ok) {
+        toast.error(result.error || 'Something went wrong')
+        return
+      }
       setRepos((prev) =>
         prev.map((r) =>
           r.id === repo.id
-            ? {
-                ...r,
-                connected: !r.connected,
-                watched_branches: r.connected ? null : r.watched_branches,
-                watched_events: r.connected ? null : r.watched_events,
-              }
+            ? { ...r, connected: false, watched_branches: null, watched_events: null }
             : r
         )
       )
@@ -283,8 +302,6 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   function handleEventUpdate(repoId: number, events: string[] | null) {
     setRepos((prev) => prev.map((r) => (r.id === repoId ? { ...r, watched_events: events } : r)))
   }
-
-  const [refreshing, setRefreshing] = useState<number | null>(null)
 
   async function handleRefreshContext(repo: Repo) {
     setRefreshing(repo.id)
@@ -305,72 +322,162 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
     }
   }
 
+  const connectedRepos = repos.filter((r) => r.connected)
+  const availableRepos = repos.filter((r) => !r.connected)
+
+  const filteredAvailable = search.trim()
+    ? availableRepos.filter(
+        (r) =>
+          r.full_name.toLowerCase().includes(search.toLowerCase()) ||
+          r.description?.toLowerCase().includes(search.toLowerCase())
+      )
+    : availableRepos
+
   return (
-    <div className="flex flex-col gap-2">
-      {repos.map((repo) => (
-        <div key={repo.id} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              {repo.connected && <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />}
-              <div className="min-w-0">
-                <p className="font-mono text-sm font-medium text-zinc-100 truncate">
-                  {repo.full_name}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
+    <>
+      <div className="flex flex-col gap-2">
+        {connectedRepos.length === 0 && (
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-10 flex flex-col items-center gap-3">
+            <p className="text-sm text-zinc-400">No repos connected yet.</p>
+            <Button
+              size="sm"
+              onClick={() => setModalOpen(true)}
+              className="bg-zinc-100 text-zinc-900 hover:bg-white border-0"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Connect a repo
+            </Button>
+          </div>
+        )}
+
+        {connectedRepos.map((repo) => (
+          <div key={repo.id} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-mono text-sm font-medium text-zinc-100 truncate">
+                    {repo.full_name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {repo.description && (
+                      <p className="text-xs text-zinc-500 truncate">{repo.description}</p>
+                    )}
+                    {repo.pushed_at && (
+                      <span className="text-[10px] text-zinc-600 shrink-0">
+                        {timeAgo(repo.pushed_at)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {repo.private && (
+                  <span className="text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 shrink-0">
+                    private
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => disconnectRepo(repo)}
+                disabled={pending === repo.id}
+                className="font-medium text-sm px-4 py-1.5 rounded-lg shrink-0 transition-colors disabled:opacity-50 bg-zinc-800 text-zinc-300 hover:bg-red-950 hover:text-red-300"
+              >
+                {pending === repo.id ? '…' : 'Disconnect'}
+              </button>
+            </div>
+            <EventPicker repo={repo} onUpdate={(events) => handleEventUpdate(repo.id, events)} />
+            <BranchPicker
+              repo={repo}
+              onUpdate={(branches) => handleBranchUpdate(repo.id, branches)}
+            />
+            <div className="mt-3 pt-3 border-t border-zinc-800">
+              <button
+                type="button"
+                onClick={() => handleRefreshContext(repo)}
+                disabled={refreshing === repo.id}
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${refreshing === repo.id ? 'animate-spin' : ''}`} />
+                {refreshing === repo.id ? 'Refreshing…' : 'Refresh project context'}
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {connectedRepos.length > 0 && availableRepos.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setModalOpen(true)}
+            className="self-start border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Connect another repo
+          </Button>
+        )}
+      </div>
+
+      {/* Add repo modal */}
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open)
+          if (!open) setSearch('')
+        }}
+      >
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-200 sm:max-w-lg max-h-[70vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Connect a repo</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Search your GitHub repos to connect.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search repos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0 -mx-1 px-1">
+            {filteredAvailable.length === 0 && search.trim() && (
+              <p className="text-sm text-zinc-500 text-center py-6">
+                No repos matching &ldquo;{search}&rdquo;
+              </p>
+            )}
+            {filteredAvailable.length === 0 && !search.trim() && (
+              <p className="text-sm text-zinc-500 text-center py-6">
+                All repos are already connected.
+              </p>
+            )}
+            {filteredAvailable.map((repo) => (
+              <button
+                key={repo.id}
+                type="button"
+                onClick={() => connectRepo(repo)}
+                disabled={pending === repo.id}
+                className="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-zinc-800 transition-colors text-left disabled:opacity-50"
+              >
+                <div className="min-w-0">
+                  <p className="font-mono text-sm font-medium text-zinc-100 truncate">
+                    {repo.full_name}
+                  </p>
                   {repo.description && (
-                    <p className="text-xs text-zinc-500 truncate">{repo.description}</p>
-                  )}
-                  {repo.pushed_at && (
-                    <span className="text-[10px] text-zinc-600 shrink-0">
-                      {timeAgo(repo.pushed_at)}
-                    </span>
+                    <p className="text-xs text-zinc-500 truncate mt-0.5">{repo.description}</p>
                   )}
                 </div>
-              </div>
-              {repo.private && (
-                <span className="text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 shrink-0">
-                  private
+                <span className="text-xs text-zinc-400 shrink-0">
+                  {pending === repo.id ? '…' : 'Connect'}
                 </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => toggle(repo)}
-              disabled={pending === repo.id}
-              className={`font-medium text-sm px-4 py-1.5 rounded-lg shrink-0 transition-colors disabled:opacity-50 ${
-                repo.connected
-                  ? 'bg-zinc-800 text-zinc-300 hover:bg-red-950 hover:text-red-300'
-                  : 'bg-zinc-100 text-zinc-900 hover:bg-white'
-              }`}
-            >
-              {pending === repo.id ? '…' : repo.connected ? 'Disconnect' : 'Connect'}
-            </button>
+              </button>
+            ))}
           </div>
-
-          {repo.connected && (
-            <>
-              <EventPicker repo={repo} onUpdate={(events) => handleEventUpdate(repo.id, events)} />
-              <BranchPicker
-                repo={repo}
-                onUpdate={(branches) => handleBranchUpdate(repo.id, branches)}
-              />
-              <div className="mt-3 pt-3 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => handleRefreshContext(repo)}
-                  disabled={refreshing === repo.id}
-                  className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw
-                    className={`h-3 w-3 ${refreshing === repo.id ? 'animate-spin' : ''}`}
-                  />
-                  {refreshing === repo.id ? 'Refreshing…' : 'Refresh project context'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      ))}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

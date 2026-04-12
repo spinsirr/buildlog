@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.4.0] - 2026-04-12
+
+### Changed
+- Repos page now shows only connected repos with a searchable modal to connect new ones
+- Billing checkout resolves Stripe price by `pro_monthly` lookup key instead of env var
+- `ensureCustomer` extracted as shared helper with proper error handling and stale customer recovery
+- Portal endpoint returns 404 for users with no billing account instead of creating empty customers
+- `sanitizeReturnUrl` and `getAllowedReturnOrigins` moved to `_shared/http.ts` for reuse across Edge Functions
+
+### Fixed
+- Open redirect in billing endpoint: `return_url` from request body is now validated against origin allowlist
+- Internal Stripe error details no longer leaked in billing error responses
+- `ensureCustomer` now checks for Supabase errors on both profile fetch and customer ID persistence
+- Stripe SDK switched from `esm.sh/stripe@20` to `npm:stripe@18` for reliable Deno compatibility
+
+### Removed
+- Unused `stripe` npm dependency from Next.js package.json (only used in Deno Edge Functions via `npm:` specifier)
+
 ## [0.0.3.0] - 2026-04-11
 
 ### Added
