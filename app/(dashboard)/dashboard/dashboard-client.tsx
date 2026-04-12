@@ -1,7 +1,6 @@
 'use client'
 
 import { HelpCircle } from 'lucide-react'
-import Link from 'next/link'
 import { useOnborda } from 'onborda'
 import { useEffect, useRef } from 'react'
 import { DashboardPostsTable } from '@/components/dashboard-posts-table'
@@ -56,13 +55,16 @@ export function DashboardClient({
             </button>
           )}
         </div>
-        <Link
-          id="onborda-connect-repo"
-          href="/repos"
-          className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
-        >
-          Connect repo
-        </Link>
+        {showOnboarding && (
+          <button
+            id="onborda-connect-repo"
+            type="button"
+            onClick={() => startOnborda('onboarding')}
+            className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
+          >
+            Tutorial
+          </button>
+        )}
       </div>
 
       <FocusCard hasRepos={hasRepos} hasSocial={hasSocial} draftCount={draftCount} />
