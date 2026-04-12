@@ -189,7 +189,7 @@ function isTransient(err: unknown): boolean {
   return false
 }
 
-async function callGemini(
+export async function callGemini(
   system: string,
   prompt: string,
   opts?: { maxOutputTokens?: number; temperature?: number },
@@ -229,6 +229,58 @@ async function callGemini(
     }
     throw err
   }
+}
+
+/**
+ * Generate text via Gemini with automatic retry if over char limit.
+ * Shared between generatePost and generate-recap.
+ */
+export async function generateWithRetry(
+  system: string,
+  prompt: string,
+  charLimit: number,
+  opts?: { maxOutputTokens?: number; temperature?: number; retryTemperature?: number },
+): Promise<string> {
+  const { text, truncated } = await callGemini(system, prompt, {
+    maxOutputTokens: opts?.maxOutputTokens ?? 800,
+    temperature: opts?.temperature ?? 0.7,
+  })
+
+  let content = text.trim()
+
+  const isComplete = (t: string) =>
+    /[.!?](\s*#\S+)*\s*$/.test(t) || /^#\S+\s*$/.test(t.split("\n").pop() || "")
+
+  if (truncated || !isComplete(content)) {
+    const retry = await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was cut off. Write a COMPLETE post that ends with a proper sentence.`,
+      { maxOutputTokens: opts?.maxOutputTokens ?? 800, temperature: opts?.retryTemperature ?? 0.5 },
+    )
+    const retryText = retry.text.trim()
+    if (isComplete(retryText) && retryText.length <= charLimit) {
+      content = retryText
+    } else if (isComplete(retryText)) {
+      content = retryText
+    }
+  }
+
+  if (content.length > charLimit) {
+    const retry = await callGemini(
+      system,
+      `${prompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${charLimit} characters while keeping it complete and engaging.`,
+      { maxOutputTokens: opts?.maxOutputTokens ?? 800, temperature: opts?.retryTemperature ?? 0.5 },
+    )
+    const retryText = retry.text.trim()
+    if (retryText.length <= charLimit) {
+      content = retryText
+    } else {
+      const match = retryText.slice(0, charLimit).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
+      content = match ? match[0].trim() : retryText.slice(0, charLimit - 1) + "\u2026"
+    }
+  }
+
+  return content
 }
 
 export async function generateXhsPost(input: GeneratePostInput): Promise<string> {

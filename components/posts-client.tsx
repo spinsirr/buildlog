@@ -184,6 +184,37 @@ export function PostsClient({
   const [search, setSearch] = useState('')
   const connectedPlatforms = initialConnectedPlatforms
   const charLimit = getEffectiveLimit(connectedPlatforms, xPremium)
+  const [recapLoading, setRecapLoading] = useState(false)
+
+  async function handleGenerateRecap() {
+    setRecapLoading(true)
+    try {
+      const res = await callEdgeFunction<{ ok: boolean; reason?: string; post?: Post }>(
+        'generate-recap'
+      )
+      if (!res.ok) {
+        toast.error('Failed to generate recap', { description: res.error })
+        return
+      }
+      const data = res.data
+      if (!data.ok) {
+        if (data.reason === 'no_activity') {
+          toast('No activity to recap this week')
+        } else if (data.reason === 'recap_exists') {
+          toast('You already have a recap for this week. Delete it to regenerate.')
+        } else {
+          toast.error('Recap generation failed', { description: data.reason })
+        }
+        return
+      }
+      toast.success('Weekly recap generated!')
+      refreshPosts()
+    } catch {
+      toast.error('Failed to generate recap')
+    } finally {
+      setRecapLoading(false)
+    }
+  }
 
   // Handle keyboard shortcut deep links
   useEffect(() => {
@@ -313,14 +344,30 @@ export function PostsClient({
             Review AI-generated drafts and publish to your platforms.
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowNewPost((v) => !v)}
-          className="bg-purple-600 hover:bg-purple-500 text-white border-0"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Post
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleGenerateRecap}
+            disabled={recapLoading}
+            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          >
+            {recapLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileText className="h-3.5 w-3.5" />
+            )}
+            Weekly Recap
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowNewPost((v) => !v)}
+            className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Post
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
