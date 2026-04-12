@@ -55,16 +55,14 @@ export function DashboardClient({
             </button>
           )}
         </div>
-        {showOnboarding && (
-          <button
-            id="onborda-connect-repo"
-            type="button"
-            onClick={() => startOnborda('onboarding')}
-            className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
-          >
-            Tutorial
-          </button>
-        )}
+        <button
+          id="onborda-connect-repo"
+          type="button"
+          onClick={() => startOnborda('onboarding')}
+          className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
+        >
+          Tutorial
+        </button>
       </div>
 
       <FocusCard hasRepos={hasRepos} hasSocial={hasSocial} draftCount={draftCount} />
