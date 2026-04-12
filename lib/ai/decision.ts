@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, Output } from 'ai'
+import { generateText, Output, wrapLanguageModel } from 'ai'
 import { z } from 'zod'
+import { guardrailMiddleware, timeoutSignal } from './middleware'
 import { DECISION_SYSTEM_PROMPT } from './prompts'
 import type { DecisionInput, DecisionOutput } from './schemas'
 
@@ -12,6 +13,10 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY,
 })
 
+function model(id: string = 'gemini-2.5-flash') {
+  return wrapLanguageModel({ model: google(id), middleware: guardrailMiddleware })
+}
+
 /**
  * Evaluate a GitHub event and decide whether it's worth posting about.
  * Uses AI SDK generateText with Output.object for typed structured output.
@@ -21,11 +26,12 @@ export async function decide(input: DecisionInput): Promise<DecisionOutput> {
 
   /* eslint-disable vercel-ai-security/no-dynamic-system-prompt -- system prompt built from trusted server-side config, not user input */
   const { output } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: model(),
     system: buildSystemPromptWithContext(input),
     prompt,
     temperature: 0.3,
     maxOutputTokens: 400,
+    abortSignal: timeoutSignal(),
     output: Output.object({
       schema: z.object({
         decision: z.enum(['post', 'skip', 'bundle_later']),

@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText } from 'ai'
+import { generateText, wrapLanguageModel } from 'ai'
+import { guardrailMiddleware, timeoutSignal } from './middleware'
 import {
   buildGenerationSystemPrompt,
   buildIntroSystemPrompt,
@@ -14,6 +15,10 @@ import type { GenerateInput } from './schemas'
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY,
 })
+
+function model(id: string = 'gemini-2.5-flash') {
+  return wrapLanguageModel({ model: google(id), middleware: guardrailMiddleware })
+}
 
 const WATERMARKS = {
   default: '',
@@ -132,11 +137,12 @@ async function callGenerate(
   opts?: { temperature?: number; maxOutputTokens?: number }
 ): Promise<string> {
   const { text } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: model(),
     system,
     prompt,
     temperature: opts?.temperature ?? 0.7,
     maxOutputTokens: opts?.maxOutputTokens ?? 800,
+    abortSignal: timeoutSignal(),
   })
 
   return text.trim()

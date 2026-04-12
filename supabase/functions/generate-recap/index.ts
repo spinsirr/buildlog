@@ -4,6 +4,7 @@ import { fetchRepoRecapData } from "../_shared/github.ts"
 import type { RepoRecapData } from "../_shared/github.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
+import { checkLimit } from "../_shared/subscription.ts"
 
 await setupLogger()
 const log = getLog("generate-recap")
@@ -21,6 +22,20 @@ Deno.serve(async (req) => {
   const { user, supabase, error: authError } = await requireUser(req)
   if (!user) {
     return errorResponse(authError ?? "Unauthorized", 401, req)
+  }
+
+  // Enforce post limit — recaps count as posts
+  const { allowed, count, limit } = await checkLimit(user.id, "posts", supabase)
+  if (!allowed) {
+    return jsonResponse(
+      {
+        ok: false,
+        code: "plan_limit",
+        error: `Free plan limit: ${count}/${limit} posts this month. Upgrade for unlimited.`,
+      },
+      req,
+      { status: 403 },
+    )
   }
 
   try {

@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, Output, stepCountIs, ToolLoopAgent, tool } from 'ai'
+import { generateText, Output, stepCountIs, ToolLoopAgent, tool, wrapLanguageModel } from 'ai'
 import { z } from 'zod'
+import { guardrailMiddleware, timeoutSignal } from '@/lib/ai/middleware'
 import { getContentLimit } from '@/lib/platforms'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
@@ -71,10 +72,12 @@ export async function runAgent(
 ): Promise<AgentResult> {
   const supabase = overrides?.tools ? null : createAdminClient()
   const google = overrides?.model ? null : getGoogleProvider()
+  const wrappedModel = (id: string) =>
+    wrapLanguageModel({ model: google!(id), middleware: guardrailMiddleware })
 
   // Create the agent per-request so tools close over the event context
   const agent = new ToolLoopAgent({
-    model: overrides?.model ?? google!(AGENT_MODEL),
+    model: overrides?.model ?? wrappedModel(AGENT_MODEL),
     instructions: AGENT_INSTRUCTIONS,
     stopWhen: stepCountIs(10),
     temperature: 0,
@@ -125,11 +128,12 @@ export async function runAgent(
 
           /* eslint-disable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt -- prompts are agent-constructed from trusted server-side data */
           const { text } = await generateText({
-            model: google!(CONTENT_MODEL),
+            model: wrappedModel(CONTENT_MODEL),
             system: systemPrompt,
             prompt: userPrompt,
             maxOutputTokens: event.xPremium ? 2000 : 800,
             temperature: 0.7,
+            abortSignal: timeoutSignal(),
           })
 
           let content = text.trim()
@@ -142,11 +146,12 @@ export async function runAgent(
           // Retry if over budget (watermark-aware)
           if (content.length > contentBudget) {
             const retry = await generateText({
-              model: google!(CONTENT_MODEL),
+              model: wrappedModel(CONTENT_MODEL),
               system: systemPrompt,
               prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${contentBudget} characters while keeping it complete and engaging.`,
               maxOutputTokens: event.xPremium ? 2000 : 800,
               temperature: 0.5,
+              abortSignal: timeoutSignal(),
             })
             const retryText = retry.text.trim()
             if (retryText.length <= contentBudget) {
