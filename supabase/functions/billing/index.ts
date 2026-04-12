@@ -1,6 +1,6 @@
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { parsePathParts } from "../_shared/http.ts"
+import { parsePathParts, safeJson } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { getStripe } from "../_shared/stripe.ts"
 
@@ -21,7 +21,9 @@ Deno.serve(async (req) => {
   const parts = parsePathParts(req, "billing")
   const action = parts[0]
 
-  const frontendUrl = Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ??
+  const body = await safeJson<{ return_url?: string }>(req)
+  const frontendUrl = body?.return_url ??
+    Deno.env.get("FRONTEND_URL") ?? Deno.env.get("APP_URL") ??
     "http://localhost:3000"
   const stripe = getStripe()
 
