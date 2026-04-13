@@ -23,7 +23,7 @@ A PreToolUse hook enforces this — npm commands will be blocked automatically.
 
 ```
 Vercel (Next.js 16)
-├── middleware.ts — auth redirects (dashboard → login, login → dashboard)
+├── proxy.ts — auth redirects (dashboard → login, login → dashboard)
 ├── Dashboard pages — 'use client' with SWR hooks for data fetching
 │   ├── AuthProvider — client-side session context (exposes userId)
 │   ├── SWR hooks — lib/hooks/use-dashboard-data.ts (conditional keys with userId)
@@ -69,7 +69,7 @@ Supabase Edge Functions (Deno runtime)
 - Dashboard page pattern: page.tsx calls hook, handles loading/error, passes data as props to *-client.tsx
 - Landing/auth pages are Server Components that fetch via `createServerSupabaseClient()`
 - Interactive logic lives in `*-client.tsx` components (e.g. `posts-client.tsx`, `settings-client.tsx`)
-- middleware.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
+- proxy.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
 - AuthProvider exposes `session`, `userId`, and `loading` via React context
 - DB writes / external API calls go through Edge Functions via `supabase.functions.invoke()`
 - For Edge Functions with path routing, use raw `fetch()` to `NEXT_PUBLIC_SUPABASE_URL/functions/v1/<name>/<path>`
