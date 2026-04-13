@@ -19,96 +19,67 @@ A PreToolUse hook enforces this — npm commands will be blocked automatically.
 
 ## Architecture
 
-**Proxy Auth + Client-Side Dashboard + Vercel AI Layer + Supabase Edge Functions**
+**Middleware Auth + Client-Side Dashboard + Agentic AI Layer + Supabase Edge Functions**
 
 ```
 Vercel (Next.js 16)
-├── proxy.ts — auth redirects, matcher covers /dashboard, /posts, /repos, /settings, /usage, /login
-│   (Next 16 renamed this file convention from middleware.ts to proxy.ts; the exported
-│    function is `proxy()` too.)
-├── Dashboard pages — 'use client' with SWR hooks, URLs are /dashboard, /posts, /repos,
-│   /settings, /usage (the (dashboard) route group doesn't add /dashboard prefix)
+├── middleware.ts — auth redirects (dashboard → login, login → dashboard)
+├── Dashboard pages — 'use client' with SWR hooks for data fetching
 │   ├── AuthProvider — client-side session context (exposes userId)
 │   ├── SWR hooks — lib/hooks/use-dashboard-data.ts (conditional keys with userId)
-│   └── Mutations invalidate SWR cache via useSWRConfig().mutate(<predicate>)
-├── Landing/auth/changelog pages — Server Components via createServerSupabaseClient()
+│   └── Loading/error — skeleton → content, FetchError with retry
+├── Landing/auth pages — Server Components with server-side Supabase client
 ├── Client Components — interactive leaves (buttons, forms, modals)
 │
-├── app/api/agent/           — five routes, all gated by verifyAgentSecret (timingSafeEqual)
-│   ├── decide/              — ranker pipeline (called by github-webhook)
-│   ├── generate/            — single-event content (webhook fallback + regenerate)
-│   ├── xhs/                 — XHS-style bilingual (lang: 'en' | 'zh')
-│   ├── intro/               — first-time repo intro post
-│   └── recap/                — weekly / branch recap
+├── app/api/agent/decide/ — Agentic decision + generation (Vercel Function)
+│   └── route.ts — Forwards to runAgentSafe, returns structured decision
 │
-├── lib/agent/
-│   ├── orchestrator.ts      — runAgent / runAgentSafe (two-phase: rankEvent + generateContent)
-│   ├── generators.ts        — generateContent / generateIntroPost / generateXhsPost / generateRecap
-│   ├── prompts.ts           — RANKER_INSTRUCTIONS + every buildXxxPrompt/buildXxxSystemPrompt
-│   └── types.ts             — AgentEvent, AgentResult (signal: 'high'|'low'|'error'), …
-│
-└── lib/ai/
-    ├── provider.ts          — shared getGoogleProvider + LanguageModel type alias
-    └── middleware.ts        — guardrailMiddleware + timeoutSignal for generateText/Object
+├── lib/agent/ — Agent layer modules
+│   ├── orchestrator.ts — ToolLoopAgent with 3 tools (context, posts, generation)
+│   ├── prompts.ts      — System prompts, content templates, event formatting
+│   └── types.ts        — AgentEvent, AgentResult, shared types
 
-Supabase Edge Functions (Deno)
-├── github-webhook           — push/PR/release → pre-filter → fetchCommitContext → ranker → draft
-├── generate-post            — handleGenerate / handleRegenerate / handleXhsCopy, all proxy to Vercel
-├── generate-recap           — weekly / branch recap (proxies to /api/agent/recap)
-├── connect-repo             — connect/disconnect repos + generate intro post
-├── backfill-context         — one-shot to populate project_context + intro posts for existing repos
-├── stripe-webhook           — subscription lifecycle events
-├── create-post              — manual post with limit checks
-├── publish-post             — publish to Twitter/LinkedIn/Bluesky
-├── billing                  — Stripe checkout + portal sessions
-├── social-auth              — Twitter/LinkedIn OAuth + Bluesky credentials
-├── social-disconnect        — disconnect platforms
-├── github-app               — GitHub App installation + repo listing
-└── _shared/
-    ├── vercel-ai.ts         — single seam: callVercelAi<T>(path, body) → posts to /api/agent/*
-    ├── github.ts            — installation token + fetchCommitContext/fetchPrContext/fetchTagContext/fetchRepoRecapData
-    ├── auth.ts              — requireUser; functions that self-auth have verify_jwt=false in config.toml
-    └── crypto / cors / logger / publish / subscription / notify / email / http / oauth-refresh
+Supabase Edge Functions (Deno runtime)
+├── github-webhook — GitHub push/PR/release → calls agent API or direct Gemini
+├── stripe-webhook — subscription lifecycle events
+├── generate-post — AI content generation (Gemini API, used for manual/legacy)
+├── create-post — manual post creation with limit checks
+├── publish-post — publish to Twitter/LinkedIn/Bluesky
+├── billing — Stripe checkout + portal sessions
+├── social-auth — Twitter/LinkedIn OAuth + Bluesky credentials
+├── social-disconnect — disconnect platforms
+├── github-app — GitHub App installation + repo listing
+└── connect-repo — connect/disconnect repos
 ```
 
 ## Stack
 
 - Next.js 16 + App Router + Turbopack
 - Supabase (auth + Postgres + Edge Functions)
-- AI SDK + @ai-sdk/google for all generation (Vercel Functions, Node.js runtime)
-- Gemini (via `gemini-3-flash-preview` by default for ranker + content)
-- shadcn/ui + Geist / Space Grotesk / IBM Plex Mono fonts
-- Bauhaus-flavored dark UI (`--radius: 0`, neo-* color tokens, hard-shadow buttons)
+- AI SDK + @ai-sdk/google (Vercel Functions, Node.js runtime)
+- Gemini (agent reasoning + decision + content generation via ToolLoopAgent)
+- Gemini (legacy content generation via direct fetch in Edge Functions)
+- shadcn/ui + Geist
 - Dark mode by default
-
-## Ranker (not gatekeeper)
-
-The agent is a **ranker**, not a gatekeeper:
-- Every webhook event (that survives the cheap pre-filter) produces a draft.
-- The ranker returns `signal: 'high' | 'low'` + an angle. Never skips.
-- Dashboard shows high-signal drafts by default; low-signal collapses under a "Low priority" disclosure with the AI's reasoning.
-- `post_decisions.decision` column stores signal values (`high` / `low` / `error`); the CHECK constraint also permits legacy `post` / `skip` / `bundle_later` for historical rows.
-- Pre-filter in `github-webhook/index.ts:preFilterPush` drops merge commits, lockfile-only, CI-only, and `docs|chore|style|build|ci|test` prefixes with only docs/tooling files — zero AI cost.
 
 ## Conventions
 
-- Dashboard pages are `'use client'` with SWR hooks from `lib/hooks/use-dashboard-data.ts`.
-- SWR hooks use conditional keys with userId from AuthContext: `userId ? ['key', userId] : null`.
-- Dashboard page pattern: page.tsx calls the hook, handles loading/error, passes data as props to `*-client.tsx`.
-- After any user mutation (connect, toggle, delete, regenerate, …), call `useSWRConfig().mutate(<predicate>)` to invalidate the relevant cache keys (`repos-data`, `posts-data`, `dashboard-data`, `settings-data`, `draft-count`, `streak`). Don't rely on `router.refresh()` — these pages are CSR.
-- Landing/auth pages and `/changelog/*` are Server Components using `createServerSupabaseClient()`.
-- Interactive logic lives in `*-client.tsx` (e.g. `posts-client.tsx`, `settings-client.tsx`, `repo-list.tsx`).
-- `proxy.ts` handles auth redirects — matcher covers every protected path explicitly (not just `/dashboard/*`), because the `(dashboard)` route group doesn't prefix URLs.
-- AuthProvider exposes `session`, `userId`, `loading` via React context.
-- DB writes / external API calls go through Edge Functions via `supabase.functions.invoke()` (or `callEdgeFunction` in `lib/edge-function.ts` for path-routed functions).
-- Edge Function shared utilities live in `supabase/functions/_shared/`.
-- All AI generation goes through Vercel `/api/agent/*`. Edge functions never call Gemini directly — they proxy through `_shared/vercel-ai.ts`.
-- Agent modules live in `lib/agent/` — `orchestrator.ts` (ranker pipeline), `generators.ts` (each generator flavour), `prompts.ts` (all prompts), `types.ts`.
-- Agent API authenticates via `x-agent-secret` header; server side verifies with `timingSafeEqual` in `app/api/agent/_auth.ts:verifyAgentSecret`.
-- `lib/supabase/admin.ts` provides a service-role client for API routes (bypasses RLS).
-- Edge fns that self-authenticate with `requireUser` need `verify_jwt = false` in `supabase/config.toml`; otherwise Supabase platform rejects requests before they reach the code. New fns must be added there.
-- Platform character limits in `lib/platforms.ts`; X Premium support via `profiles.x_premium`.
-- `profiles.public_changelog` (default true) controls whether a user shows up on the public `/changelog` directory and landing's featured section.
+- Dashboard pages are `'use client'` with SWR hooks from `lib/hooks/use-dashboard-data.ts`
+- SWR hooks use conditional keys with userId from AuthContext: `userId ? ['key', userId] : null`
+- Dashboard page pattern: page.tsx calls hook, handles loading/error, passes data as props to *-client.tsx
+- Landing/auth pages are Server Components that fetch via `createServerSupabaseClient()`
+- Interactive logic lives in `*-client.tsx` components (e.g. `posts-client.tsx`, `settings-client.tsx`)
+- middleware.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
+- AuthProvider exposes `session`, `userId`, and `loading` via React context
+- DB writes / external API calls go through Edge Functions via `supabase.functions.invoke()`
+- For Edge Functions with path routing, use raw `fetch()` to `NEXT_PUBLIC_SUPABASE_URL/functions/v1/<name>/<path>`
+- Edge Function shared utilities live in `supabase/functions/_shared/`
+- API routes exist only under `app/api/agent/` for the agentic AI layer (Node.js runtime required)
+- Agent modules live in `lib/agent/` — orchestrator (ToolLoopAgent), prompts, types
+- Agent API authenticates via `x-agent-secret` header (AGENT_API_SECRET env var)
+- `lib/supabase/admin.ts` provides service-role client for API routes (bypasses RLS)
+- Ranker history in `post_decisions` table with reasoning traces (decision column stores signal: `high`/`low`/`error`)
+- Platform character limits in `lib/platforms.ts`, X Premium support via `profiles.x_premium`
 
 ## Skill routing
 
