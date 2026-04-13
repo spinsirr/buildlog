@@ -1,5 +1,6 @@
 'use client'
 
+import { FetchError } from '@/components/fetch-error'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useUsageData } from '@/lib/hooks/use-dashboard-data'
@@ -52,9 +53,10 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 }
 
 export default function UsagePage() {
-  const { data, isLoading } = useUsageData()
+  const { data, error, isLoading, mutate } = useUsageData()
 
   if (isLoading || !data) return <UsageSkeleton />
+  if (error) return <FetchError onRetry={() => mutate()} />
 
   const { plan, posts, repoCount, platformCount, monthStart } = data
   const limits = PLANS[plan]

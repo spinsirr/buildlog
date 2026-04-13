@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useMemo, useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { RepoList } from '@/components/repo-list'
 import { buttonVariants } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -20,36 +20,17 @@ function getInstallUrl() {
 }
 
 export function ReposClient({
-  initialRepos,
-  initialNeedsInstall,
+  repos,
+  needsInstall,
 }: {
-  initialRepos: Repo[]
-  initialNeedsInstall: boolean
+  repos: Repo[]
+  needsInstall: boolean
 }) {
   const supabase = useMemo(() => createClient(), [])
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { mutate } = useSWRConfig()
   const [installing, setInstalling] = useState(false)
-
-  const fetchReposData = useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke('github-app', {
-      body: { action: 'list-repos' },
-    })
-
-    if (error) throw error
-
-    const result = data as { repos?: Repo[]; needsInstall?: boolean } | null
-    return {
-      repos: result?.repos ?? [],
-      needsInstall: result?.needsInstall ?? false,
-    }
-  }, [supabase])
-
-  const { data, mutate } = useSWR('repos-data', fetchReposData, {
-    fallbackData: { repos: initialRepos, needsInstall: initialNeedsInstall },
-    revalidateOnFocus: false,
-    revalidateOnMount: false,
-  })
 
   // Handle GitHub App installation callback
   useEffect(() => {
@@ -66,15 +47,12 @@ export function ReposClient({
       })
 
       router.replace('/repos')
-      mutate()
+      mutate((key: unknown) => Array.isArray(key) && key[0] === 'repos-data')
       setInstalling(false)
     }
 
     saveInstallation()
   }, [searchParams, router, mutate, supabase])
-
-  const repos = data?.repos ?? initialRepos
-  const needsInstall = data?.needsInstall ?? initialNeedsInstall
 
   if (installing) return <ReposSkeleton />
 

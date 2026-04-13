@@ -1,39 +1,30 @@
 import useSWR from 'swr'
+import { useAuth } from '@/components/auth-provider'
 import { createClient } from '@/lib/supabase/client'
 import type { Post, Repo } from '@/lib/types'
 
 const supabase = createClient()
 
-async function getUser() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  return user
-}
-
 // --- Dashboard ---
 
-async function fetchDashboardData() {
-  const user = await getUser()
-  if (!user) return null
-
+async function fetchDashboardData(_key: string, userId: string) {
   const [{ data: repos }, { data: posts }, { count: connectionsCount }, { data: streakPosts }] =
     await Promise.all([
-      supabase.from('connected_repos').select('*').eq('user_id', user.id),
+      supabase.from('connected_repos').select('*').eq('user_id', userId),
       supabase
         .from('posts')
         .select('*, connected_repos(full_name)')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(5),
       supabase
         .from('platform_connections')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id),
+        .eq('user_id', userId),
       supabase
         .from('posts')
         .select('created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(100),
     ])
@@ -47,26 +38,25 @@ async function fetchDashboardData() {
 }
 
 export function useDashboardData() {
-  return useSWR('dashboard-data', fetchDashboardData, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10000,
-  })
+  const { userId } = useAuth()
+  return useSWR(
+    userId ? ['dashboard-data', userId] : null,
+    ([key, uid]) => fetchDashboardData(key, uid),
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  )
 }
 
 // --- Posts ---
 
-async function fetchPostsData() {
-  const user = await getUser()
-  if (!user) return null
-
+async function fetchPostsData(_key: string, userId: string) {
   const [{ data: posts }, { data: connectionRows }, { data: profile }] = await Promise.all([
     supabase
       .from('posts')
       .select('*, connected_repos(full_name)')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false }),
-    supabase.from('platform_connections').select('platform').eq('user_id', user.id),
-    supabase.from('profiles').select('x_premium').eq('id', user.id).single(),
+    supabase.from('platform_connections').select('platform').eq('user_id', userId),
+    supabase.from('profiles').select('x_premium').eq('id', userId).single(),
   ])
 
   return {
@@ -77,18 +67,17 @@ async function fetchPostsData() {
 }
 
 export function usePostsData() {
-  return useSWR('posts-data', fetchPostsData, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10000,
-  })
+  const { userId } = useAuth()
+  return useSWR(
+    userId ? ['posts-data', userId] : null,
+    ([key, uid]) => fetchPostsData(key, uid),
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  )
 }
 
 // --- Repos ---
 
 async function fetchReposData() {
-  const user = await getUser()
-  if (!user) return null
-
   const { data, error } = await supabase.functions.invoke('github-app', {
     body: { action: 'list-repos' },
   })
@@ -106,31 +95,30 @@ async function fetchReposData() {
 }
 
 export function useReposData() {
-  return useSWR('repos-data', fetchReposData, {
-    revalidateOnFocus: false,
-    dedupingInterval: 30000,
-  })
+  const { userId } = useAuth()
+  return useSWR(
+    userId ? ['repos-data', userId] : null,
+    () => fetchReposData(),
+    { revalidateOnFocus: false, dedupingInterval: 30000 }
+  )
 }
 
 // --- Settings ---
 
-async function fetchSettingsData() {
-  const user = await getUser()
-  if (!user) return null
-
+async function fetchSettingsData(_key: string, userId: string) {
   const [{ data: rows }, { data: profileData }, { data: sub }] = await Promise.all([
     supabase
       .from('platform_connections')
       .select('platform, platform_username')
-      .eq('user_id', user.id),
+      .eq('user_id', userId),
     supabase
       .from('profiles')
       .select(
         'tone, auto_publish, email_notifications, publish_delay_minutes, github_username, x_premium'
       )
-      .eq('id', user.id)
+      .eq('id', userId)
       .single(),
-    supabase.from('subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
+    supabase.from('subscriptions').select('status').eq('user_id', userId).maybeSingle(),
   ])
 
   const connections = ['twitter', 'linkedin', 'bluesky'].map((platform) => {
@@ -157,22 +145,21 @@ async function fetchSettingsData() {
 }
 
 export function useSettingsData() {
-  return useSWR('settings-data', fetchSettingsData, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10000,
-  })
+  const { userId } = useAuth()
+  return useSWR(
+    userId ? ['settings-data', userId] : null,
+    ([key, uid]) => fetchSettingsData(key, uid),
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  )
 }
 
 // --- Usage ---
 
-async function fetchUsageData() {
-  const user = await getUser()
-  if (!user) return null
-
+async function fetchUsageData(_key: string, userId: string) {
   const { data: sub } = await supabase
     .from('subscriptions')
     .select('status')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
   const plan = (sub?.status === 'active' ? 'pro' : 'free') as 'pro' | 'free'
@@ -184,18 +171,18 @@ async function fetchUsageData() {
     supabase
       .from('posts')
       .select('status, source_type, platforms, created_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(500),
     supabase
       .from('connected_repos')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('is_active', true),
     supabase
       .from('platform_connections')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id),
+      .eq('user_id', userId),
   ])
 
   return {
@@ -213,8 +200,10 @@ async function fetchUsageData() {
 }
 
 export function useUsageData() {
-  return useSWR('usage-data', fetchUsageData, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10000,
-  })
+  const { userId } = useAuth()
+  return useSWR(
+    userId ? ['usage-data', userId] : null,
+    ([key, uid]) => fetchUsageData(key, uid),
+    { revalidateOnFocus: false, dedupingInterval: 10000 }
+  )
 }

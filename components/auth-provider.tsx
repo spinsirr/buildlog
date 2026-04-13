@@ -7,11 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 
 type AuthContextValue = {
   session: Session | null
+  userId: string | null
   loading: boolean
 }
 
 const AuthContext = createContext<AuthContextValue>({
   session: null,
+  userId: null,
   loading: true,
 })
 
@@ -43,7 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [supabase, router])
 
-  const value = useMemo(() => ({ session, loading }), [session, loading])
+  const userId = session?.user?.id ?? null
+  const value = useMemo(() => ({ session, userId, loading }), [session, userId, loading])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

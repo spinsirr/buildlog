@@ -4,17 +4,22 @@ import { useOnborda } from 'onborda'
 import { DashboardPostsTable } from '@/components/dashboard-posts-table'
 import { DashboardStats } from '@/components/dashboard-stats'
 import { FocusCard } from '@/components/focus-card'
-import { useDashboardData } from '@/lib/hooks/use-dashboard-data'
+import type { Post } from '@/lib/types'
 import { calculateStreak } from '@/lib/utils'
-import { DashboardSkeleton } from './loading'
 
-export function DashboardClient() {
+export function DashboardClient({
+  repos,
+  posts,
+  connectionsCount,
+  streakPosts,
+}: {
+  repos: { id: string }[]
+  posts: Post[]
+  connectionsCount: number
+  streakPosts: { created_at: string }[]
+}) {
   const { startOnborda } = useOnborda()
-  const { data, isLoading } = useDashboardData()
 
-  if (isLoading || !data) return <DashboardSkeleton />
-
-  const { repos, posts, connectionsCount, streakPosts } = data
   const drafts = posts.filter((p) => p.status === 'draft')
   const published = posts.filter((p) => p.status === 'published')
   const streak = calculateStreak(streakPosts)

@@ -19,14 +19,17 @@ A PreToolUse hook enforces this — npm commands will be blocked automatically.
 
 ## Architecture
 
-**Server Components + Agentic AI Layer + Supabase Edge Functions**
+**Middleware Auth + Client-Side Dashboard + Agentic AI Layer + Supabase Edge Functions**
 
 ```
 Vercel (Next.js 16)
-├── Server Components — pages fetch data via server-side Supabase client
-├── Dashboard layout — server-side auth check (redirect if not logged in)
-├── Client Components — only for interactive leaves (buttons, forms, modals)
-├── proxy.ts — redirects unauthed users from /dashboard to /login
+├── middleware.ts — auth redirects (dashboard → login, login → dashboard)
+├── Dashboard pages — 'use client' with SWR hooks for data fetching
+│   ├── AuthProvider — client-side session context (exposes userId)
+│   ├── SWR hooks — lib/hooks/use-dashboard-data.ts (conditional keys with userId)
+│   └── Loading/error — skeleton → content, FetchError with retry
+├── Landing/auth pages — Server Components with server-side Supabase client
+├── Client Components — interactive leaves (buttons, forms, modals)
 │
 ├── app/api/agent/decide/ — Agentic decision + generation (Vercel Function)
 │   └── route.ts — Forwards to runAgentSafe, returns structured decision
@@ -61,17 +64,16 @@ Supabase Edge Functions (Deno runtime)
 
 ## Conventions
 
-- Default to Server Components. Only add `'use client'` for interactive elements (buttons, forms, modals, toggles)
-- Push `'use client'` boundaries as far down the component tree as possible
-- Pages are Server Components that fetch data server-side via `createServerSupabaseClient()`
+- Dashboard pages are `'use client'` with SWR hooks from `lib/hooks/use-dashboard-data.ts`
+- SWR hooks use conditional keys with userId from AuthContext: `userId ? ['key', userId] : null`
+- Dashboard page pattern: page.tsx calls hook, handles loading/error, passes data as props to *-client.tsx
+- Landing/auth pages are Server Components that fetch via `createServerSupabaseClient()`
 - Interactive logic lives in `*-client.tsx` components (e.g. `posts-client.tsx`, `settings-client.tsx`)
-- Dashboard layout does server-side auth check — no client-side AuthGuard
-- DB reads in pages use server-side Supabase client (RLS handles auth)
+- middleware.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
+- AuthProvider exposes `session`, `userId`, and `loading` via React context
 - DB writes / external API calls go through Edge Functions via `supabase.functions.invoke()`
 - For Edge Functions with path routing, use raw `fetch()` to `NEXT_PUBLIC_SUPABASE_URL/functions/v1/<name>/<path>`
 - Edge Function shared utilities live in `supabase/functions/_shared/`
-- proxy.ts handles auth redirects (dashboard → login for unauthed, login → dashboard for authed)
-- No middleware
 - API routes exist only under `app/api/agent/` for the agentic AI layer (Node.js runtime required)
 - Agent modules live in `lib/agent/` — orchestrator (ToolLoopAgent), prompts, types
 - Agent API authenticates via `x-agent-secret` header (AGENT_API_SECRET env var)
