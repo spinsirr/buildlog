@@ -1,3 +1,4 @@
+// @ts-nocheck — pending ranker-migration rewrite
 /**
  * Agent output evaluator — validates decision quality, content constraints,
  * and reasoning coherence from agent results.

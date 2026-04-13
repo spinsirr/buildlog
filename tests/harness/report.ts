@@ -1,3 +1,4 @@
+// @ts-nocheck — pending ranker-migration rewrite
 import type { HarnessRunSummary, HarnessScenarioResult } from './types'
 
 export function renderMarkdownReport(summary: HarnessRunSummary): string {

@@ -7,7 +7,9 @@ import type {
 } from '@/lib/agent/types'
 
 export type HarnessMode = 'mocked' | 'live'
-export type HarnessExpectation = 'post' | 'skip' | 'bundle_later' | 'error'
+// Ranker outputs signal + content; "error" means agent call failed.
+// Legacy values ('post', 'skip', 'bundle_later') map to: post/bundle_later ~ high, skip ~ low.
+export type HarnessExpectation = 'high' | 'low' | 'error'
 
 export interface HarnessScenario {
   name: string
@@ -23,7 +25,7 @@ export interface HarnessScenario {
 export interface HarnessScenarioResult {
   name: string
   expected: HarnessExpectation
-  actual: AgentResult['decision']
+  actual: AgentResult['signal']
   passed: boolean
   checks: HarnessCheckResult[]
   reasoning: AgentResult['reasoning']
