@@ -159,19 +159,17 @@
   animation: shimmer var(--shimmer-duration, 2s) linear infinite;
 }
 
-/* Dashboard shell entrance */
+/* Dashboard shell entrance — no transform (breaks fixed sidebar positioning) */
 @keyframes fade-slide-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 .animate-fade-slide-in {
-  animation: fade-slide-in 0.4s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  animation: fade-slide-in 0.3s ease-out both;
 }
 
 /* Neo-brutalism keyframes */
