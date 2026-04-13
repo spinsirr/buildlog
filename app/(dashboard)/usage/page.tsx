@@ -42,7 +42,7 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
           <div
             className={cn(
               'h-full rounded-full transition-all',
-              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-purple-500'
+              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-500' : 'bg-neo-accent'
             )}
             style={{ width: `${pct}%` }}
           />
@@ -89,12 +89,12 @@ export default function UsagePage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-50">Usage</h1>
+        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Usage</h1>
         <Badge
           className={cn(
             'text-xs',
             plan === 'pro'
-              ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+              ? 'bg-neo-accent/10 text-neo-accent border-neo-accent/20'
               : 'bg-zinc-800 text-zinc-400 border-0'
           )}
         >
@@ -171,7 +171,7 @@ export default function UsagePage() {
                         </div>
                         <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-purple-500/70"
+                            className="h-full rounded-full bg-neo-accent/70"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -209,7 +209,7 @@ export default function UsagePage() {
                         </div>
                         <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-purple-500/70"
+                            className="h-full rounded-full bg-neo-accent/70"
                             style={{ width: `${pct}%` }}
                           />
                         </div>

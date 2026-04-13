@@ -55,7 +55,7 @@ export function ReposClient({ repos, needsInstall }: { repos: Repo[]; needsInsta
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-100">Repos</h1>
+            <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-100">Repos</h1>
             <p className="text-sm text-zinc-400 mt-1">
               Connect GitHub repos to auto-generate posts from your activity.
             </p>

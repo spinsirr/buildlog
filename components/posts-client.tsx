@@ -61,19 +61,16 @@ function NewPostForm({ onCreated, charLimit }: { onCreated: () => void; charLimi
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
+    <div className="rounded-none border-2 border-zinc-700 bg-zinc-900/50 p-4 space-y-3">
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-1">
         <div
-          className={cn(
-            'h-1.5 flex-1 rounded-full transition-colors',
-            step === 'write' ? 'bg-purple-500' : 'bg-purple-500'
-          )}
+          className={cn('h-1.5 flex-1 rounded-full transition-colors bg-neo-accent')}
         />
         <div
           className={cn(
             'h-1.5 flex-1 rounded-full transition-colors',
-            step === 'confirm' ? 'bg-purple-500' : 'bg-zinc-800'
+            step === 'confirm' ? 'bg-neo-accent' : 'bg-zinc-800'
           )}
         />
       </div>
@@ -103,7 +100,7 @@ function NewPostForm({ onCreated, charLimit }: { onCreated: () => void; charLimi
               size="sm"
               disabled={!canSubmit}
               onClick={() => setStep('confirm')}
-              className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+              className="bg-neo-accent hover:bg-neo-accent/90 text-white border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
             >
               Next
             </Button>
@@ -132,7 +129,7 @@ function NewPostForm({ onCreated, charLimit }: { onCreated: () => void; charLimi
               size="sm"
               disabled={busy}
               onClick={handleSubmit}
-              className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+              className="bg-neo-accent hover:bg-neo-accent/90 text-white border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
             >
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -170,6 +167,73 @@ function EmptyState() {
       >
         Connect a repo
       </Link>
+    </div>
+  )
+}
+
+/** Collapsible section for AI-rated low-signal drafts. */
+type LowSignalDisclosureProps = {
+  drafts: Post[]
+  onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onRegenerate: (id: string) => Promise<void>
+  onGenerateXhs: (id: string, lang: 'en' | 'zh') => Promise<string>
+  onSchedule: (id: string, scheduledAt: string | null) => Promise<void>
+  connectedPlatforms: string[]
+  charLimit: number
+}
+
+function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="border-2 border-zinc-800 bg-zinc-900/30">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/40 transition-colors"
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-mono-ui text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-none">
+            Low priority
+          </span>
+          <span className="text-sm text-zinc-300">
+            {drafts.length} draft{drafts.length === 1 ? '' : 's'} AI ranked as internal / trivial
+          </span>
+        </div>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 text-zinc-500 transition-transform',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-3 p-3 border-t-2 border-zinc-800">
+          {drafts.map((post) => (
+            <div key={post.id} className="space-y-1">
+              {post.signal_reason && (
+                <p className="font-mono-ui text-[11px] uppercase tracking-wider text-zinc-500 px-1">
+                  <span className="text-zinc-600">AI: </span>
+                  {post.signal_reason}
+                </p>
+              )}
+              <PostCard
+                post={post}
+                onUpdate={handlers.onUpdate}
+                onDelete={handlers.onDelete}
+                onRegenerate={handlers.onRegenerate}
+                onGenerateXhs={handlers.onGenerateXhs}
+                onSchedule={handlers.onSchedule}
+                connectedPlatforms={handlers.connectedPlatforms}
+                charLimit={handlers.charLimit}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -290,12 +354,12 @@ export function PostsClient({
     await refreshPosts()
   }
 
-  async function handleGenerateXhs(id: string): Promise<string> {
+  async function handleGenerateXhs(id: string, lang: 'en' | 'zh'): Promise<string> {
     const result = await callEdgeFunction<{ content: string }>('generate-post', {
       path: 'xhs-copy',
-      body: { id },
+      body: { id, lang },
     })
-    if (!result.ok) throw new Error(result.error || '生成失败')
+    if (!result.ok) throw new Error(result.error || 'Generation failed')
     return result.data.content
   }
 
@@ -353,11 +417,65 @@ export function PostsClient({
     )
   }
 
+  /**
+   * Drafts view: shows high-signal (and unrated manual) drafts at the top,
+   * collapses AI-rated low-signal drafts under a disclosure so noise doesn't
+   * drown out ship-worthy content.
+   */
+  function renderDrafts(draftList: Post[]) {
+    const highSignal = draftList.filter((p) => p.signal !== 'low')
+    const lowSignal = draftList.filter((p) => p.signal === 'low')
+
+    return (
+      <div className="flex flex-col gap-3">
+        {highSignal.length === 0 ? (
+          lowSignal.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 border-2 border-dashed border-zinc-800 rounded-none">
+              <p className="text-sm text-zinc-400">No high-signal drafts.</p>
+              <p className="text-xs text-zinc-500">
+                {lowSignal.length} low-priority below — expand to review.
+              </p>
+            </div>
+          )
+        ) : (
+          highSignal.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+              onRegenerate={handleRegenerate}
+              onGenerateXhs={handleGenerateXhs}
+              onSchedule={handleSchedule}
+              connectedPlatforms={connectedPlatforms}
+              charLimit={charLimit}
+            />
+          ))
+        )}
+
+        {lowSignal.length > 0 && (
+          <LowSignalDisclosure
+            drafts={lowSignal}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            onRegenerate={handleRegenerate}
+            onGenerateXhs={handleGenerateXhs}
+            onSchedule={handleSchedule}
+            connectedPlatforms={connectedPlatforms}
+            charLimit={charLimit}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-50">Posts</h1>
+          <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Posts</h1>
           <p className="text-sm text-zinc-400 mt-1">
             Review AI-generated drafts and publish to your platforms.
           </p>
@@ -406,7 +524,7 @@ export function PostsClient({
           <Button
             size="sm"
             onClick={() => setShowNewPost((v) => !v)}
-            className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+            className="bg-neo-accent hover:bg-neo-accent/90 text-white border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
           >
             <Plus className="h-3.5 w-3.5" />
             New Post
@@ -467,7 +585,7 @@ export function PostsClient({
               <p className="text-xs text-zinc-500">No drafts waiting. You&apos;re crushing it.</p>
             </div>
           ) : (
-            renderPosts(drafts)
+            renderDrafts(drafts)
           )}
         </TabsContent>
         <TabsContent value="published" className="mt-4">

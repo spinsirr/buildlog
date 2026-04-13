@@ -50,16 +50,16 @@ export function SidebarNav() {
           href={item.href}
           aria-current={pathname === item.href ? 'page' : undefined}
           className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+            'flex items-center gap-3 px-3 py-2 rounded-none text-sm transition-colors border-l-2',
             pathname === item.href
-              ? 'text-zinc-50 bg-zinc-800/50'
-              : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50'
+              ? 'text-zinc-50 bg-zinc-800/50 border-neo-accent'
+              : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50 border-transparent'
           )}
         >
           <item.icon className="h-4 w-4" />
           {item.label}
           {'badge' in item && item.badge === 'drafts' && draftCount != null && draftCount > 0 && (
-            <span className="ml-auto text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400">
+            <span className="ml-auto text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-none bg-neo-accent/10 text-neo-accent font-mono-ui">
               {draftCount}
             </span>
           )}

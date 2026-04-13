@@ -4,8 +4,8 @@ import { LogOut, Menu } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { LogoMark } from '@/components/logo-mark'
 import { NotificationBell } from '@/components/notification-bell'
-import { QuickCapture } from '@/components/quick-capture'
 import { navItems } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -27,7 +27,7 @@ export function MobileSidebar() {
   }
 
   return (
-    <div className="md:hidden flex items-center h-14 px-4 border-b border-zinc-800/50 bg-zinc-950 sticky top-0 z-40">
+    <div className="md:hidden flex items-center h-14 px-4 border-b-2 border-zinc-800 bg-zinc-950 sticky top-0 z-40">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           render={
@@ -42,13 +42,16 @@ export function MobileSidebar() {
         </SheetTrigger>
         <SheetContent side="left" className="w-60 bg-zinc-950 border-zinc-800 p-0">
           {/* Logo */}
-          <div className="h-14 flex items-center px-5 border-b border-zinc-800/50">
+          <div className="h-14 flex items-center px-5 border-b-2 border-zinc-800">
             <Link
               href="/dashboard"
               onClick={() => setOpen(false)}
-              className="font-semibold text-lg tracking-tight text-zinc-50"
+              className="flex items-center gap-2.5"
             >
-              Build<span className="text-purple-400">Log</span>
+              <LogoMark size={22} />
+              <span className="font-display font-bold text-lg tracking-tight text-zinc-50">
+                buildlog
+              </span>
             </Link>
           </div>
 
@@ -60,10 +63,10 @@ export function MobileSidebar() {
                 href={item.href}
                 onClick={() => setOpen(false)}
                 aria-current={pathname === item.href ? 'page' : undefined}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-none text-sm transition-colors border-l-2 ${
                   pathname === item.href
-                    ? 'text-zinc-50 bg-zinc-800/50'
-                    : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50'
+                    ? 'text-zinc-50 bg-zinc-800/50 border-neo-accent'
+                    : 'text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800/50 border-transparent'
                 }`}
               >
                 <item.icon className="h-4 w-4" />
@@ -71,9 +74,6 @@ export function MobileSidebar() {
               </Link>
             ))}
           </nav>
-
-          {/* Quick capture */}
-          <QuickCapture />
 
           {/* Streak */}
           <StreakCounter />
@@ -108,9 +108,12 @@ export function MobileSidebar() {
       {/* Mobile header logo */}
       <Link
         href="/dashboard"
-        className="font-semibold text-lg tracking-tight text-zinc-50 ml-2 flex-1"
+        className="flex items-center gap-2.5 ml-2 flex-1"
       >
-        Build<span className="text-purple-400">Log</span>
+        <LogoMark size={22} />
+        <span className="font-display font-bold text-lg tracking-tight text-zinc-50">
+          buildlog
+        </span>
       </Link>
       <NotificationBell />
     </div>

@@ -18,10 +18,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 md:flex animate-fade-slide-in">
+    <div className="min-h-screen bg-zinc-950 md:flex animate-fade-slide-in font-sans">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-zinc-800 focus:text-zinc-50 focus:rounded-md focus:text-sm focus:ring-2 focus:ring-purple-500"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-zinc-800 focus:text-zinc-50 focus:rounded-md focus:text-sm focus:ring-2 focus:ring-neo-accent"
       >
         Skip to content
       </a>

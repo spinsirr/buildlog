@@ -204,6 +204,24 @@ export function SettingsClient({
     }
   }
 
+  async function handlePublicChangelogToggle(checked: boolean) {
+    const prev = profile.public_changelog
+    setProfile((p) => ({ ...p, public_changelog: checked }))
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ public_changelog: checked })
+        .eq('id', user.id)
+      if (error) {
+        setProfile((p) => ({ ...p, public_changelog: prev }))
+        toast.error('Update failed', { description: 'Failed to update directory visibility' })
+      }
+    }
+  }
+
   async function handleToneChange(newTone: string) {
     setSavingTone(true)
     try {
@@ -313,6 +331,7 @@ export function SettingsClient({
     auto_publish: autoPublish,
     email_notifications: emailNotifications,
     x_premium: xPremium,
+    public_changelog: publicChangelog,
   } = profile
 
   const isPro = initialPlan === 'pro'
@@ -322,7 +341,7 @@ export function SettingsClient({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-50">Settings</h1>
+        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Settings</h1>
         <p className="text-sm text-zinc-400 mt-1">
           Manage your plan, connected platforms, and post preferences.
         </p>
@@ -342,7 +361,7 @@ export function SettingsClient({
             <Badge
               className={
                 isPro
-                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                  ? 'bg-neo-accent/10 text-neo-accent border-neo-accent/20'
                   : 'bg-zinc-800 text-zinc-400 border-0'
               }
             >
@@ -367,7 +386,7 @@ export function SettingsClient({
             </Button>
           ) : (
             <Button
-              className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+              className="bg-neo-accent hover:bg-neo-accent/90 text-white border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
               disabled={billingLoading}
               onClick={handleUpgrade}
             >
@@ -395,8 +414,17 @@ export function SettingsClient({
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <ChangelogUrlCopy username={githubUsername} />
+            <div className="flex items-center justify-between pt-4 border-t-2 border-zinc-800">
+              <div>
+                <Label className="text-sm font-medium text-zinc-200">List in public directory</Label>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Show up on /changelog and landing showcases. Your URL stays accessible either way.
+                </p>
+              </div>
+              <Switch checked={publicChangelog} onCheckedChange={handlePublicChangelogToggle} />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -421,7 +449,7 @@ export function SettingsClient({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-zinc-200">{platform.label}</span>
                         {connected ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">
+                          <Badge className="bg-neo-mint/10 text-neo-mint border-neo-mint/20 text-[10px]">
                             Connected
                           </Badge>
                         ) : (
@@ -443,7 +471,7 @@ export function SettingsClient({
                       size="sm"
                       variant="outline"
                       onClick={() => handleConnect(platform.id)}
-                      className="border-zinc-700 text-zinc-500 hover:text-purple-400 hover:border-purple-500/50 gap-1.5"
+                      className="border-zinc-700 text-zinc-500 hover:text-neo-accent hover:border-neo-accent/50 gap-1.5"
                     >
                       <Sparkles className="h-3 w-3" />
                       Pro
@@ -459,7 +487,7 @@ export function SettingsClient({
                       className={
                         connected
                           ? 'border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/5'
-                          : 'bg-purple-600 hover:bg-purple-500 text-white border-0'
+                          : 'bg-neo-accent hover:bg-neo-accent/90 text-white border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none'
                       }
                     >
                       {busy ? (
@@ -489,7 +517,7 @@ export function SettingsClient({
                         value={bskyHandle}
                         onChange={(e) => setBskyHandle(e.target.value)}
                         required
-                        className="w-full min-w-0 px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full min-w-0 px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-neo-accent focus:border-transparent"
                       />
                     </div>
                     <div className="space-y-2">
@@ -503,7 +531,7 @@ export function SettingsClient({
                         value={bskyPassword}
                         onChange={(e) => setBskyPassword(e.target.value)}
                         required
-                        className="w-full min-w-0 px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full min-w-0 px-3 py-2 text-sm rounded-md border border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-neo-accent focus:border-transparent"
                       />
                     </div>
                     <p className="text-[11px] text-zinc-500">
@@ -512,7 +540,7 @@ export function SettingsClient({
                         href="https://bsky.app/settings/app-passwords"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-purple-400 hover:text-purple-300 underline"
+                        className="text-neo-accent hover:text-neo-accent/80 underline"
                       >
                         App Password
                       </a>{' '}
@@ -523,7 +551,7 @@ export function SettingsClient({
                         type="submit"
                         size="sm"
                         disabled={bskyLoading}
-                        className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+                        className="bg-neo-accent hover:bg-neo-accent/90 text-white border-2 border-black rounded-none shadow-[3px_3px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
                       >
                         {bskyLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Connect'}
                       </Button>
@@ -568,19 +596,19 @@ export function SettingsClient({
                   onClick={() => handleToneChange(t.value)}
                   className={`w-full flex items-center justify-between p-4 rounded-lg border transition-colors text-left ${
                     tone === t.value
-                      ? 'border-purple-500/50 bg-purple-500/5'
+                      ? 'border-neo-accent/50 bg-neo-accent/5'
                       : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50'
                   }`}
                 >
                   <div>
                     <Label
-                      className={`text-sm font-medium ${tone === t.value ? 'text-purple-400' : 'text-zinc-200'}`}
+                      className={`text-sm font-medium ${tone === t.value ? 'text-neo-accent' : 'text-zinc-200'}`}
                     >
                       {t.label}
                     </Label>
                     <p className="text-xs text-zinc-400 mt-0.5">{t.description}</p>
                   </div>
-                  {tone === t.value && <Check className="h-4 w-4 text-purple-400 shrink-0" />}
+                  {tone === t.value && <Check className="h-4 w-4 text-neo-accent shrink-0" />}
                 </button>
               ))}
             </CardContent>
