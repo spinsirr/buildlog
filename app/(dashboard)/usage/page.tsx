@@ -1,10 +1,12 @@
-import { redirect } from 'next/navigation'
+'use client'
+
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useUsageData } from '@/lib/hooks/use-dashboard-data'
 import { PLANS } from '@/lib/plans'
 import { platformLabels } from '@/lib/platforms'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
+import { UsageSkeleton } from './loading'
 
 const sourceLabels: Record<string, string> = {
   commit: 'Commits',
@@ -49,53 +51,14 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   )
 }
 
-export default async function UsagePage() {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default function UsagePage() {
+  const { data, isLoading } = useUsageData()
 
-  const { data: sub, error: subError } = await supabase
-    .from('subscriptions')
-    .select('status')
-    .eq('user_id', user.id)
-    .maybeSingle()
+  if (isLoading || !data) return <UsageSkeleton />
 
-  if (subError) {
-    console.error('Failed to load subscription:', subError.message)
-  }
-
-  const plan = sub?.status === 'active' ? 'pro' : 'free'
+  const { plan, posts, repoCount, platformCount, monthStart } = data
   const limits = PLANS[plan]
 
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-  const [{ data: allPosts }, { count: repoCount }, { count: platformCount }] = await Promise.all([
-    supabase
-      .from('posts')
-      .select('status, source_type, platforms, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(500),
-    supabase
-      .from('connected_repos')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_active', true),
-    supabase
-      .from('platform_connections')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id),
-  ])
-
-  const posts = (allPosts ?? []) as {
-    status: string
-    source_type: string
-    platforms: string[] | null
-    created_at: string
-  }[]
   const publishedPosts = posts.filter((p) => p.status === 'published')
   const draftPosts = posts.filter((p) => p.status === 'draft')
   const postsThisMonth = posts.filter((p) => p.created_at >= monthStart)
@@ -117,8 +80,8 @@ export default async function UsagePage() {
     total_posts: posts.length,
     published_posts: publishedPosts.length,
     draft_posts: draftPosts.length,
-    repos: repoCount ?? 0,
-    platforms: platformCount ?? 0,
+    repos: repoCount,
+    platforms: platformCount,
   }
 
   return (

@@ -1,32 +1,19 @@
-import { redirect } from 'next/navigation'
+'use client'
+
 import { PostsClient } from '@/components/posts-client'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { usePostsData } from '@/lib/hooks/use-dashboard-data'
+import { PostsSkeleton } from './loading'
 
-export default async function PostsPage() {
-  const supabase = await createServerSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+export default function PostsPage() {
+  const { data, isLoading } = usePostsData()
 
-  const [{ data: posts }, { data: connectionRows }, { data: profile }] = await Promise.all([
-    supabase
-      .from('posts')
-      .select('*, connected_repos(full_name)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase.from('platform_connections').select('platform').eq('user_id', user.id),
-    supabase.from('profiles').select('x_premium').eq('id', user.id).single(),
-  ])
-
-  const connectedPlatforms = (connectionRows ?? []).map((r: { platform: string }) => r.platform)
-  const xPremium = profile?.x_premium ?? false
+  if (isLoading || !data) return <PostsSkeleton />
 
   return (
     <PostsClient
-      initialPosts={posts ?? []}
-      initialConnectedPlatforms={connectedPlatforms}
-      xPremium={xPremium}
+      initialPosts={data.posts}
+      initialConnectedPlatforms={data.connectedPlatforms}
+      xPremium={data.xPremium}
     />
   )
 }
