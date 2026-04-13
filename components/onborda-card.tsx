@@ -3,6 +3,7 @@
 import { X } from 'lucide-react'
 import type { CardComponentProps } from 'onborda'
 import { useOnborda } from 'onborda'
+import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 
 function CardInner({
@@ -80,28 +81,22 @@ export function OnbordaCard({
   prevStep,
   arrow,
 }: CardComponentProps) {
-  // Step 0: centered overlay, no arrow
-  // onborda wraps card in an absolute-positioned framer-motion div,
-  // so we use fixed + !important to break out of that positioning
+  // Step 0: centered overlay via Portal to escape onborda's transform container
+  // (CSS fixed positioning breaks inside ancestors with transform)
   if (currentStep === 0) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 9999,
-        }}
-      >
-        <CardInner
-          step={step}
-          currentStep={currentStep}
-          totalSteps={totalSteps}
-          nextStep={nextStep}
-          prevStep={prevStep}
-        />
-      </div>
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto">
+          <CardInner
+            step={step}
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            nextStep={nextStep}
+            prevStep={prevStep}
+          />
+        </div>
+      </div>,
+      document.body
     )
   }
 
