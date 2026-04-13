@@ -21,14 +21,35 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
+  const pathname = request.nextUrl.pathname
+  const isProtected =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/posts') ||
+    pathname.startsWith('/repos') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/usage')
+
+  if (isProtected && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-  if (request.nextUrl.pathname === '/login' && user) {
+  if (pathname === '/login' && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return response
 }
 
-export const config = { matcher: ['/dashboard/:path*', '/login'] }
+// Protect every dashboard route and the login page. The (dashboard) route
+// group in app/ means URLs are /dashboard, /posts, /repos, /settings, /usage
+// — all need the auth redirect or users with stale JWTs end up calling
+// edge functions that then 401.
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/posts/:path*',
+    '/repos/:path*',
+    '/settings/:path*',
+    '/usage/:path*',
+    '/login',
+  ],
+}
