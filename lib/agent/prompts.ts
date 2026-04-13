@@ -413,10 +413,14 @@ export function buildXhsPrompt(event: AgentEvent, lang: XhsLang = 'en'): string 
   if (event.sourceType === 'commit') {
     context = `Commit in ${event.repoName}: "${event.data.message}"`
   } else if (event.sourceType === 'pr') {
-    const desc = event.data.description ? `\nPR description: ${event.data.description.slice(0, 1000)}` : ''
+    const desc = event.data.description
+      ? `\nPR description: ${event.data.description.slice(0, 1000)}`
+      : ''
     context = `PR merged in ${event.repoName}: "${event.data.title}"${desc}`
   } else if (event.sourceType === 'release') {
-    const desc = event.data.description ? `\nRelease notes: ${event.data.description.slice(0, 1000)}` : ''
+    const desc = event.data.description
+      ? `\nRelease notes: ${event.data.description.slice(0, 1000)}`
+      : ''
     context = `New release in ${event.repoName}: ${event.data.title}${desc}`
   } else {
     context = `New tag in ${event.repoName}: ${event.data.title}`
@@ -437,7 +441,11 @@ export function buildXhsPrompt(event: AgentEvent, lang: XhsLang = 'en'): string 
 
 // ─── Recap (weekly / branch) ──────────────────────────────────────────────────
 
-export function buildRecapSystemPrompt(tone: string, charLimit: number, mode: 'week' | 'branch'): string {
+export function buildRecapSystemPrompt(
+  tone: string,
+  charLimit: number,
+  mode: 'week' | 'branch'
+): string {
   const modeFraming =
     mode === 'branch'
       ? 'You are writing a social media post about progress on a specific feature branch. Focus on what was built, the progression of work, and the end result.'

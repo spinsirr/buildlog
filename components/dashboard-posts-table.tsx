@@ -18,7 +18,9 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-bold font-mono-ui uppercase tracking-widest text-zinc-500">Recent Posts</h2>
+        <h2 className="text-xs font-bold font-mono-ui uppercase tracking-widest text-zinc-500">
+          Recent Posts
+        </h2>
         {posts.length > 0 && (
           <Link
             href="/posts"

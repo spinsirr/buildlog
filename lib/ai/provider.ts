@@ -17,6 +17,6 @@ export function getGoogleProvider() {
   return createGoogleGenerativeAI({ apiKey })
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: AI SDK model types require any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: AI SDK model types require any
 export type LanguageModel = any

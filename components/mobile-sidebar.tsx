@@ -106,14 +106,9 @@ export function MobileSidebar() {
       </Sheet>
 
       {/* Mobile header logo */}
-      <Link
-        href="/dashboard"
-        className="flex items-center gap-2.5 ml-2 flex-1"
-      >
+      <Link href="/dashboard" className="flex items-center gap-2.5 ml-2 flex-1">
         <LogoMark size={22} />
-        <span className="font-display font-bold text-lg tracking-tight text-zinc-50">
-          buildlog
-        </span>
+        <span className="font-display font-bold text-lg tracking-tight text-zinc-50">buildlog</span>
       </Link>
       <NotificationBell />
     </div>

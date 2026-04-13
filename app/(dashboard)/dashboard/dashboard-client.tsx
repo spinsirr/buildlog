@@ -35,7 +35,9 @@ export function DashboardClient({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Dashboard</h1>
+        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
+          Dashboard
+        </h1>
         <button
           type="button"
           onClick={() => startOnborda('onboarding')}

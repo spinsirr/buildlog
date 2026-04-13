@@ -20,10 +20,7 @@ export async function POST(req: Request) {
   }
 
   if (!body?.repoName || !body?.projectContext) {
-    return NextResponse.json(
-      { error: 'Missing repoName or projectContext' },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: 'Missing repoName or projectContext' }, { status: 400 })
   }
 
   try {

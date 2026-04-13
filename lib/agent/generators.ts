@@ -80,7 +80,8 @@ export async function generateContent(
       abortSignal: timeoutSignal(),
     })
     const retryText = retry.text.trim()
-    content = retryText.length <= contentBudget ? retryText : truncateAtSentence(retryText, contentBudget)
+    content =
+      retryText.length <= contentBudget ? retryText : truncateAtSentence(retryText, contentBudget)
   }
   /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
 
@@ -127,7 +128,10 @@ export async function generateIntroPost(
     if (retryText.length <= contentBudget && isComplete(retryText)) {
       result = retryText
     } else {
-      result = truncateAtSentence(retryText.length > result.length ? retryText : result, contentBudget)
+      result = truncateAtSentence(
+        retryText.length > result.length ? retryText : result,
+        contentBudget
+      )
     }
   }
   /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */

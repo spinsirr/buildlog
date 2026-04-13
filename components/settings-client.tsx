@@ -341,7 +341,9 @@ export function SettingsClient({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Settings</h1>
+        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
+          Settings
+        </h1>
         <p className="text-sm text-zinc-400 mt-1">
           Manage your plan, connected platforms, and post preferences.
         </p>
@@ -418,7 +420,9 @@ export function SettingsClient({
             <ChangelogUrlCopy username={githubUsername} />
             <div className="flex items-center justify-between pt-4 border-t-2 border-zinc-800">
               <div>
-                <Label className="text-sm font-medium text-zinc-200">List in public directory</Label>
+                <Label className="text-sm font-medium text-zinc-200">
+                  List in public directory
+                </Label>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   Show up on /changelog and landing showcases. Your URL stays accessible either way.
                 </p>

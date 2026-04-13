@@ -113,11 +113,7 @@ export function PostCard({
         setXhsContent(content)
       } catch (err) {
         toast.error(
-          err instanceof Error
-            ? err.message
-            : lang === 'zh'
-              ? '生成失败'
-              : 'Generation failed'
+          err instanceof Error ? err.message : lang === 'zh' ? '生成失败' : 'Generation failed'
         )
         setShowXhs(false)
       }

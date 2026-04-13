@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: legacy harness pending ranker-migration rewrite */
 // @ts-nocheck — pending ranker-migration rewrite
 /**
  * Agent output evaluator — validates decision quality, content constraints,

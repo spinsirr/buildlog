@@ -89,7 +89,9 @@ export default function UsagePage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Usage</h1>
+        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
+          Usage
+        </h1>
         <Badge
           className={cn(
             'text-xs',

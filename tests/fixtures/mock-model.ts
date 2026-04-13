@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: legacy harness pending ranker-migration rewrite */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Mock LLM model factory for agent testing.

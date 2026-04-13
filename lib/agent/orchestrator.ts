@@ -27,11 +27,7 @@ export interface AgentOverrides {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function fetchRecentPosts(
-  userId: string,
-  repoId: string,
-  limit = 5
-): Promise<RecentPost[]> {
+async function fetchRecentPosts(userId: string, repoId: string, limit = 5): Promise<RecentPost[]> {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('posts')
@@ -53,7 +49,12 @@ function wrappedModel(model: LanguageModel) {
 async function rankEvent(
   event: AgentEvent,
   overrides?: AgentOverrides
-): Promise<{ signal: 'high' | 'low'; confidence: 'high' | 'medium' | 'low'; angle: string; reasoning: string }> {
+): Promise<{
+  signal: 'high' | 'low'
+  confidence: 'high' | 'medium' | 'low'
+  angle: string
+  reasoning: string
+}> {
   const google = overrides?.rankerModel ? null : getGoogleProvider()
   const model = overrides?.rankerModel ?? wrappedModel(google!(RANKER_MODEL))
 
@@ -107,12 +108,7 @@ export async function runAgent(
 
   // Phase 2: generate content (always — every event → draft)
   const highlights = `Signal: ${ranking.signal}. ${ranking.reasoning}`
-  const content = await _generateContent(
-    event,
-    ranking.angle,
-    highlights,
-    overrides?.contentModel
-  )
+  const content = await _generateContent(event, ranking.angle, highlights, overrides?.contentModel)
 
   return {
     signal: ranking.signal,

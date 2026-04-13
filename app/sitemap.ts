@@ -8,9 +8,7 @@ async function getChangelogEntries(): Promise<MetadataRoute.Sitemap> {
     const supabase = await createServerSupabaseClient()
     const { data, error } = await supabase
       .from('posts')
-      .select(
-        'user_id, published_at, profiles!inner(github_username, public_changelog)'
-      )
+      .select('user_id, published_at, profiles!inner(github_username, public_changelog)')
       .eq('status', 'published')
       .eq('profiles.public_changelog', true)
       .order('published_at', { ascending: false })
@@ -22,7 +20,8 @@ async function getChangelogEntries(): Promise<MetadataRoute.Sitemap> {
     type Row = {
       user_id: string
       published_at: string | null
-      profiles: { github_username: string | null; public_changelog: boolean }
+      profiles:
+        | { github_username: string | null; public_changelog: boolean }
         | { github_username: string | null; public_changelog: boolean }[]
     }
     const byUser = new Map<string, { username: string; lastModified: Date }>()

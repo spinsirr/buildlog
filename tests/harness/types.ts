@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: legacy harness pending ranker-migration rewrite */
 import type {
   AgentEvent,
   AgentResult,

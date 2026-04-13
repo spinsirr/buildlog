@@ -64,9 +64,7 @@ function NewPostForm({ onCreated, charLimit }: { onCreated: () => void; charLimi
     <div className="rounded-none border-2 border-zinc-700 bg-zinc-900/50 p-4 space-y-3">
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-1">
-        <div
-          className={cn('h-1.5 flex-1 rounded-full transition-colors bg-neo-accent')}
-        />
+        <div className={cn('h-1.5 flex-1 rounded-full transition-colors bg-neo-accent')} />
         <div
           className={cn(
             'h-1.5 flex-1 rounded-full transition-colors',
@@ -203,10 +201,7 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
           </span>
         </div>
         <ChevronDown
-          className={cn(
-            'h-4 w-4 text-zinc-500 transition-transform',
-            open && 'rotate-180'
-          )}
+          className={cn('h-4 w-4 text-zinc-500 transition-transform', open && 'rotate-180')}
         />
       </button>
 
@@ -475,7 +470,9 @@ export function PostsClient({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">Posts</h1>
+          <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
+            Posts
+          </h1>
           <p className="text-sm text-zinc-400 mt-1">
             Review AI-generated drafts and publish to your platforms.
           </p>

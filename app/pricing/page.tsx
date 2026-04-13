@@ -138,7 +138,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen antialiased bg-neo-cream text-black">
       {/* Static JSON-LD from compile-time constants — no user input, XSS-safe */}
-      {/* eslint-disable-next-line react/no-danger */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static JSON-LD from compile-time constants */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD_FAQ }} />
       <LandingNav />
 

@@ -54,9 +54,7 @@ export function XhsCopyModal({
 
         {showLangPicker ? (
           <div className="space-y-4 py-2">
-            <p className="text-sm text-zinc-400">
-              Pick a language for the XHS-style post.
-            </p>
+            <p className="text-sm text-zinc-400">Pick a language for the XHS-style post.</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -123,13 +121,7 @@ export function XhsCopyModal({
               )}
             >
               {copied ? <Check className="h-3 w-3" /> : <ClipboardCopy className="h-3 w-3" />}
-              {copied
-                ? lang === 'zh'
-                  ? '已复制'
-                  : 'Copied'
-                : lang === 'zh'
-                  ? '复制文案'
-                  : 'Copy'}
+              {copied ? (lang === 'zh' ? '已复制' : 'Copied') : lang === 'zh' ? '复制文案' : 'Copy'}
             </button>
           )}
         </DialogFooter>

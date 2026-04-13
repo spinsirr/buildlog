@@ -20,8 +20,7 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/changelog`,
     siteName: 'BuildLog',
     title: 'Changelogs — Devs shipping in public',
-    description:
-      'Browse public build-in-public timelines from developers using BuildLog.',
+    description: 'Browse public build-in-public timelines from developers using BuildLog.',
   },
   twitter: {
     card: 'summary_large_image',
@@ -175,8 +174,8 @@ export default async function ChangelogDirectoryPage() {
             </h1>
 
             <p className="font-mono-ui text-base md:text-lg max-w-lg mx-auto leading-relaxed opacity-70">
-              Every page below is a live build-in-public timeline. Code changes in,
-              ready-to-publish posts out. This is what BuildLog looks like in the wild.
+              Every page below is a live build-in-public timeline. Code changes in, ready-to-publish
+              posts out. This is what BuildLog looks like in the wild.
             </p>
           </div>
         </section>
@@ -342,8 +341,8 @@ function EmptyState() {
         No changelogs yet.
       </h2>
       <p className="font-mono-ui text-sm max-w-md mx-auto mb-8 opacity-70">
-        Nobody has a public changelog here yet. Connect your GitHub, ship something,
-        publish a post — you&apos;ll be the first one on this page.
+        Nobody has a public changelog here yet. Connect your GitHub, ship something, publish a post
+        — you&apos;ll be the first one on this page.
       </p>
       <Link
         href="/login"

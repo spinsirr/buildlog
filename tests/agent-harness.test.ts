@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: legacy harness pending ranker-migration rewrite */
 // @ts-nocheck
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
@@ -18,12 +19,14 @@
 import { describe, expect, it } from 'vitest'
 import { runAgent, runAgentSafe } from '@/lib/agent/orchestrator'
 import {
-  classifyChange,
   RANKER_INSTRUCTIONS as AGENT_INSTRUCTIONS,
   buildRankerPrompt as buildEventPrompt,
+  classifyChange,
 } from '@/lib/agent/prompts'
 import type { AgentEvent } from '@/lib/agent/types'
+
 const DECISION_SYSTEM_PROMPT = '' // deprecated; tests using this are describe.skip'd
+
 import { getContentLimit } from '@/lib/platforms'
 import { evaluate, evaluateDecisionAccuracy } from './fixtures/evaluator'
 import {
