@@ -5,14 +5,13 @@ import type { CardComponentProps } from 'onborda'
 import { useOnborda } from 'onborda'
 import { Button } from '@/components/ui/button'
 
-export function OnbordaCard({
+function CardInner({
   step,
   currentStep,
   totalSteps,
   nextStep,
   prevStep,
-  arrow,
-}: CardComponentProps) {
+}: Pick<CardComponentProps, 'step' | 'currentStep' | 'totalSteps' | 'nextStep' | 'prevStep'>) {
   const { closeOnborda } = useOnborda()
 
   return (
@@ -69,7 +68,46 @@ export function OnbordaCard({
           </Button>
         )}
       </div>
-      <span className="text-zinc-900">{arrow}</span>
     </div>
+  )
+}
+
+export function OnbordaCard({
+  step,
+  currentStep,
+  totalSteps,
+  nextStep,
+  prevStep,
+  arrow,
+}: CardComponentProps) {
+  // Step 0: centered overlay, no arrow
+  if (currentStep === 0) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto">
+          <CardInner
+            step={step}
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            nextStep={nextStep}
+            prevStep={prevStep}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Other steps: positioned by onborda relative to target
+  return (
+    <>
+      <CardInner
+        step={step}
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        nextStep={nextStep}
+        prevStep={prevStep}
+      />
+      <span className="text-zinc-900">{arrow}</span>
+    </>
   )
 }

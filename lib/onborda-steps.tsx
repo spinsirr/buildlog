@@ -18,11 +18,11 @@ export const tours: Tour[] = [
             quick tour of how it works.
           </>
         ),
-        selector: '#onborda-stats',
-        side: 'bottom',
+        selector: '#onborda-nav-dashboard',
+        side: 'right',
         showControls: true,
-        pointerPadding: 12,
-        pointerRadius: 12,
+        pointerPadding: 0,
+        pointerRadius: 0,
       },
       {
         icon: <>&#128279;</>,
