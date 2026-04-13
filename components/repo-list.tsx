@@ -4,6 +4,7 @@ import { Plus, RefreshCw, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useSWRConfig } from 'swr'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -238,11 +239,18 @@ function BranchPicker({
 
 export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
   const router = useRouter()
+  const { mutate: swrMutate } = useSWRConfig()
   const [repos, setRepos] = useState(initialRepos)
   const [pending, setPending] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [refreshing, setRefreshing] = useState<number | null>(null)
+
+  // Invalidate SWR cache so next mount sees truth (project_context, intro post, etc.)
+  const revalidateRepos = useCallback(
+    () => swrMutate((key: unknown) => Array.isArray(key) && key[0] === 'repos-data'),
+    [swrMutate]
+  )
 
   async function connectRepo(repo: Repo) {
     setPending(repo.id)
@@ -263,7 +271,7 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
       setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, connected: true } : r)))
       setSearch('')
       setModalOpen(false)
-      router.refresh()
+      await revalidateRepos()
     } finally {
       setPending(null)
     }
@@ -287,7 +295,7 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
             : r
         )
       )
-      router.refresh()
+      await revalidateRepos()
     } finally {
       setPending(null)
     }
@@ -314,6 +322,7 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
         toast.success('Context refreshed', {
           description: `Updated project context for ${repo.full_name}`,
         })
+        await revalidateRepos()
       } else {
         toast.error(result.error || 'Failed to refresh context')
       }

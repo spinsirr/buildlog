@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useSWRConfig } from 'swr'
 import { PostCard } from '@/components/post-card'
 import { RecapBranchPicker } from '@/components/recap-branch-picker'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -243,6 +244,7 @@ export function PostsClient({
   xPremium: boolean
 }) {
   const supabase = useMemo(() => createClient(), [])
+  const { mutate: swrMutate } = useSWRConfig()
   const publishingRef = useRef(false)
   const searchParams = useSearchParams()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -377,6 +379,16 @@ export function PostsClient({
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     setPosts(data ?? [])
+
+    // Invalidate SWR caches that depend on posts so other pages (dashboard,
+    // sidebar badges, streak) refetch next time they mount.
+    await swrMutate((key: unknown) => {
+      if (Array.isArray(key)) {
+        const k = key[0] as string
+        return k === 'posts-data' || k === 'dashboard-data'
+      }
+      return key === 'draft-count' || key === 'streak'
+    })
   }
 
   const filtered = search.trim()

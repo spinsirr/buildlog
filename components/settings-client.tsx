@@ -4,6 +4,7 @@ import { Check, ChevronDown, CreditCard, Globe, Loader2, Sparkles } from 'lucide
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { useSWRConfig } from 'swr'
 import { ChangelogUrlCopy } from '@/components/changelog-url-copy'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,8 +58,23 @@ export function SettingsClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
+  const { mutate: swrMutate } = useSWRConfig()
   const [isPending, startTransition] = useTransition()
   const [connections, setConnections] = useState(initialConnections)
+
+  // Invalidate SWR cache for settings + dependent pages (posts page reads
+  // xPremium + connected platforms from profiles, so it stales too).
+  const revalidateSettings = useCallback(
+    () =>
+      swrMutate((key: unknown) => {
+        if (Array.isArray(key)) {
+          const k = key[0] as string
+          return k === 'settings-data' || k === 'posts-data' || k === 'dashboard-data'
+        }
+        return false
+      }),
+    [swrMutate]
+  )
 
   // Handle OAuth redirect results (?connected=twitter or ?error=twitter_denied)
   // and Stripe checkout results (?checkout=success or ?checkout=canceled)
@@ -90,6 +106,7 @@ export function SettingsClient({
                     : { ...c, connected: false, platform_username: null }
                 })
               )
+              revalidateSettings()
             }
           }
         )
@@ -103,7 +120,7 @@ export function SettingsClient({
       })
       router.replace('/settings', { scroll: false })
     }
-  }, [searchParams, router, supabase])
+  }, [searchParams, router, supabase, revalidateSettings])
 
   const [profile, setProfile] = useState(initialProfile)
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
@@ -164,6 +181,8 @@ export function SettingsClient({
       if (error) {
         setProfile((p) => ({ ...p, auto_publish: prev }))
         toast.error('Update failed', { description: 'Failed to update auto-publish setting' })
+      } else {
+        revalidateSettings()
       }
     }
   }
@@ -182,6 +201,8 @@ export function SettingsClient({
       if (error) {
         setProfile((p) => ({ ...p, email_notifications: prev }))
         toast.error('Update failed', { description: 'Failed to update notification setting' })
+      } else {
+        revalidateSettings()
       }
     }
   }
@@ -200,6 +221,8 @@ export function SettingsClient({
       if (error) {
         setProfile((p) => ({ ...p, x_premium: prev }))
         toast.error('Update failed', { description: 'Failed to update X Premium setting' })
+      } else {
+        revalidateSettings()
       }
     }
   }
@@ -218,6 +241,8 @@ export function SettingsClient({
       if (error) {
         setProfile((p) => ({ ...p, public_changelog: prev }))
         toast.error('Update failed', { description: 'Failed to update directory visibility' })
+      } else {
+        revalidateSettings()
       }
     }
   }
@@ -232,6 +257,7 @@ export function SettingsClient({
         await supabase.from('profiles').update({ tone: newTone }).eq('id', user.id)
       }
       setProfile((prev) => ({ ...prev, tone: newTone }))
+      revalidateSettings()
     } finally {
       setSavingTone(false)
     }
@@ -305,6 +331,7 @@ export function SettingsClient({
       setBskyHandle('')
       setBskyPassword('')
       toast.success('Bluesky connected')
+      revalidateSettings()
     } finally {
       setBskyLoading(false)
     }
@@ -319,6 +346,7 @@ export function SettingsClient({
           c.platform === platform ? { ...c, connected: false, platform_username: null } : c
         )
       )
+      revalidateSettings()
       const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
       toast.success(`${label} disconnected`)
       setActionPlatform(null)

@@ -3,10 +3,12 @@
 import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { createClient } from '@/lib/supabase/client'
 
 export function DashboardActions({ postId }: { postId: string }) {
   const router = useRouter()
+  const { mutate: swrMutate } = useSWRConfig()
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete() {
@@ -15,7 +17,13 @@ export function DashboardActions({ postId }: { postId: string }) {
     try {
       const supabase = createClient()
       await supabase.from('posts').delete().eq('id', postId)
-      router.refresh()
+      await swrMutate((key: unknown) => {
+        if (Array.isArray(key)) {
+          const k = key[0] as string
+          return k === 'dashboard-data' || k === 'posts-data'
+        }
+        return key === 'draft-count' || key === 'streak'
+      })
     } finally {
       setDeleting(false)
     }
