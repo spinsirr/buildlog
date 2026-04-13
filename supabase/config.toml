@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.connect-repo]
 verify_jwt = false
+
+[functions.generate-recap]
+verify_jwt = false
+
+[functions.backfill-context]
+verify_jwt = false
