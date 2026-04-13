@@ -1,6 +1,7 @@
 import { ArrowRight, Check, GitCommit, Globe, Star, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { FeaturedChangelogs } from '@/components/featured-changelogs'
 import { LandingNav } from '@/components/landing-nav'
 import { LogoMark } from '@/components/logo-mark'
 
@@ -82,17 +83,17 @@ const JSON_LD_BREADCRUMB = JSON.stringify({
 function JsonLd() {
   return (
     <>
-      {/* eslint-disable-next-line -- static constants, no XSS risk */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static JSON-LD from compile-time constants */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON_LD_SOFTWARE_APP }}
       />
-      {/* eslint-disable-next-line -- static constants, no XSS risk */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static JSON-LD from compile-time constants */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON_LD_ORGANIZATION }}
       />
-      {/* eslint-disable-next-line -- static constants, no XSS risk */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static JSON-LD from compile-time constants */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD_BREADCRUMB }} />
     </>
   )
@@ -302,7 +303,7 @@ function GridOverlay({ opacity = '08' }: { opacity?: string }) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default function LandingPage() {
+export default async function LandingPage() {
   return (
     <div className="min-h-screen antialiased bg-neo-cream text-black">
       <JsonLd />
@@ -592,6 +593,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── FEATURED CHANGELOGS ───────────────────────────────────────────── */}
+        <FeaturedChangelogs />
+
         {/* ── CTA ───────────────────────────────────────────────────────────── */}
         <section
           aria-labelledby="cta-heading"
@@ -662,6 +666,12 @@ export default function LandingPage() {
             <span className="font-display font-bold text-lg tracking-tight">buildlog</span>
           </div>
           <div className="flex items-center gap-6">
+            <Link
+              href="/changelog"
+              className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"
+            >
+              Changelogs
+            </Link>
             <Link
               href="/privacy"
               className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"

@@ -78,7 +78,7 @@ Supabase Edge Functions (Deno runtime)
 - Agent modules live in `lib/agent/` — orchestrator (ToolLoopAgent), prompts, types
 - Agent API authenticates via `x-agent-secret` header (AGENT_API_SECRET env var)
 - `lib/supabase/admin.ts` provides service-role client for API routes (bypasses RLS)
-- Decision history in `post_decisions` table with reasoning traces (includes bundle_later decisions)
+- Ranker history in `post_decisions` table with reasoning traces (decision column stores signal: `high`/`low`/`error`)
 - Platform character limits in `lib/platforms.ts`, X Premium support via `profiles.x_premium`
 
 ## Skill routing

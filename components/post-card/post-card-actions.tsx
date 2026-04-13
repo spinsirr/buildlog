@@ -80,7 +80,7 @@ export function PostCardActions({
           size="icon"
           onClick={onShowPreview}
           disabled={busy || overLimit}
-          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-purple-400 disabled:cursor-not-allowed"
+          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-neo-accent disabled:cursor-not-allowed"
           aria-label={
             overLimit
               ? 'Post exceeds character limit'

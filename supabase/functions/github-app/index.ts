@@ -35,7 +35,9 @@ Deno.serve(async (req) => {
     const ghIdentity = user.identities?.find(
       (i: { provider: string }) => i.provider === "github",
     )
-    const updateData: Record<string, unknown> = { "github_installation_id": body.installation_id }
+    const updateData: Record<string, unknown> = {
+      "github_installation_id": body.installation_id,
+    }
     if (ghIdentity?.identity_data?.sub) {
       const ghUserId = parseInt(ghIdentity.identity_data.sub, 10)
       if (!isNaN(ghUserId)) updateData["github_user_id"] = ghUserId
@@ -59,10 +61,13 @@ Deno.serve(async (req) => {
       .eq("id", user.id)
       .single()
 
-    log.info("profile query result: installationId={installationId}, error={error}", {
-      installationId: profile?.github_installation_id,
-      error: profileErr?.message,
-    })
+    log.info(
+      "profile query result: installationId={installationId}, error={error}",
+      {
+        installationId: profile?.github_installation_id,
+        error: profileErr?.message,
+      },
+    )
 
     let installationId = profile?.github_installation_id as number | null
 
@@ -74,13 +79,16 @@ Deno.serve(async (req) => {
       if (ghIdentity) {
         try {
           const jwt = await generateAppJwt()
-          const detectRes = await fetch("https://api.github.com/app/installations", {
-            headers: {
-              Authorization: `Bearer ${jwt}`,
-              Accept: "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28",
+          const detectRes = await fetch(
+            "https://api.github.com/app/installations",
+            {
+              headers: {
+                Authorization: `Bearer ${jwt}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
             },
-          })
+          )
           if (detectRes.ok && ghIdentity.identity_data?.sub) {
             const ghUserId = parseInt(ghIdentity.identity_data.sub, 10)
             const installations = (await detectRes.json()) as {
@@ -92,7 +100,10 @@ Deno.serve(async (req) => {
               installationId = match.id
               await supabase
                 .from("profiles")
-                .update({ "github_installation_id": match.id, "github_user_id": ghUserId })
+                .update({
+                  "github_installation_id": match.id,
+                  "github_user_id": ghUserId,
+                })
                 .eq("id", user.id)
               log.info("auto-detected installation {id} for user {userId}", {
                 id: match.id,
@@ -101,7 +112,9 @@ Deno.serve(async (req) => {
             }
           }
         } catch (err) {
-          log.error("auto-detect failed: {error}", { error: (err as Error).message })
+          log.error("auto-detect failed: {error}", {
+            error: (err as Error).message,
+          })
         }
       }
     }
@@ -117,18 +130,28 @@ Deno.serve(async (req) => {
       const token = await getInstallationToken(installationId)
       log.info("got installation token OK")
 
-      const res = await fetch("https://api.github.com/installation/repositories?per_page=100", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
+      const res = await fetch(
+        "https://api.github.com/installation/repositories?per_page=100",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
         },
-      })
+      )
 
       if (!res.ok) {
         const errText = await res.text()
-        log.error("list repos failed: {status} {body}", { status: res.status, body: errText })
-        return errorResponse(`GitHub API error: ${res.status} ${errText}`, 502, req)
+        log.error("list repos failed: {status} {body}", {
+          status: res.status,
+          body: errText,
+        })
+        return errorResponse(
+          `GitHub API error: ${res.status} ${errText}`,
+          502,
+          req,
+        )
       }
 
       const data = (await res.json()) as {
@@ -174,7 +197,8 @@ Deno.serve(async (req) => {
         .sort((a, b) => {
           if (!a.pushed_at) return 1
           if (!b.pushed_at) return -1
-          return new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime()
+          return new Date(b.pushed_at).getTime() -
+            new Date(a.pushed_at).getTime()
         })
 
       return jsonResponse({ repos, needsInstall: false }, req)
@@ -183,7 +207,11 @@ Deno.serve(async (req) => {
         error: (err as Error).message,
         stack: (err as Error).stack,
       })
-      return errorResponse(`Failed to list repos: ${(err as Error).message}`, 500, req)
+      return errorResponse(
+        `Failed to list repos: ${(err as Error).message}`,
+        500,
+        req,
+      )
     }
   }
 
@@ -217,16 +245,32 @@ Deno.serve(async (req) => {
 
       if (!res.ok) {
         const errText = await res.text()
-        return errorResponse(`GitHub API error: ${res.status} ${errText}`, 502, req)
+        return errorResponse(
+          `GitHub API error: ${res.status} ${errText}`,
+          502,
+          req,
+        )
       }
 
-      const branches = (await res.json()) as { name: string; protected: boolean }[]
+      const branches = (await res.json()) as {
+        name: string
+        protected: boolean
+      }[]
       return jsonResponse(
-        { branches: branches.map((b) => ({ name: b.name, protected: b.protected })) },
+        {
+          branches: branches.map((b) => ({
+            name: b.name,
+            protected: b.protected,
+          })),
+        },
         req,
       )
     } catch (err) {
-      return errorResponse(`Failed to list branches: ${(err as Error).message}`, 500, req)
+      return errorResponse(
+        `Failed to list branches: ${(err as Error).message}`,
+        500,
+        req,
+      )
     }
   }
 

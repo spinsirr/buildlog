@@ -26,7 +26,9 @@ export async function generateAppJwt(): Promise<string> {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=/g, "")
-  const payload = btoa(JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId }))
+  const payload = btoa(
+    JSON.stringify({ iat: now - 60, exp: now + 600, iss: appId }),
+  )
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=/g, "")
@@ -54,7 +56,9 @@ export async function generateAppJwt(): Promise<string> {
   return `${header}.${payload}.${sig}`
 }
 
-export async function getInstallationToken(installationId: number): Promise<string> {
+export async function getInstallationToken(
+  installationId: number,
+): Promise<string> {
   const jwt = await generateAppJwt()
   const res = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
@@ -117,7 +121,9 @@ export async function fetchTagContext(
   try {
     token = await getInstallationToken(installationId)
   } catch (err) {
-    log.warn("failed to get installation token for tag context: {error}", { error: String(err) })
+    log.warn("failed to get installation token for tag context: {error}", {
+      error: String(err),
+    })
     return result
   }
 
@@ -167,7 +173,10 @@ export async function fetchTagContext(
           const MAX_PATCH_BUDGET = 12_000
           for (const f of compare.files) {
             const patchLen = f.patch?.length ?? 0
-            if (totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0) break
+            if (
+              totalPatchSize + patchLen > MAX_PATCH_BUDGET &&
+              result.diffs.length > 0
+            ) break
             result.diffs.push({
               filename: f.filename,
               status: f.status,
@@ -185,7 +194,9 @@ export async function fetchTagContext(
           { headers },
         )
         if (commitRes.ok) {
-          const commits = (await commitRes.json()) as Array<{ commit: { message: string } }>
+          const commits = (await commitRes.json()) as Array<
+            { commit: { message: string } }
+          >
           result.commitMessages = commits.map((c) => c.commit.message.split("\n")[0])
         }
       }
@@ -209,7 +220,9 @@ export async function fetchRepoContext(
   try {
     token = await getInstallationToken(installationId)
   } catch (err) {
-    log.warn("failed to get token for repo context: {error}", { error: String(err) })
+    log.warn("failed to get token for repo context: {error}", {
+      error: String(err),
+    })
     return null
   }
 
@@ -270,6 +283,134 @@ export async function fetchRepoContext(
   return parts.join("\n\n")
 }
 
+export interface CommitContext {
+  commitMessages: string[]
+  files: string[]
+  diffs: FileDiff[]
+}
+
+/**
+ * Fetch commit messages, file paths, and real diffs for a push event.
+ * Uses the compare API (before...head) which returns the cumulative diff
+ * across all commits in the push — one API call regardless of commit count.
+ *
+ * Handles new-branch pushes (before = all zeros) by falling back to a
+ * single-commit fetch against the head SHA.
+ *
+ * Best-effort: returns partial data if API calls fail.
+ */
+export async function fetchCommitContext(
+  installationId: number,
+  repoFullName: string,
+  beforeSha: string,
+  headSha: string,
+): Promise<CommitContext> {
+  const result: CommitContext = { commitMessages: [], files: [], diffs: [] }
+
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get installation token for commit context: {error}", {
+      error: String(err),
+    })
+    return result
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  const isFirstPush = /^0+$/.test(beforeSha)
+  const MAX_PATCH_BUDGET = 12_000
+  const MAX_FILE_PATCH = 3_000
+
+  try {
+    if (isFirstPush) {
+      // New branch / first push — no "before" to compare against.
+      // Fetch just the head commit's files.
+      const res = await fetch(
+        `https://api.github.com/repos/${repoFullName}/commits/${headSha}`,
+        { headers },
+      )
+      if (!res.ok) return result
+
+      const commit = (await res.json()) as {
+        commit: { message: string }
+        files?: Array<{
+          filename: string
+          status: string
+          additions: number
+          deletions: number
+          patch?: string
+        }>
+      }
+      result.commitMessages = [commit.commit.message.split("\n")[0]]
+      result.files = commit.files?.map((f) => f.filename) ?? []
+
+      let totalPatchSize = 0
+      for (const f of commit.files ?? []) {
+        const patchLen = f.patch?.length ?? 0
+        if (
+          totalPatchSize + patchLen > MAX_PATCH_BUDGET &&
+          result.diffs.length > 0
+        ) break
+        result.diffs.push({
+          filename: f.filename,
+          status: f.status,
+          additions: f.additions,
+          deletions: f.deletions,
+          patch: f.patch?.slice(0, MAX_FILE_PATCH),
+        })
+        totalPatchSize += Math.min(patchLen, MAX_FILE_PATCH)
+      }
+      return result
+    }
+
+    // Normal push — compare cumulative diff across all commits
+    const res = await fetch(
+      `https://api.github.com/repos/${repoFullName}/compare/${beforeSha}...${headSha}`,
+      { headers },
+    )
+    if (!res.ok) return result
+
+    const compare = (await res.json()) as {
+      commits: Array<{ commit: { message: string } }>
+      files?: Array<{
+        filename: string
+        status: string
+        additions: number
+        deletions: number
+        patch?: string
+      }>
+    }
+    result.commitMessages = compare.commits.map((c) => c.commit.message.split("\n")[0])
+    result.files = compare.files?.map((f) => f.filename) ?? []
+
+    let totalPatchSize = 0
+    for (const f of compare.files ?? []) {
+      const patchLen = f.patch?.length ?? 0
+      if (
+        totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0
+      ) break
+      result.diffs.push({
+        filename: f.filename,
+        status: f.status,
+        additions: f.additions,
+        deletions: f.deletions,
+        patch: f.patch?.slice(0, MAX_FILE_PATCH),
+      })
+      totalPatchSize += Math.min(patchLen, MAX_FILE_PATCH)
+    }
+  } catch (err) {
+    log.warn("failed to fetch commit context: {error}", { error: String(err) })
+  }
+
+  return result
+}
+
 export async function fetchPrContext(
   installationId: number,
   repoFullName: string,
@@ -281,7 +422,9 @@ export async function fetchPrContext(
   try {
     token = await getInstallationToken(installationId)
   } catch (err) {
-    log.warn("failed to get installation token for PR context: {error}", { error: String(err) })
+    log.warn("failed to get installation token for PR context: {error}", {
+      error: String(err),
+    })
     return result
   }
 
@@ -293,12 +436,18 @@ export async function fetchPrContext(
 
   // Fetch commits and files in parallel
   const [commitsRes, filesRes] = await Promise.allSettled([
-    fetch(`https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/commits?per_page=50`, {
-      headers,
-    }),
-    fetch(`https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/files?per_page=100`, {
-      headers,
-    }),
+    fetch(
+      `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/commits?per_page=50`,
+      {
+        headers,
+      },
+    ),
+    fetch(
+      `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/files?per_page=100`,
+      {
+        headers,
+      },
+    ),
   ])
 
   if (commitsRes.status === "fulfilled" && commitsRes.value.ok) {
@@ -324,7 +473,9 @@ export async function fetchPrContext(
     const MAX_PATCH_BUDGET = 12_000
     for (const f of files) {
       const patchLen = f.patch?.length ?? 0
-      if (totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0) break
+      if (
+        totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0
+      ) break
       result.diffs.push({
         filename: f.filename,
         status: f.status,
@@ -362,7 +513,9 @@ export async function fetchRecentCommits(
   try {
     token = await getInstallationToken(installationId)
   } catch (err) {
-    log.warn("failed to get token for recent commits: {error}", { error: String(err) })
+    log.warn("failed to get token for recent commits: {error}", {
+      error: String(err),
+    })
     return []
   }
 
@@ -388,7 +541,10 @@ export async function fetchRecentCommits(
     }
     const commits = (await res.json()) as Array<{
       sha: string
-      commit: { message: string; author: { name: string; date: string } | null }
+      commit: {
+        message: string
+        author: { name: string; date: string } | null
+      }
     }>
     return commits.map((c) => ({
       sha: c.sha.slice(0, 7),
@@ -422,7 +578,9 @@ export async function fetchMergedPrs(
   try {
     token = await getInstallationToken(installationId)
   } catch (err) {
-    log.warn("failed to get token for merged PRs: {error}", { error: String(err) })
+    log.warn("failed to get token for merged PRs: {error}", {
+      error: String(err),
+    })
     return []
   }
 
@@ -485,7 +643,9 @@ export async function fetchRecentReleases(
   try {
     token = await getInstallationToken(installationId)
   } catch (err) {
-    log.warn("failed to get token for releases: {error}", { error: String(err) })
+    log.warn("failed to get token for releases: {error}", {
+      error: String(err),
+    })
     return []
   }
 
@@ -556,10 +716,16 @@ export async function fetchRepoRecapData(
     branch ? Promise.resolve([]) : fetchRecentReleases(installationId, repoFullName, since),
   ] as const
 
-  const [commitsResult, prsResult, releasesResult] = await Promise.allSettled(promises)
+  const [commitsResult, prsResult, releasesResult] = await Promise.allSettled(
+    promises,
+  )
 
-  if (commitsResult.status === "fulfilled") result.commits = commitsResult.value
-  if (prsResult.status === "fulfilled") result.mergedPrs = prsResult.value as MergedPr[]
+  if (commitsResult.status === "fulfilled") {
+    result.commits = commitsResult.value
+  }
+  if (prsResult.status === "fulfilled") {
+    result.mergedPrs = prsResult.value as MergedPr[]
+  }
   if (releasesResult.status === "fulfilled") {
     result.releases = releasesResult.value as RecentRelease[]
   }

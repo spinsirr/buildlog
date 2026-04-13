@@ -10,6 +10,10 @@ export type Post = {
   platform_post_url: string | null
   published_at: string | null
   scheduled_at: string | null
+  /** AI ranker output — 'high' = worth shipping, 'low' = internal/trivial, null = manual/legacy */
+  signal: 'high' | 'low' | null
+  signal_reason: string | null
+  angle: string | null
 }
 
 export type Profile = {
@@ -23,6 +27,7 @@ export type ProfileSettings = {
   email_notifications: boolean
   publish_delay_minutes: number
   x_premium: boolean
+  public_changelog: boolean
 }
 
 export type Connection = {

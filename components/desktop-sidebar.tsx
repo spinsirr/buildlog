@@ -3,8 +3,8 @@
 import { LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { LogoMark } from '@/components/logo-mark'
 import { NotificationBell } from '@/components/notification-bell'
-import { QuickCapture } from '@/components/quick-capture'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { StreakCounter } from '@/components/streak-counter'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -23,11 +23,14 @@ export function DesktopSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex w-60 border-r border-zinc-800/50 flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30 [view-transition-name:sidebar]">
+    <aside className="hidden md:flex w-60 border-r-2 border-zinc-800 flex-col fixed inset-y-0 left-0 bg-zinc-950 z-30 [view-transition-name:sidebar]">
       {/* Logo + Notifications */}
-      <div className="h-14 flex items-center justify-between px-5 border-b border-zinc-800/50">
-        <Link href="/dashboard" className="font-semibold text-lg tracking-tight text-zinc-50">
-          Build<span className="text-purple-400">Log</span>
+      <div className="h-14 flex items-center justify-between px-5 border-b-2 border-zinc-800">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <LogoMark size={22} />
+          <span className="font-display font-bold text-lg tracking-tight text-zinc-50">
+            buildlog
+          </span>
         </Link>
         <NotificationBell />
       </div>
@@ -39,7 +42,6 @@ export function DesktopSidebar() {
 
       {/* Pinned to bottom */}
       <div className="shrink-0">
-        <QuickCapture />
         <StreakCounter />
         <Separator className="bg-zinc-800/50" />
       </div>

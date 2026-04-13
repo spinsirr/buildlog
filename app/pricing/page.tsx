@@ -138,7 +138,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen antialiased bg-neo-cream text-black">
       {/* Static JSON-LD from compile-time constants — no user input, XSS-safe */}
-      {/* eslint-disable-next-line react/no-danger */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static JSON-LD from compile-time constants */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON_LD_FAQ }} />
       <LandingNav />
 
@@ -365,6 +365,12 @@ export default function PricingPage() {
             <span className="font-display font-bold text-lg tracking-tight">buildlog</span>
           </div>
           <div className="flex items-center gap-6">
+            <Link
+              href="/changelog"
+              className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"
+            >
+              Changelogs
+            </Link>
             <Link
               href="/privacy"
               className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"

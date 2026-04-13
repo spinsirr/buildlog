@@ -55,7 +55,11 @@ export function withCors(res: Response, req?: Request): Response {
   })
 }
 
-export function jsonResponse(body: unknown, req?: Request, init: ResponseInit = {}): Response {
+export function jsonResponse(
+  body: unknown,
+  req?: Request,
+  init: ResponseInit = {},
+): Response {
   const headers = new Headers(init.headers)
   headers.set("content-type", "application/json")
 

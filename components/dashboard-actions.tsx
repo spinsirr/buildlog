@@ -26,7 +26,7 @@ export function DashboardActions({ postId }: { postId: string }) {
       <button
         type="button"
         onClick={() => router.push(`/posts?edit=${postId}`)}
-        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neo-accent focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
         aria-label="Edit post"
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -35,7 +35,7 @@ export function DashboardActions({ postId }: { postId: string }) {
         type="button"
         onClick={handleDelete}
         disabled={deleting}
-        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md text-zinc-400 hover:text-red-400 hover:bg-zinc-800 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neo-accent focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
         aria-label="Delete post"
       >
         {deleting ? (

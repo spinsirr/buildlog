@@ -159,7 +159,7 @@ export function RecapBranchPicker({
           <Button
             onClick={() => onGenerate(selectedRepo, selectedBranch)}
             disabled={!selectedRepo || !selectedBranch || loading}
-            className="bg-purple-600 hover:bg-purple-500 text-white border-0"
+            className="bg-neo-accent hover:bg-neo-accent/90 text-white border-0"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
             Generate

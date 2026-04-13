@@ -10,7 +10,8 @@ function escapeHtml(str: string): string {
 }
 
 function getAppUrl(): string {
-  return Deno.env.get("APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://buildlog.ink"
+  return Deno.env.get("APP_URL") ?? Deno.env.get("NEXT_PUBLIC_APP_URL") ??
+    "https://buildlog.ink"
 }
 
 export async function sendNotificationEmail({

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { XhsCopyModal } from '@/components/xhs-copy-modal'
+import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
@@ -26,7 +26,7 @@ export function PostCard({
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
-  onGenerateXhs: (id: string) => Promise<string>
+  onGenerateXhs: (id: string, lang: XhsLang) => Promise<string>
   onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit?: number
@@ -37,8 +37,9 @@ export function PostCard({
   const [regenerating, setRegenerating] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showXhs, setShowXhs] = useState(false)
-  const [xhsContent, setXhsContent] = useState('')
+  const [xhsContent, setXhsContent] = useState<string | null>(null)
   const [xhsLoading, setXhsLoading] = useState(false)
+  const [xhsLang, setXhsLang] = useState<XhsLang | null>(null)
 
   const charCount = (editing ? editContent : post.content).length
   const overLimit = charCount > charLimit
@@ -95,18 +96,40 @@ export function PostCard({
     setRegenerating(false)
   }, [onRegenerate, post.id])
 
-  const handleGenerateXhs = useCallback(async () => {
+  // Opening the modal only shows the language picker — generation happens
+  // after the user picks en/zh so we don't commit tokens until they choose.
+  const handleOpenXhs = useCallback(() => {
+    setXhsContent(null)
+    setXhsLang(null)
     setShowXhs(true)
-    setXhsLoading(true)
-    try {
-      const content = await onGenerateXhs(post.id)
-      setXhsContent(content)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '生成失败')
-      setShowXhs(false)
+  }, [])
+
+  const handleXhsGenerate = useCallback(
+    async (lang: XhsLang) => {
+      setXhsLang(lang)
+      setXhsLoading(true)
+      try {
+        const content = await onGenerateXhs(post.id, lang)
+        setXhsContent(content)
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : lang === 'zh' ? '生成失败' : 'Generation failed'
+        )
+        setShowXhs(false)
+      }
+      setXhsLoading(false)
+    },
+    [onGenerateXhs, post.id]
+  )
+
+  const handleXhsOpenChange = useCallback((open: boolean) => {
+    setShowXhs(open)
+    if (!open) {
+      setXhsContent(null)
+      setXhsLang(null)
+      setXhsLoading(false)
     }
-    setXhsLoading(false)
-  }, [onGenerateXhs, post.id])
+  }, [])
 
   const handleEdit = useCallback(() => {
     setEditContent(post.content)
@@ -172,7 +195,7 @@ export function PostCard({
             onEdit={handleEdit}
             onRegenerate={handleRegenerate}
             onShowPreview={handleShowPreview}
-            onGenerateXhs={handleGenerateXhs}
+            onGenerateXhs={handleOpenXhs}
             onDelete={handleDelete}
           />
         </div>
@@ -190,9 +213,11 @@ export function PostCard({
 
       <XhsCopyModal
         open={showXhs}
-        onOpenChange={setShowXhs}
+        onOpenChange={handleXhsOpenChange}
         content={xhsContent}
         loading={xhsLoading}
+        lang={xhsLang}
+        onGenerate={handleXhsGenerate}
       />
     </Card>
   )

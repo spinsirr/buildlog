@@ -33,24 +33,24 @@ export function StreakCounter() {
     <div className="px-3 pb-3">
       <div
         className={cn(
-          'flex items-center gap-2 px-3 py-2.5 rounded-md border transition-colors',
+          'flex items-center gap-2 px-3 py-2.5 rounded-none border-2 transition-colors',
           fire
-            ? 'bg-orange-500/5 border-orange-500/20'
+            ? 'bg-neo-accent/5 border-neo-accent/20'
             : hot
-              ? 'bg-amber-500/5 border-amber-500/20'
+              ? 'bg-neo-secondary/5 border-neo-secondary/20'
               : 'bg-zinc-900 border-zinc-800'
         )}
       >
         <Flame
           className={cn(
             'h-4 w-4 transition-colors',
-            fire ? 'text-orange-400' : hot ? 'text-amber-400' : 'text-zinc-500'
+            fire ? 'text-neo-accent' : hot ? 'text-neo-secondary' : 'text-zinc-500'
           )}
         />
         <span
           className={cn(
-            'text-sm font-medium tabular-nums',
-            fire ? 'text-orange-300' : hot ? 'text-amber-300' : 'text-zinc-300'
+            'text-sm font-bold font-mono-ui tabular-nums',
+            fire ? 'text-neo-accent' : hot ? 'text-neo-secondary' : 'text-zinc-300'
           )}
         >
           {count}

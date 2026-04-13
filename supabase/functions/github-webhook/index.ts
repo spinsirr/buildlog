@@ -1,13 +1,13 @@
-import { generatePost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { hmacSha256Hex, timingSafeEqual } from "../_shared/crypto.ts"
-import { decidePostAction, type DecisionInput } from "../_shared/decision.ts"
-import { fetchPrContext, fetchTagContext } from "../_shared/github.ts"
+import type { FileDiff } from "../_shared/github.ts"
+import { fetchCommitContext, fetchPrContext, fetchTagContext } from "../_shared/github.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { notify } from "../_shared/notify.ts"
 import { fetchPlatformsAndPublish } from "../_shared/publish.ts"
 import { checkLimit } from "../_shared/subscription.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
+import { callVercelAi } from "../_shared/vercel-ai.ts"
 
 await setupLogger()
 const log = getLog("github-webhook")
@@ -31,7 +31,7 @@ interface AgentApiEvent {
 }
 
 interface AgentApiResult {
-  decision: "post" | "skip" | "bundle_later" | "error"
+  signal: "high" | "low" | "error"
   reasoning: string
   confidence: "high" | "medium" | "low"
   angle: string | null
@@ -39,12 +39,16 @@ interface AgentApiResult {
   stepCount: number
 }
 
-async function callAgentApi(event: AgentApiEvent): Promise<AgentApiResult | null> {
+async function callAgentApi(
+  event: AgentApiEvent,
+): Promise<AgentApiResult | null> {
   const appUrl = Deno.env.get("BUILDLOG_APP_URL")
   const secret = Deno.env.get("AGENT_API_SECRET")
 
   if (!appUrl || !secret) {
-    log.warn("agent API not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)")
+    log.warn(
+      "agent API not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)",
+    )
     return null
   }
 
@@ -81,7 +85,115 @@ async function callAgentApi(event: AgentApiEvent): Promise<AgentApiResult | null
   }
 }
 
-async function verifySignature(body: string, signature: string): Promise<boolean> {
+// ---------------------------------------------------------------------------
+// Cheap pre-filter: skip obvious noise before spending AI/API tokens.
+// Runs purely on webhook payload data — no GitHub API call needed.
+// ---------------------------------------------------------------------------
+
+type PushCommit = {
+  message: string
+  added?: string[]
+  removed?: string[]
+  modified?: string[]
+}
+
+const LOCKFILE_NAMES = new Set([
+  "bun.lockb",
+  "bun.lock",
+  "package-lock.json",
+  "yarn.lock",
+  "pnpm-lock.yaml",
+  "Cargo.lock",
+  "poetry.lock",
+  "uv.lock",
+  "Gemfile.lock",
+  "composer.lock",
+  "go.sum",
+])
+
+function isLockfile(path: string): boolean {
+  const name = path.split("/").pop() ?? ""
+  return LOCKFILE_NAMES.has(name)
+}
+
+function isCiConfig(path: string): boolean {
+  return (
+    path.startsWith(".github/workflows/") ||
+    path.startsWith(".github/actions/") ||
+    path.startsWith(".circleci/") ||
+    path.startsWith(".gitlab/") ||
+    path === ".gitlab-ci.yml" ||
+    path === "vercel.json" ||
+    path === "netlify.toml" ||
+    path === "fly.toml" ||
+    path === "render.yaml"
+  )
+}
+
+function isDocOrToolingFile(path: string): boolean {
+  const lower = path.toLowerCase()
+  const name = lower.split("/").pop() ?? ""
+  if (
+    lower.endsWith(".md") || lower.endsWith(".mdx") || lower.endsWith(".txt")
+  ) return true
+  if (name === "readme" || name === "changelog" || name === "license") {
+    return true
+  }
+  if (name === ".gitignore" || name === ".gitattributes") return true
+  if (name === ".editorconfig") return true
+  if (name.startsWith(".prettierrc") || name === "prettier.config.js") {
+    return true
+  }
+  if (name.startsWith(".eslintrc") || name === "eslint.config.js") return true
+  if (name === "biome.json" || name === "biome.jsonc") return true
+  return false
+}
+
+/**
+ * Returns a skip reason if the push is obvious noise, else null.
+ * Conservative — only skips when we're very confident it's not user-facing.
+ */
+function preFilterPush(commits: PushCommit[]): string | null {
+  if (commits.length === 0) return "no_commits"
+
+  // All merge commits — GitHub merge commits carry no product info
+  if (commits.every((c) => c.message.startsWith("Merge "))) {
+    return "merge_commits"
+  }
+
+  const uniqueFiles = [
+    ...new Set(
+      commits.flatMap((c) => [
+        ...(c.added ?? []),
+        ...(c.modified ?? []),
+        ...(c.removed ?? []),
+      ]),
+    ),
+  ]
+  if (uniqueFiles.length === 0) return "no_files"
+
+  // Lockfile-only pushes — auto-generated from dep version bumps
+  if (uniqueFiles.every(isLockfile)) return "lockfile_only"
+
+  // CI / deploy config only — infra, not user-facing
+  if (uniqueFiles.every(isCiConfig)) return "ci_config_only"
+
+  // Docs + tooling config only, confirmed by conventional commit prefix.
+  // Only skip when BOTH signals agree to avoid dropping legitimate docs features.
+  const firstMsg = commits[0]?.message ?? ""
+  const isDocCommitPrefix = /^(docs|chore|style|build|ci|test)(\([^)]+\))?:/i
+    .test(firstMsg)
+  if (isDocCommitPrefix && uniqueFiles.every(isDocOrToolingFile)) {
+    return "docs_or_tooling_only"
+  }
+
+  return null
+}
+
+async function verifySignature(
+  body: string,
+  signature: string,
+): Promise<boolean> {
   const secret = Deno.env.get("GITHUB_WEBHOOK_SECRET")
   if (!secret) {
     log.error("missing GITHUB_WEBHOOK_SECRET")
@@ -155,10 +267,13 @@ async function handleInstallationEvent(
         .from("profiles")
         .update({ "github_installation_id": installationId })
         .eq("id", profile.id)
-      log.info("webhook: linked installation {installationId} for user {userId}", {
-        installationId,
-        userId: profile.id,
-      })
+      log.info(
+        "webhook: linked installation {installationId} for user {userId}",
+        {
+          installationId,
+          userId: profile.id,
+        },
+      )
     }
   } else if (action === "deleted") {
     // Clear installation_id when app is uninstalled
@@ -166,13 +281,19 @@ async function handleInstallationEvent(
       .from("profiles")
       .update({ "github_installation_id": null })
       .eq("github_installation_id", installationId)
-    log.info("webhook: cleared installation {installationId} on uninstall", { installationId })
+    log.info("webhook: cleared installation {installationId} on uninstall", {
+      installationId,
+    })
   }
 
   return jsonResponse({ ok: true }, req)
 }
 
-async function handleWebhook(req: Request, body: string, event: string): Promise<Response> {
+async function handleWebhook(
+  req: Request,
+  body: string,
+  event: string,
+): Promise<Response> {
   const payload = JSON.parse(body)
   const installationId = payload.installation?.id
 
@@ -242,7 +363,10 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
 
   // Parse the event type and extract relevant data
   let sourceType: "commit" | "pr" | "release" | "tag" | null = null
-  let postData: Record<string, string | string[] | number | undefined> = {}
+  let postData: Record<
+    string,
+    string | string[] | number | FileDiff[] | undefined
+  > = {}
 
   if (event === "push" && payload.commits?.length > 0) {
     sourceType = "commit"
@@ -254,9 +378,26 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       modified: string[]
     }[]
 
+    // Cheap pre-filter — drop obvious noise before spending AI/API budget
+    const skipReason = preFilterPush(commits)
+    if (skipReason) {
+      log.info("pre-filter skipped push in {repo}: {reason}", {
+        repo: repoFullName,
+        reason: skipReason,
+      })
+      return jsonResponse(
+        { ok: true, skipped: `prefilter_${skipReason}` },
+        req,
+      )
+    }
+
     if (commits.length === 1) {
       const c = commits[0]
-      const allFiles = [...(c.added ?? []), ...(c.modified ?? []), ...(c.removed ?? [])]
+      const allFiles = [
+        ...(c.added ?? []),
+        ...(c.modified ?? []),
+        ...(c.removed ?? []),
+      ]
       postData = {
         message: c.message,
         url: c.url,
@@ -265,7 +406,9 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       }
     } else {
       // Summarize multiple commits
-      const messages = commits.map((c) => c.message.split("\n")[0]).join("\n- ")
+      const messages = commits.map((c) => c.message.split("\n")[0]).join(
+        "\n- ",
+      )
       const allFiles = commits.flatMap((c) => [
         ...(c.added ?? []),
         ...(c.modified ?? []),
@@ -277,6 +420,38 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         url: payload.compare ?? commits[0].url,
         files: uniqueFiles,
         filesChanged: uniqueFiles.length,
+      }
+    }
+
+    // Fetch real code diffs via the compare API so the AI can actually
+    // read what changed, not just the commit message + file names.
+    // Webhook payload has `before` (pre-push SHA) and `after` / `head_commit.id`.
+    const beforeSha = typeof payload.before === "string" ? payload.before : undefined
+    const afterSha = (typeof payload.after === "string" ? payload.after : undefined) ??
+      payload.head_commit?.id
+    if (beforeSha && afterSha) {
+      try {
+        const ctx = await fetchCommitContext(
+          installationId,
+          repoFullName,
+          beforeSha,
+          afterSha,
+        )
+        if (ctx.commitMessages.length > 0) {
+          postData.commitMessages = ctx.commitMessages
+        }
+        if (ctx.files.length > 0) {
+          postData.files = ctx.files
+          postData.filesChanged = ctx.files.length
+        }
+        if (ctx.diffs.length > 0) postData.diffs = ctx.diffs
+      } catch (err) {
+        log.warn(
+          "failed to fetch commit context, continuing with webhook data: {error}",
+          {
+            error: String(err),
+          },
+        )
       }
     }
   } else if (
@@ -292,15 +467,24 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       commitMessages: string[]
       files: string[]
       diffs: Array<
-        { filename: string; status: string; additions: number; deletions: number; patch?: string }
+        {
+          filename: string
+          status: string
+          additions: number
+          deletions: number
+          patch?: string
+        }
       >
     } = { commitMessages: [], files: [], diffs: [] }
     try {
       prCtx = await fetchPrContext(installationId, repoFullName, pr.number)
     } catch (err) {
-      log.warn("failed to fetch PR context, continuing with basic data: {error}", {
-        error: String(err),
-      })
+      log.warn(
+        "failed to fetch PR context, continuing with basic data: {error}",
+        {
+          error: String(err),
+        },
+      )
     }
 
     postData = {
@@ -329,16 +513,29 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       commitMessages: string[]
       files: string[]
       diffs: Array<
-        { filename: string; status: string; additions: number; deletions: number; patch?: string }
+        {
+          filename: string
+          status: string
+          additions: number
+          deletions: number
+          patch?: string
+        }
       >
       previousTag?: string
     } = { commitMessages: [], files: [], diffs: [] }
     try {
-      tagCtx = await fetchTagContext(installationId, repoFullName, payload.ref as string)
+      tagCtx = await fetchTagContext(
+        installationId,
+        repoFullName,
+        payload.ref as string,
+      )
     } catch (err) {
-      log.warn("failed to fetch tag context, continuing with basic data: {error}", {
-        error: String(err),
-      })
+      log.warn(
+        "failed to fetch tag context, continuing with basic data: {error}",
+        {
+          error: String(err),
+        },
+      )
     }
 
     postData = {
@@ -391,12 +588,21 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
   }
 
   // ---------------------------------------------------------------------------
-  // Decision + generation layer
-  // When decision_layer_enabled, call the Vercel Agent API for multi-step
-  // reasoning (Claude) + content generation (Gemini via AI SDK). Falls back
-  // to the direct Gemini generation path if the agent is unavailable.
+  // Ranker + generation layer
+  // When decision_layer_enabled (default true), call the Vercel Agent API
+  // which runs a two-phase pipeline:
+  //   1. Ranker → { signal: 'high' | 'low', angle, reasoning }
+  //   2. Content generation → post text
+  //
+  // Every event produces a draft. `signal` tells the dashboard how to
+  // surface the post (high = default, low = collapsed under disclosure).
+  // If the agent API is unavailable, fall back to direct Gemini generation
+  // and leave signal null (the UI treats null as "unrated").
   // ---------------------------------------------------------------------------
   let content: string | undefined
+  let signal: "high" | "low" | null = null
+  let signalReason: string | null = null
+  let angle: string | null = null
 
   if (profile.decision_layer_enabled) {
     const agentResult = await callAgentApi({
@@ -412,116 +618,77 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     })
 
     if (agentResult) {
-      // Store the decision with reasoning trace
       await supabase.from("post_decisions").insert({
         user_id: profile.id,
         repo_id: repo.id,
         source_type: sourceType,
         source_data: { ...postData, repo: repoFullName },
         dedupe_key: dedupeKey,
-        decision: agentResult.decision,
+        decision: agentResult.signal, // reuse existing column — high/low/error
         reason: agentResult.reasoning,
         confidence: agentResult.confidence,
         angle: agentResult.angle,
         reasoning_trace: {
           steps: agentResult.stepCount,
-          model: "agent",
+          model: "ranker",
           reasoning: agentResult.reasoning,
         },
         agent_model: "gemini-3-flash-preview",
         step_count: agentResult.stepCount,
       })
 
-      if (agentResult.decision === "skip") {
-        log.info("agent skipped {sourceType} in {repo}: {reason}", {
+      if (agentResult.signal === "error") {
+        log.error("ranker error for {sourceType} in {repo}: {reason}", {
           sourceType,
           repo: repoFullName,
           reason: agentResult.reasoning,
         })
-        return jsonResponse(
-          { ok: true, skipped: "agent_skip", reason: agentResult.reasoning },
-          req,
-        )
-      }
-
-      if (agentResult.decision === "bundle_later") {
-        log.info("agent deferred {sourceType} in {repo}: {reason}", {
-          sourceType,
-          repo: repoFullName,
-          reason: agentResult.reasoning,
-        })
-        return jsonResponse(
-          { ok: true, skipped: "agent_bundle_later", reason: agentResult.reasoning },
-          req,
-        )
-      }
-
-      if (agentResult.decision === "error") {
-        log.error("agent error for {sourceType} in {repo}: {reason}", {
-          sourceType,
-          repo: repoFullName,
-          reason: agentResult.reasoning,
-        })
-        return jsonResponse(
-          { ok: true, skipped: "agent_error", reason: agentResult.reasoning },
-          req,
-        )
-      }
-
-      // decision === "post" — use agent-generated content if available
-      if (agentResult.content) {
-        content = agentResult.content
-        log.info("agent generated content for {sourceType} in {repo} ({steps} steps)", {
-          sourceType,
-          repo: repoFullName,
-          steps: agentResult.stepCount,
-        })
+        // Fall through to direct generation below
+      } else {
+        signal = agentResult.signal
+        signalReason = agentResult.reasoning
+        angle = agentResult.angle
+        if (agentResult.content) {
+          content = agentResult.content
+          log.info(
+            "ranker produced {signal}-signal draft for {sourceType} in {repo}",
+            { signal: agentResult.signal, sourceType, repo: repoFullName },
+          )
+        }
       }
     } else {
-      // Agent API unavailable — fall back to legacy decision layer
-      log.warn("agent API unavailable, falling back to legacy decision")
-      const decisionInput: DecisionInput = {
-        sourceType,
-        repoName: repoFullName,
-        projectContext: repo.project_context,
-        data: postData,
-      }
-      const decision = await decidePostAction(decisionInput)
-
-      await supabase.from("post_decisions").insert({
-        user_id: profile.id,
-        repo_id: repo.id,
-        source_type: sourceType,
-        source_data: { ...postData, repo: repoFullName },
-        dedupe_key: dedupeKey,
-        decision: decision.decision,
-        reason: decision.reason,
-        confidence: decision.confidence,
-        angle: decision.angle,
-      })
-
-      if (decision.decision === "skip") {
-        return jsonResponse({ ok: true, skipped: "decision_skip", reason: decision.reason }, req)
-      }
-      if (decision.decision === "bundle_later") {
-        return jsonResponse(
-          { ok: true, skipped: "decision_bundle_later", reason: decision.reason },
-          req,
-        )
-      }
+      log.warn("agent API unavailable, falling back to direct generation")
     }
   }
 
-  // Generate AI content via direct Gemini if agent didn't produce content
+  // Vercel AI fallback — when ranker is off, unavailable, or errored
   if (!content) {
-    content = await generatePost({
+    const fallbackEvent = {
       sourceType,
       repoName: repoFullName,
-      tone: profile.tone ?? "casual",
+      repoId: repo.id,
+      userId: profile.id,
       projectContext: repo.project_context,
-      contentBudget: profile.x_premium === true ? 4000 : 280,
+      tone: profile.tone ?? "casual",
+      autoPublish: profile.auto_publish === true,
+      xPremium: profile.x_premium === true,
       data: postData,
+    }
+    const result = await callVercelAi<{ content: string }>("generate", {
+      event: fallbackEvent,
+      angle: "shipping update",
+      highlights: "",
     })
+    content = result?.content ?? "Shipping update posted to BuildLog."
+    if (!result?.content) {
+      log.warn(
+        "fallback generation failed for {sourceType} in {repo}, using placeholder",
+        {
+          sourceType,
+          repo: repoFullName,
+        },
+      )
+    }
   }
 
   const shouldPublish = profile.auto_publish === true
@@ -537,7 +704,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     const headCommit = payload.head_commit
     strippedData.commit_sha = headCommit?.id
     strippedData.message = postData.message
-    strippedData.author = headCommit?.author?.name ?? headCommit?.author?.username
+    strippedData.author = headCommit?.author?.name ??
+      headCommit?.author?.username
     strippedData.branch = (payload.ref as string)?.replace("refs/heads/", "")
     strippedData.url = postData.url
     strippedData.files_changed = postData.filesChanged
@@ -571,12 +739,20 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       original_content: content,
       status: "draft",
       published_at: null,
+      signal,
+      signal_reason: signalReason,
+      angle,
     })
     .select("id")
     .single()
 
   if (shouldPublish && post) {
-    const result = await fetchPlatformsAndPublish(supabase, profile.id, post.id, content)
+    const result = await fetchPlatformsAndPublish(
+      supabase,
+      profile.id,
+      post.id,
+      content,
+    )
     const hasFailures = Object.keys(result.errors).length > 0
 
     if (result.publishedPlatforms.length > 0) {

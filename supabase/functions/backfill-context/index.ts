@@ -2,16 +2,18 @@
  * One-off function: backfill project_context + intro posts for ALL connected repos.
  * Uses service role — no user auth needed. Call once, then delete.
  */
-import { generateIntroPost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { fetchRepoContext } from "../_shared/github.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
+import { callVercelAi } from "../_shared/vercel-ai.ts"
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
   if (optRes) return optRes
 
-  if (req.method !== "POST") return errorResponse("Method not allowed", 405, req)
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405, req)
+  }
 
   const supabase = createServiceClient()
 
@@ -28,19 +30,27 @@ Deno.serve(async (req) => {
     return jsonResponse({ message: "No connected repos", updated: 0 }, req)
   }
 
-  const results: Array<{ repo: string; context: boolean; intro: boolean; error?: string }> = []
+  const results: Array<
+    { repo: string; context: boolean; intro: boolean; error?: string }
+  > = []
 
   for (const repo of repos) {
-    const entry: { repo: string; context: boolean; intro: boolean; error?: string } = {
+    const entry: {
+      repo: string
+      context: boolean
+      intro: boolean
+      error?: string
+    } = {
       repo: repo.full_name,
       context: false,
       intro: false,
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const installationId =
-      (repo as Record<string, unknown> & { profiles?: { github_installation_id?: number } })
-        .profiles?.github_installation_id
+    const installationId = (repo as Record<string, unknown> & {
+      profiles?: { github_installation_id?: number }
+    })
+      .profiles?.github_installation_id
     if (!installationId) {
       entry.error = "no installation_id"
       results.push(entry)
@@ -60,18 +70,21 @@ Deno.serve(async (req) => {
         .limit(1)
 
       if (!existing || existing.length === 0) {
-        try {
-          const content = await generateIntroPost(repo.full_name, repo.project_context)
+        const result = await callVercelAi<{ content: string }>("intro", {
+          repoName: repo.full_name,
+          projectContext: repo.project_context,
+        })
+        if (result?.content) {
           await supabase.from("posts").insert({
             user_id: repo.user_id,
             repo_id: repo.id,
             source_type: "intro",
-            content,
+            content: result.content,
             status: "draft",
           })
           entry.intro = true
-        } catch (err) {
-          entry.error = `intro failed: ${String(err)}`
+        } else {
+          entry.error = "intro generation failed"
         }
       }
 
@@ -98,15 +111,20 @@ Deno.serve(async (req) => {
           .limit(1)
 
         if (!existing || existing.length === 0) {
-          const content = await generateIntroPost(repo.full_name, ctx)
-          await supabase.from("posts").insert({
-            user_id: repo.user_id,
-            repo_id: repo.id,
-            source_type: "intro",
-            content,
-            status: "draft",
+          const result = await callVercelAi<{ content: string }>("intro", {
+            repoName: repo.full_name,
+            projectContext: ctx,
           })
-          entry.intro = true
+          if (result?.content) {
+            await supabase.from("posts").insert({
+              user_id: repo.user_id,
+              repo_id: repo.id,
+              source_type: "intro",
+              content: result.content,
+              status: "draft",
+            })
+            entry.intro = true
+          }
         }
       } else {
         entry.error = "no context found (no README or manifest)"
@@ -118,5 +136,8 @@ Deno.serve(async (req) => {
     results.push(entry)
   }
 
-  return jsonResponse({ results, updated: results.filter((r) => r.context).length }, req)
+  return jsonResponse({
+    results,
+    updated: results.filter((r) => r.context).length,
+  }, req)
 })

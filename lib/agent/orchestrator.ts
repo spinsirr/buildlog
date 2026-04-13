@@ -1,208 +1,129 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, Output, stepCountIs, ToolLoopAgent, tool, wrapLanguageModel } from 'ai'
+import { generateObject, wrapLanguageModel } from 'ai'
 import { z } from 'zod'
 import { guardrailMiddleware, timeoutSignal } from '@/lib/ai/middleware'
-import { getContentLimit } from '@/lib/platforms'
+import { getGoogleProvider, type LanguageModel } from '@/lib/ai/provider'
 import { createAdminClient } from '@/lib/supabase/admin'
-import {
-  AGENT_INSTRUCTIONS,
-  buildContentPrompt,
-  buildContentSystemPrompt,
-  buildEventPrompt,
-} from './prompts'
-import type { AgentEvent, AgentResult } from './types'
+import { generateContent as _generateContent } from './generators'
+import { buildRankerPrompt, RANKER_INSTRUCTIONS } from './prompts'
+import type { AgentEvent, AgentResult, RecentPost } from './types'
 
-const AGENT_MODEL = process.env.AGENT_MODEL ?? 'gemini-3-flash-preview'
-const CONTENT_MODEL = process.env.CONTENT_MODEL ?? 'gemini-3-flash-preview'
+const RANKER_MODEL = process.env.AGENT_MODEL ?? 'gemini-3-flash-preview'
 
-/**
- * Create a Google AI provider with the project's existing API key.
- * The project uses GEMINI_API_KEY / GOOGLE_API_KEY, not the AI SDK default
- * GOOGLE_GENERATIVE_AI_API_KEY, so we configure it explicitly.
- */
-function getGoogleProvider() {
-  const apiKey =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
-    process.env.GEMINI_API_KEY ??
-    process.env.GOOGLE_API_KEY
-  if (!apiKey)
-    throw new Error(
-      'Missing Google AI API key (set GOOGLE_GENERATIVE_AI_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY)'
-    )
-  return createGoogleGenerativeAI({ apiKey })
-}
-
-const agentResultSchema = z.object({
-  decision: z.enum(['post', 'skip', 'bundle_later']),
-  reasoning: z.string().describe('Multi-step reasoning explaining this decision'),
+const rankerSchema = z.object({
+  signal: z.enum(['high', 'low']),
   confidence: z.enum(['high', 'medium', 'low']),
-  angle: z.string().nullable().describe('The angle/hook for the post, if posting'),
-  content: z.string().nullable().describe('The generated post content, if posting'),
+  angle: z.string().min(1).describe('Specific, opinionated hook for the post'),
+  reasoning: z.string().min(1).describe('1-2 sentences explaining the rating'),
 })
 
-const _agentToolNames = ['get_repo_context', 'get_recent_posts', 'generate_content'] as const
-
-/** Default limits — used as fallback. Actual limits computed per-request from event.xPremium. */
-
 export interface AgentOverrides {
-  /** Replace all Supabase/Gemini-backed tools with mock implementations */
-  // biome-ignore lint/suspicious/noExplicitAny: AI SDK tool types require any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools?: Record<string, any>
-  /** Override the agent model (for testing with mock LLMs) */
-  // biome-ignore lint/suspicious/noExplicitAny: AI SDK model types require any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  model?: any
+  /** Override the ranker model (for testing with mock LLMs) */
+  rankerModel?: LanguageModel
   /** Override the content model */
-  // biome-ignore lint/suspicious/noExplicitAny: AI SDK model types require any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  contentModel?: any
+  contentModel?: LanguageModel
+  /** Skip the DB fetch for recent posts (used in tests / when caller pre-fetched) */
+  skipRecentPostsFetch?: boolean
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function fetchRecentPosts(userId: string, repoId: string, limit = 5): Promise<RecentPost[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('posts')
+    .select('content, source_type, created_at')
+    .eq('user_id', userId)
+    .eq('repo_id', repoId)
+    .in('status', ['published', 'draft'])
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  return (data ?? []) as RecentPost[]
+}
+
+function wrappedModel(model: LanguageModel) {
+  return wrapLanguageModel({ model, middleware: guardrailMiddleware })
+}
+
+// ─── Phase 1: rank ────────────────────────────────────────────────────────────
+
+async function rankEvent(
+  event: AgentEvent,
+  overrides?: AgentOverrides
+): Promise<{
+  signal: 'high' | 'low'
+  confidence: 'high' | 'medium' | 'low'
+  angle: string
+  reasoning: string
+}> {
+  const google = overrides?.rankerModel ? null : getGoogleProvider()
+  const model = overrides?.rankerModel ?? wrappedModel(google!(RANKER_MODEL))
+
+  const recentPosts = event.recentPosts ?? []
+
+  /* eslint-disable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt -- prompts are constructed from trusted server-side data */
+  const { object } = await generateObject({
+    model,
+    system: RANKER_INSTRUCTIONS,
+    prompt: buildRankerPrompt(event, recentPosts),
+    schema: rankerSchema,
+    temperature: 0,
+    abortSignal: timeoutSignal(),
+  })
+  /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
+
+  return object
+}
+
+// ─── Orchestrator ─────────────────────────────────────────────────────────────
+
 /**
- * Run the BuildLog agent for a GitHub event.
+ * Run the ranker + content generation pipeline for a GitHub event.
  *
- * The agent uses Gemini to reason about whether the event is worth posting,
- * gathers repo context plus recent posts, and if posting, generates content.
- * Returns a structured decision with reasoning trace.
+ * Architecture:
+ *   1. Ranker call — compact prompt, no full diff, outputs {signal, angle}
+ *   2. Content call — full diff + angle, outputs post text
+ *
+ * This replaces the old ToolLoopAgent (gatekeeper) design: every event
+ * produces a draft, and `signal` tells the UI how prominently to show it.
+ *
+ * Token cost (rough):
+ *   - ranker:  ~2000 input + ~200 output
+ *   - content: ~4000 input + ~100 output
+ * vs. old ToolLoopAgent which accumulated ~24,000 input tokens per POST.
  */
 export async function runAgent(
   event: AgentEvent,
   overrides?: AgentOverrides
 ): Promise<AgentResult> {
-  const supabase = overrides?.tools ? null : createAdminClient()
-  const google = overrides?.model ? null : getGoogleProvider()
-  const wrappedModel = (id: string) =>
-    wrapLanguageModel({ model: google!(id), middleware: guardrailMiddleware })
-
-  // Create the agent per-request so tools close over the event context
-  const agent = new ToolLoopAgent({
-    model: overrides?.model ?? wrappedModel(AGENT_MODEL),
-    instructions: AGENT_INSTRUCTIONS,
-    stopWhen: stepCountIs(10),
-    temperature: 0,
-    output: Output.object({ schema: agentResultSchema }),
-
-    tools: overrides?.tools ?? {
-      get_repo_context: tool({
-        description:
-          'Get the current repository context for this event. Use this alongside the GitHub event details before deciding.',
-        inputSchema: z.object({}),
-        execute: async () => ({
-          projectContext: event.projectContext,
-          repoName: event.repoName,
-          tone: event.tone,
-        }),
-      }),
-
-      get_recent_posts: tool({
-        description:
-          'Get recent posts for this repo to avoid duplicate angles and maintain narrative variety.',
-        inputSchema: z.object({
-          limit: z.number().optional().describe('Number of recent posts (default 5)'),
-        }),
-        execute: async ({ limit = 5 }) => {
-          const { data } = await supabase!
-            .from('posts')
-            .select('content, source_type, created_at')
-            .eq('user_id', event.userId)
-            .eq('repo_id', event.repoId)
-            .in('status', ['published', 'draft'])
-            .order('created_at', { ascending: false })
-            .limit(limit)
-          return { posts: data ?? [], count: data?.length ?? 0 }
-        },
-      }),
-
-      generate_content: tool({
-        description:
-          'Generate post content using Gemini with the specified angle and highlights. Call this when you decide to post. Returns the generated text.',
-        inputSchema: z.object({
-          angle: z.string().describe('The specific angle or hook for the post'),
-          highlights: z.string().describe('Key points to emphasize'),
-        }),
-        execute: async ({ angle, highlights }) => {
-          const contentBudget = getContentLimit('twitter', event.xPremium)
-          const systemPrompt = buildContentSystemPrompt(event.tone, contentBudget)
-          const userPrompt = buildContentPrompt(event, angle, highlights)
-
-          /* eslint-disable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt -- prompts are agent-constructed from trusted server-side data */
-          const { text } = await generateText({
-            model: wrappedModel(CONTENT_MODEL),
-            system: systemPrompt,
-            prompt: userPrompt,
-            maxOutputTokens: event.xPremium ? 2000 : 800,
-            temperature: 0.7,
-            abortSignal: timeoutSignal(),
-          })
-
-          let content = text.trim()
-
-          // Guard: empty or too-short output
-          if (content.length < 10) {
-            return { content: null, error: 'Generated content was empty or too short' }
-          }
-
-          // Retry if over budget (watermark-aware)
-          if (content.length > contentBudget) {
-            const retry = await generateText({
-              model: wrappedModel(CONTENT_MODEL),
-              system: systemPrompt,
-              prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${contentBudget} characters while keeping it complete and engaging.`,
-              maxOutputTokens: event.xPremium ? 2000 : 800,
-              temperature: 0.5,
-              abortSignal: timeoutSignal(),
-            })
-            const retryText = retry.text.trim()
-            if (retryText.length <= contentBudget) {
-              content = retryText
-            } else {
-              // Force-truncate to last sentence boundary
-              const match = retryText.slice(0, contentBudget).match(/^([\s\S]*[.!?])(\s*#\S+)*/)
-              content = match ? match[0].trim() : `${retryText.slice(0, contentBudget - 1)}\u2026`
-            }
-          }
-
-          /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
-          return { content, lengthBeforeWatermark: content.length }
-        },
-      }),
-    },
-  })
-
-  const result = await agent.generate({
-    prompt: buildEventPrompt(event),
-  })
-
-  if (
-    result.output.decision === 'post' &&
-    // biome-ignore lint/suspicious/noExplicitAny: AI SDK step internals not typed
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    !result.steps.some((step: any) => {
-      const toolCalls = step?.toolCalls ?? []
-      return (
-        Array.isArray(toolCalls) &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        toolCalls.some((call: any) => call.toolName === 'generate_content')
-      )
-    })
-  ) {
-    throw new Error('Agent post decision must use generate_content after gathering context')
+  // Pre-fetch recent posts if the caller didn't
+  if (!event.recentPosts && !overrides?.skipRecentPostsFetch) {
+    event = {
+      ...event,
+      recentPosts: await fetchRecentPosts(event.userId, event.repoId),
+    }
   }
 
+  // Phase 1: rank
+  const ranking = await rankEvent(event, overrides)
+
+  // Phase 2: generate content (always — every event → draft)
+  const highlights = `Signal: ${ranking.signal}. ${ranking.reasoning}`
+  const content = await _generateContent(event, ranking.angle, highlights, overrides?.contentModel)
+
   return {
-    decision: result.output.decision,
-    reasoning: result.output.reasoning,
-    confidence: result.output.confidence,
-    angle: result.output.angle,
-    content: result.output.content,
-    stepCount: result.steps.length,
+    signal: ranking.signal,
+    confidence: ranking.confidence,
+    angle: ranking.angle,
+    reasoning: ranking.reasoning,
+    content,
+    stepCount: 2,
   }
 }
 
 /**
- * Run the agent with error handling. On failure, returns an error decision
- * so failures are visible in the dashboard rather than producing low-quality fallback posts.
+ * Run the pipeline with error handling. On failure returns a result with
+ * signal 'error' so the caller (webhook) knows to fall back to direct
+ * generation without the ranker's angle.
  */
 export async function runAgentSafe(
   event: AgentEvent,
@@ -213,7 +134,7 @@ export async function runAgentSafe(
   } catch (err) {
     console.error('[agent] failed:', err instanceof Error ? err.message : String(err))
     return {
-      decision: 'error',
+      signal: 'error',
       reasoning: `Agent error: ${err instanceof Error ? err.message : String(err)}`,
       confidence: 'low',
       angle: null,

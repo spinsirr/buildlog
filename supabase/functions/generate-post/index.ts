@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { generateIntroPost, generatePost, generateXhsPost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
-import { fetchPrContext } from "../_shared/github.ts"
+import { fetchPrContext, type FileDiff } from "../_shared/github.ts"
 import { parsePathParts, safeJson } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { checkLimit } from "../_shared/subscription.ts"
+import { callVercelAi } from "../_shared/vercel-ai.ts"
 
 await setupLogger()
 const log = getLog("generate-post")
@@ -28,24 +28,70 @@ Deno.serve(async (req) => {
   const isXhsCopy = parts[0] === "xhs-copy"
 
   try {
-    if (isXhsCopy) {
-      return await handleXhsCopy(req, user.id, supabase)
-    }
-    if (isRegenerate) {
-      return await handleRegenerate(req, user.id, supabase)
-    }
+    if (isXhsCopy) return await handleXhsCopy(req, user.id, supabase)
+    if (isRegenerate) return await handleRegenerate(req, user.id, supabase)
     return await handleGenerate(req, user.id, supabase)
   } catch (err) {
-    const msg = String(err)
-    log.error("unhandled error: {error}", { error: msg, stack: (err as Error).stack })
-    const isGemini = msg.includes("Gemini")
-    return errorResponse(
-      isGemini ? "AI generation failed — please try again" : "Internal server error",
-      500,
-      req,
-    )
+    log.error("unhandled error: {error}", {
+      error: String(err),
+      stack: (err as Error).stack,
+    })
+    return errorResponse("Internal server error", 500, req)
   }
 })
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+type EventData = {
+  message?: string
+  title?: string
+  description?: string
+  files?: string[]
+  url?: string
+  additions?: number
+  deletions?: number
+  filesChanged?: number
+  commitMessages?: string[]
+  diffs?: FileDiff[]
+}
+
+type VercelEvent = {
+  sourceType: "commit" | "pr" | "release" | "tag"
+  repoName: string
+  repoId: string
+  userId: string
+  projectContext: string | null
+  tone: "casual" | "professional" | "technical"
+  autoPublish: boolean
+  xPremium: boolean
+  data: EventData
+}
+
+/** Build an AgentEvent-shaped object for the Vercel AI routes. */
+function buildEvent(params: {
+  sourceType: VercelEvent["sourceType"]
+  repoName: string
+  repoId: string
+  userId: string
+  projectContext: string | null
+  tone: string
+  xPremium: boolean
+  data: EventData
+}): VercelEvent {
+  return {
+    sourceType: params.sourceType,
+    repoName: params.repoName,
+    repoId: params.repoId,
+    userId: params.userId,
+    projectContext: params.projectContext,
+    tone: (params.tone as VercelEvent["tone"]) ?? "casual",
+    autoPublish: false,
+    xPremium: params.xPremium,
+    data: params.data,
+  }
+}
+
+// ─── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleGenerate(
   req: Request,
@@ -55,25 +101,35 @@ async function handleGenerate(
   const body = await safeJson<{
     sourceType: "commit" | "pr" | "release"
     repoName: string
-    data: Record<string, unknown>
+    data: EventData
     repoId: string
   }>(req)
 
-  if (!body) {
-    return errorResponse("Invalid JSON body", 400, req)
-  }
+  if (!body) return errorResponse("Invalid JSON body", 400, req)
 
   const { sourceType, repoName, data, repoId } = body
 
   if (!sourceType || !repoName || !data || !repoId) {
-    return errorResponse("Missing required fields: sourceType, repoName, data, repoId", 400, req)
+    return errorResponse(
+      "Missing required fields: sourceType, repoName, data, repoId",
+      400,
+      req,
+    )
   }
 
   if (!["commit", "pr", "release"].includes(sourceType)) {
-    return errorResponse("sourceType must be one of: commit, pr, release", 400, req)
+    return errorResponse(
+      "sourceType must be one of: commit, pr, release",
+      400,
+      req,
+    )
   }
 
-  const { allowed, plan, count, limit } = await checkLimit(userId, "posts", supabase)
+  const { allowed, plan, count, limit } = await checkLimit(
+    userId,
+    "posts",
+    supabase,
+  )
   if (!allowed) {
     return jsonResponse(
       {
@@ -85,33 +141,32 @@ async function handleGenerate(
     )
   }
 
-  const { data: profile } = await supabase.from("profiles").select("tone").eq("id", userId).single()
-
-  const tone = profile?.tone ?? "casual"
-
-  // Fetch project context for this repo
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tone, x_premium")
+    .eq("id", userId)
+    .single()
   const { data: repoRow } = await supabase
     .from("connected_repos")
     .select("project_context")
     .eq("id", repoId)
     .single()
 
-  const content = await generatePost({
+  const event = buildEvent({
     sourceType,
     repoName,
-    tone,
-    projectContext: repoRow?.project_context,
-    data: data as {
-      message?: string
-      title?: string
-      description?: string
-      files?: string[]
-      url?: string
-      additions?: number
-      deletions?: number
-      filesChanged?: number
-    },
+    repoId,
+    userId,
+    projectContext: repoRow?.project_context ?? null,
+    tone: profile?.tone ?? "casual",
+    xPremium: profile?.x_premium === true,
+    data,
   })
+
+  const result = await callVercelAi<{ content: string }>("generate", { event })
+  if (!result?.content) {
+    return errorResponse("AI generation failed — please try again", 500, req)
+  }
 
   const { data: post, error: insertError } = await supabase
     .from("posts")
@@ -120,8 +175,8 @@ async function handleGenerate(
       repo_id: repoId,
       source_type: sourceType,
       source_data: data,
-      content,
-      original_content: content,
+      content: result.content,
+      original_content: result.content,
       status: "draft",
     })
     .select()
@@ -141,10 +196,7 @@ async function handleRegenerate(
   supabase: SupabaseClient,
 ): Promise<Response> {
   const body = await safeJson<{ id: string }>(req)
-
-  if (!body?.id) {
-    return errorResponse("Missing required field: id", 400, req)
-  }
+  if (!body?.id) return errorResponse("Missing required field: id", 400, req)
 
   const { data: post, error: fetchError } = await supabase
     .from("posts")
@@ -152,47 +204,19 @@ async function handleRegenerate(
     .eq("id", body.id)
     .single()
 
-  if (fetchError || !post) {
+  if (fetchError || !post || post.user_id !== userId) {
     return errorResponse("Post not found", 404, req)
   }
-
-  if (post.user_id !== userId) {
-    return errorResponse("Post not found", 404, req)
-  }
-
   if (post.source_type === "manual") {
     return errorResponse("Cannot regenerate manual posts", 400, req)
   }
 
-  // Intro posts use a different generation path
-  if (post.source_type === "intro") {
-    if (post.repo_id) {
-      const { data: repo } = await supabase
-        .from("connected_repos")
-        .select("full_name, project_context")
-        .eq("id", post.repo_id)
-        .single()
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tone, github_installation_id, x_premium")
+    .eq("id", userId)
+    .single()
 
-      if (repo?.project_context) {
-        const content = await generateIntroPost(repo.full_name, repo.project_context)
-        const { data: updatedPost, error: updateError } = await supabase
-          .from("posts")
-          .update({ content, original_content: content, updated_at: new Date().toISOString() })
-          .eq("id", post.id)
-          .select()
-          .single()
-
-        if (updateError) {
-          log.error("regenerate intro: update error: {error}", { error: String(updateError) })
-          return errorResponse("Failed to update post", 500, req)
-        }
-        return jsonResponse({ post: updatedPost }, req, { status: 200 })
-      }
-    }
-    return errorResponse("No project context available to regenerate intro post", 400, req)
-  }
-
-  // Get repo name from connected_repos
   let repoName = "unknown/repo"
   let projectContext: string | null = null
   if (post.repo_id) {
@@ -201,26 +225,52 @@ async function handleRegenerate(
       .select("full_name, project_context")
       .eq("id", post.repo_id)
       .single()
-
-    if (repo?.full_name) {
-      repoName = repo.full_name
-    }
+    if (repo?.full_name) repoName = repo.full_name
     projectContext = repo?.project_context ?? null
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("tone, github_installation_id")
-    .eq("id", userId)
-    .single()
+  // Intro posts use a different generation path
+  if (post.source_type === "intro") {
+    if (!projectContext) {
+      return errorResponse(
+        "No project context available to regenerate intro post",
+        400,
+        req,
+      )
+    }
+    const result = await callVercelAi<{ content: string }>("intro", {
+      repoName,
+      projectContext,
+      tone: profile?.tone ?? "casual",
+      contentBudget: profile?.x_premium === true ? 4000 : 280,
+    })
+    if (!result?.content) {
+      return errorResponse("AI generation failed", 500, req)
+    }
 
-  const tone = profile?.tone ?? "casual"
+    const { data: updatedPost, error: updateError } = await supabase
+      .from("posts")
+      .update({
+        content: result.content,
+        original_content: result.content,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", post.id)
+      .select()
+      .single()
+    if (updateError) {
+      log.error("regenerate intro: update error: {error}", {
+        error: String(updateError),
+      })
+      return errorResponse("Failed to update post", 500, req)
+    }
+    return jsonResponse({ post: updatedPost }, req, { status: 200 })
+  }
+
   const sourceData = (post.source_data ?? {}) as Record<string, unknown>
+  let diffs: FileDiff[] = []
 
   // For PR posts, re-fetch code diffs from GitHub for richer context
-  let diffs: Array<
-    { filename: string; status: string; additions: number; deletions: number; patch?: string }
-  > = []
   if (
     post.source_type === "pr" &&
     profile?.github_installation_id &&
@@ -235,40 +285,40 @@ async function handleRegenerate(
       )
       diffs = prCtx.diffs
     } catch (err) {
-      log.warn("regenerate: failed to fetch PR diffs: {error}", { error: String(err) })
+      log.warn("regenerate: failed to fetch PR diffs: {error}", {
+        error: String(err),
+      })
     }
   }
 
-  const content = await generatePost({
-    sourceType: post.source_type as "commit" | "pr" | "release",
+  const event = buildEvent({
+    sourceType: post.source_type as VercelEvent["sourceType"],
     repoName,
-    tone,
+    repoId: post.repo_id ?? "",
+    userId,
     projectContext,
-    data: {
-      ...(sourceData as {
-        message?: string
-        title?: string
-        description?: string
-        files?: string[]
-        url?: string
-        additions?: number
-        deletions?: number
-        filesChanged?: number
-        commitMessages?: string[]
-      }),
-      diffs,
-    },
+    tone: profile?.tone ?? "casual",
+    xPremium: profile?.x_premium === true,
+    data: { ...(sourceData as EventData), diffs },
   })
+
+  const result = await callVercelAi<{ content: string }>("generate", { event })
+  if (!result?.content) return errorResponse("AI generation failed", 500, req)
 
   const { data: updatedPost, error: updateError } = await supabase
     .from("posts")
-    .update({ content, original_content: content, updated_at: new Date().toISOString() })
+    .update({
+      content: result.content,
+      original_content: result.content,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", post.id)
     .select()
     .single()
-
   if (updateError) {
-    log.error("regenerate: update error: {error}", { error: String(updateError) })
+    log.error("regenerate: update error: {error}", {
+      error: String(updateError),
+    })
     return errorResponse("Failed to update post", 500, req)
   }
 
@@ -280,11 +330,10 @@ async function handleXhsCopy(
   userId: string,
   supabase: SupabaseClient,
 ): Promise<Response> {
-  const body = await safeJson<{ id: string }>(req)
+  const body = await safeJson<{ id: string; lang?: "en" | "zh" }>(req)
+  if (!body?.id) return errorResponse("Missing required field: id", 400, req)
 
-  if (!body?.id) {
-    return errorResponse("Missing required field: id", 400, req)
-  }
+  const lang = body.lang === "zh" ? "zh" : "en"
 
   const { data: post, error: fetchError } = await supabase
     .from("posts")
@@ -292,78 +341,67 @@ async function handleXhsCopy(
     .eq("id", body.id)
     .single()
 
-  if (fetchError || !post) {
+  if (fetchError || !post || post.user_id !== userId) {
     return errorResponse("Post not found", 404, req)
   }
 
-  if (post.user_id !== userId) {
-    return errorResponse("Post not found", 404, req)
-  }
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("github_installation_id, tone, x_premium")
+    .eq("id", userId)
+    .single()
 
   let repoName = "unknown/repo"
-  let xhsProjectContext: string | null = null
+  let projectContext: string | null = null
   if (post.repo_id) {
     const { data: repo } = await supabase
       .from("connected_repos")
       .select("full_name, project_context")
       .eq("id", post.repo_id)
       .single()
-
-    if (repo?.full_name) {
-      repoName = repo.full_name
-    }
-    xhsProjectContext = repo?.project_context ?? null
+    if (repo?.full_name) repoName = repo.full_name
+    projectContext = repo?.project_context ?? null
   }
 
-  const { data: xhsProfile } = await supabase
-    .from("profiles")
-    .select("github_installation_id")
-    .eq("id", userId)
-    .single()
-
   const sourceData = (post.source_data ?? {}) as Record<string, unknown>
+  let diffs: FileDiff[] = []
 
-  // For PR posts, re-fetch code diffs for richer context
-  let diffs: Array<
-    { filename: string; status: string; additions: number; deletions: number; patch?: string }
-  > = []
   if (
     post.source_type === "pr" &&
-    xhsProfile?.github_installation_id &&
+    profile?.github_installation_id &&
     sourceData.repo &&
     sourceData.pr_number
   ) {
     try {
       const prCtx = await fetchPrContext(
-        xhsProfile.github_installation_id,
+        profile.github_installation_id,
         sourceData.repo as string,
         sourceData.pr_number as number,
       )
       diffs = prCtx.diffs
     } catch (err) {
-      log.warn("xhs-copy: failed to fetch PR diffs: {error}", { error: String(err) })
+      log.warn("xhs-copy: failed to fetch PR diffs: {error}", {
+        error: String(err),
+      })
     }
   }
 
-  const content = await generateXhsPost({
-    sourceType: post.source_type as "commit" | "pr" | "release" | "tag",
+  const event = buildEvent({
+    sourceType: post.source_type as VercelEvent["sourceType"],
     repoName,
-    projectContext: xhsProjectContext,
-    data: {
-      ...(sourceData as {
-        message?: string
-        title?: string
-        description?: string
-        files?: string[]
-        url?: string
-        additions?: number
-        deletions?: number
-        filesChanged?: number
-        commitMessages?: string[]
-      }),
-      diffs,
-    },
+    repoId: post.repo_id ?? "",
+    userId,
+    projectContext,
+    tone: profile?.tone ?? "casual",
+    xPremium: profile?.x_premium === true,
+    data: { ...(sourceData as EventData), diffs },
   })
 
-  return jsonResponse({ content }, req, { status: 200 })
+  const result = await callVercelAi<{ content: string }>("xhs", {
+    event,
+    lang,
+  })
+  if (!result?.content) return errorResponse("AI generation failed", 500, req)
+
+  return jsonResponse({ content: result.content }, req, { status: 200 })
 }

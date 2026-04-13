@@ -106,7 +106,11 @@ export async function fetchPlatformsAndPublish(
     connections?.map((c: { platform: string }) => c.platform) ?? [],
   )
 
-  const result = await publishToAllPlatforms(userId, content, connectedPlatforms)
+  const result = await publishToAllPlatforms(
+    userId,
+    content,
+    connectedPlatforms,
+  )
   const hasFailures = Object.keys(result.errors).length > 0
 
   if (result.publishedPlatforms.length > 0) {
@@ -120,7 +124,12 @@ export async function fetchPlatformsAndPublish(
         platform_post_id: result.primaryPostId,
         platform_post_url: result.primaryPostUrl,
         ...(hasFailures
-          ? { publish_results: { errors: result.errors, published: result.publishedPlatforms } }
+          ? {
+            publish_results: {
+              errors: result.errors,
+              published: result.publishedPlatforms,
+            },
+          }
           : {}),
         ...extraUpdates,
       })
@@ -131,7 +140,10 @@ export async function fetchPlatformsAndPublish(
       .update({
         status: "draft",
         published_at: null,
-        publish_results: { errors: result.errors, published: result.publishedPlatforms },
+        publish_results: {
+          errors: result.errors,
+          published: result.publishedPlatforms,
+        },
       })
       .eq("id", postId)
   }

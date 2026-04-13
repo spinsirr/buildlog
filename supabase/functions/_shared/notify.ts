@@ -25,7 +25,10 @@ export async function notify(
     link: link ?? null,
   })
   if (insertError) {
-    log.error("failed to insert notification: {error}", { error: insertError.message, userId })
+    log.error("failed to insert notification: {error}", {
+      error: insertError.message,
+      userId,
+    })
   }
 
   const { data: profile } = await supabase

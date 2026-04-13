@@ -35,11 +35,13 @@ export function DashboardClient({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-50">Dashboard</h1>
+        <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
+          Dashboard
+        </h1>
         <button
           type="button"
           onClick={() => startOnborda('onboarding')}
-          className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
+          className="inline-flex items-center justify-center h-7 px-2.5 rounded-none border-2 border-zinc-600 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider font-mono-ui transition-colors shadow-[2px_2px_0px_0px_rgba(255,255,255,0.1)]"
         >
           Tutorial
         </button>

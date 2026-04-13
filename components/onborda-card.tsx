@@ -55,7 +55,7 @@ function CardInner({
           <Button
             size="sm"
             onClick={() => nextStep()}
-            className="bg-purple-600 hover:bg-purple-500 text-white h-7 text-xs"
+            className="bg-neo-accent hover:bg-neo-accent/90 text-white h-7 text-xs"
           >
             Next
           </Button>
@@ -63,7 +63,7 @@ function CardInner({
           <Button
             size="sm"
             onClick={() => closeOnborda()}
-            className="bg-purple-600 hover:bg-purple-500 text-white h-7 text-xs"
+            className="bg-neo-accent hover:bg-neo-accent/90 text-white h-7 text-xs"
           >
             Get started
           </Button>

@@ -18,17 +18,19 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-zinc-400">Recent Posts</h2>
+        <h2 className="text-xs font-bold font-mono-ui uppercase tracking-widest text-zinc-500">
+          Recent Posts
+        </h2>
         {posts.length > 0 && (
           <Link
             href="/posts"
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="text-xs font-bold font-mono-ui uppercase tracking-wider text-neo-accent hover:text-neo-accent/80 transition-colors"
           >
             View all
           </Link>
         )}
       </div>
-      <div className="rounded-lg bg-zinc-900/50 overflow-x-auto">
+      <div className="rounded-none border-2 border-zinc-800 bg-zinc-900/50 overflow-x-auto">
         {posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <p className="text-sm text-zinc-400">No posts yet</p>
@@ -83,9 +85,9 @@ export function DashboardPostsTable({ posts }: { posts: Post[] }) {
                     <Badge
                       variant={post.status === 'published' ? 'default' : 'secondary'}
                       className={cn(
-                        'text-[10px]',
+                        'text-[10px] rounded-none font-bold font-mono-ui uppercase',
                         post.status === 'published'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          ? 'bg-neo-mint/10 text-neo-mint border-neo-mint/20'
                           : 'bg-zinc-800 text-zinc-400 border-0'
                       )}
                     >

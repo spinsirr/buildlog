@@ -13,11 +13,16 @@ export async function publishToLinkedIn(
   userId: string,
   text: string,
 ): Promise<{ postId: string; postUrl: string }> {
-  const { accessToken, connection } = await getValidToken(linkedinConfig, userId)
+  const { accessToken, connection } = await getValidToken(
+    linkedinConfig,
+    userId,
+  )
 
   const linkedinUserId = connection.platform_user_id as string
   if (!linkedinUserId) {
-    throw new Error("LinkedIn user ID not found. Please reconnect in Settings.")
+    throw new Error(
+      "LinkedIn user ID not found. Please reconnect in Settings.",
+    )
   }
 
   const res = await fetch("https://api.linkedin.com/v2/posts", {

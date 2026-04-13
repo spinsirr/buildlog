@@ -47,7 +47,11 @@ export async function requireUser(
   const authHeader = getAuthorizationHeader(req)
   if (!authHeader) {
     log.warn("no authorization header in request")
-    return { user: null, supabase: createServiceClient(), error: "Unauthorized" }
+    return {
+      user: null,
+      supabase: createServiceClient(),
+      error: "Unauthorized",
+    }
   }
 
   const jwt = authHeader.replace(/^bearer\s+/i, "")

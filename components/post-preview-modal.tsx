@@ -144,7 +144,7 @@ export function PostPreviewModal({
                     ? 'stroke-red-400'
                     : remaining <= 20
                       ? 'stroke-amber-400'
-                      : 'stroke-purple-400'
+                      : 'stroke-neo-accent'
                 )}
                 strokeWidth="2"
                 strokeDasharray={circumference}
@@ -174,7 +174,7 @@ export function PostPreviewModal({
             type="button"
             onClick={onConfirmPublish}
             disabled={busy || overLimit || connectedPlatforms.length === 0}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-purple-600 text-white text-xs font-medium hover:bg-purple-500 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-none border-2 border-black bg-neo-accent text-white text-xs font-bold font-mono-ui uppercase tracking-wider hover:bg-neo-accent/90 shadow-[2px_2px_0px_0px_rgba(255,255,255,0.1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-50 transition-colors"
           >
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
             {connectedPlatforms.length === 0

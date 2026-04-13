@@ -8,6 +8,9 @@ export interface AgentEvent {
   autoPublish: boolean
   xPremium: boolean
   data: EventData
+  /** Pre-fetched recent posts for this repo — lets the ranker avoid
+   * duplicating angles without needing a tool call. */
+  recentPosts?: RecentPost[]
 }
 
 export interface EventData {
@@ -31,8 +34,14 @@ export interface FileDiff {
   patch?: string
 }
 
+/**
+ * Ranker output. Every event produces a post — signal tells the UI whether
+ * to surface it prominently ('high') or collapse under a "low priority"
+ * disclosure ('low'). `error` signals the call failed; webhook should still
+ * fall back to direct generation in that case.
+ */
 export interface AgentResult {
-  decision: 'post' | 'skip' | 'bundle_later' | 'error'
+  signal: 'high' | 'low' | 'error'
   reasoning: string
   confidence: 'high' | 'medium' | 'low'
   angle: string | null

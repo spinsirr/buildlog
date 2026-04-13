@@ -28,7 +28,7 @@ export function PostCardHeader({
               href={post.platform_post_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-neo-accent hover:text-neo-accent/80 transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
               View post
@@ -95,7 +95,7 @@ export function PostCardMeta({
         className={cn(
           'text-[10px] border-0',
           post.source_type === 'intro'
-            ? 'bg-purple-500/10 text-purple-400'
+            ? 'bg-neo-muted/10 text-neo-muted'
             : 'bg-zinc-800 text-zinc-400'
         )}
       >

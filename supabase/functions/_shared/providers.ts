@@ -21,7 +21,9 @@ export interface OAuthProviderConfig {
   /** Whether this provider supports PKCE */
   pkce: boolean
   /** Extract user ID and username from userinfo response */
-  extractUser: (data: Record<string, unknown>) => { id: string; username: string }
+  extractUser: (
+    data: Record<string, unknown>,
+  ) => { id: string; username: string }
   /** Env var names for client credentials */
   envClientId: string
   envClientSecret: string

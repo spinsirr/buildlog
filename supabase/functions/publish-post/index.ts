@@ -48,10 +48,17 @@ Deno.serve(async (req) => {
   }
 
   const extraUpdates = body.content ? { content: body.content } : undefined
-  const result = await fetchPlatformsAndPublish(supabase, user.id, body.id, content, extraUpdates)
+  const result = await fetchPlatformsAndPublish(
+    supabase,
+    user.id,
+    body.id,
+    content,
+    extraUpdates,
+  )
 
   if (result.publishedPlatforms.length === 0) {
-    const errMsgs = Object.entries(result.errors).map(([p, e]) => `${p}: ${e}`).join("; ")
+    const errMsgs = Object.entries(result.errors).map(([p, e]) => `${p}: ${e}`)
+      .join("; ")
     return errorResponse(`Publishing failed: ${errMsgs}`, 502, req)
   }
 
