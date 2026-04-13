@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0.0] - 2026-04-13
+
+### Added
+- Public `/changelog` directory page listing every user's build-in-public timeline, sorted by most recent activity, with SEO-friendly `CollectionPage` + `ItemList` JSON-LD
+- "In the wild" featured changelogs section on the landing page for social proof + internal linking
+- Changelogs link in landing nav (desktop + mobile) and every marketing footer
+- Settings toggle to opt out of the public directory (URL stays accessible either way)
+- `docs/SEO.md` long-term SEO guide with prioritized roadmap (dynamic sitemap done, HowTo / Product schema / llms.txt next)
+- Bauhaus visual alignment for the dashboard: logo mark, font-display headings, neo color palette, directional sidebar active indicator, geometric corner accents on focus card
+- XHS-style copy generator with bilingual modal picker (English for Twitter/LinkedIn, 中文 for 小红书)
+- Real code diffs for commit events: new `fetchCommitContext` uses GitHub compare API so the AI reads actual code changes, not just commit messages
+- Pre-filter layer on push webhook: merge commits, lockfile-only, CI-only, and docs+chore pushes are dropped before any AI call (zero token cost)
+- Low-signal drafts disclosure in Posts: AI-rated noise collapses under a "Low priority" section with AI reasoning shown for each
+
+### Changed
+- Decision layer rewritten from gatekeeper (ToolLoopAgent skip/bundle_later/post) to ranker (two-phase: rankEvent + generateContent). Every event always creates a draft with a `signal: 'high' | 'low'` label. Per-push tokens: ~24k → ~6k (-75%)
+- Decision layer now on by default for all profiles
+- Dashboard `--radius: 0` — all shadcn cards, buttons, inputs, tabs, badges are square; only avatars and intentionally circular decorations keep `rounded-full`
+- Dynamic sitemap includes all opt-in changelog pages with latest `published_at` as `lastModified`
+- Landing page converted to async Server Component to embed featured changelogs
+- XHS button flow: click opens modal with language picker (no generation until user chooses), then renders the result with lang-aware copy
+- Posts UI splits drafts by signal; manual posts and legacy drafts default to the high-signal group
+
+### Removed
+- Deno-side AI duplication: `supabase/functions/_shared/ai.ts` (618 lines), `_shared/decision.ts`, `ai-sdk-spike/` — all prompts consolidated in `lib/agent/prompts.ts`
+- Orphan Vercel routes: `app/api/ai/decide`, `app/api/ai/generate`, `app/api/ai/process`, `app/api/ai/_auth.ts`
+- Orphan modules: `lib/ai/engine.ts`, `lib/ai/decision.ts`, `lib/ai/generate.ts`, `lib/ai/context.ts`, `lib/ai/prompts.ts`, `lib/ai/schemas.ts`
+- "Quick idea" sidebar input (unused, deleted `components/quick-capture.tsx`)
+- Legacy purple accent across dashboard (every `purple-*` class replaced with neo-brutalism tokens)
+
+### Fixed
+- `post_decisions.decision` CHECK constraint widened to accept ranker signal values (`high` / `low` / `error`) alongside legacy gatekeeper values
+- `AGENT_API_SECRET` comparison on all `/api/agent/*` routes now uses `timingSafeEqual` (no timing-attack surface)
+- Duplicate `20260405100000` migration timestamps resolved (`agent_memory` → `20260405100001`)
+- Dead ternary in posts step indicator (`step === 'write' ? bg-neo-accent : bg-neo-accent`)
+
+### Infrastructure
+- New Vercel routes: `/api/agent/{generate,xhs,intro,recap}` — all AI generation flows through Vercel with the AI SDK + guardrail middleware
+- Deno edge functions (`github-webhook`, `generate-post`, `generate-recap`, `connect-repo`, `backfill-context`) now proxy through `_shared/vercel-ai.ts`
+- Shared AI provider/model type factored into `lib/ai/provider.ts`
+- Public changelog opt-out via new `profiles.public_changelog boolean default true` column + partial index
+- Bauhaus tokens in `app/globals.css`: `--radius: 0`, neo palette, card/button hard-shadow utilities
+
 ## [0.0.4.0] - 2026-04-12
 
 ### Changed
