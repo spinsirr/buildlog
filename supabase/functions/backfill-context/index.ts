@@ -2,10 +2,10 @@
  * One-off function: backfill project_context + intro posts for ALL connected repos.
  * Uses service role — no user auth needed. Call once, then delete.
  */
-import { generateIntroPost } from "../_shared/ai.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { fetchRepoContext } from "../_shared/github.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
+import { callVercelAi } from "../_shared/vercel-ai.ts"
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
@@ -60,18 +60,21 @@ Deno.serve(async (req) => {
         .limit(1)
 
       if (!existing || existing.length === 0) {
-        try {
-          const content = await generateIntroPost(repo.full_name, repo.project_context)
+        const result = await callVercelAi<{ content: string }>("intro", {
+          repoName: repo.full_name,
+          projectContext: repo.project_context,
+        })
+        if (result?.content) {
           await supabase.from("posts").insert({
             user_id: repo.user_id,
             repo_id: repo.id,
             source_type: "intro",
-            content,
+            content: result.content,
             status: "draft",
           })
           entry.intro = true
-        } catch (err) {
-          entry.error = `intro failed: ${String(err)}`
+        } else {
+          entry.error = "intro generation failed"
         }
       }
 
@@ -98,15 +101,20 @@ Deno.serve(async (req) => {
           .limit(1)
 
         if (!existing || existing.length === 0) {
-          const content = await generateIntroPost(repo.full_name, ctx)
-          await supabase.from("posts").insert({
-            user_id: repo.user_id,
-            repo_id: repo.id,
-            source_type: "intro",
-            content,
-            status: "draft",
+          const result = await callVercelAi<{ content: string }>("intro", {
+            repoName: repo.full_name,
+            projectContext: ctx,
           })
-          entry.intro = true
+          if (result?.content) {
+            await supabase.from("posts").insert({
+              user_id: repo.user_id,
+              repo_id: repo.id,
+              source_type: "intro",
+              content: result.content,
+              status: "draft",
+            })
+            entry.intro = true
+          }
         }
       } else {
         entry.error = "no context found (no README or manifest)"

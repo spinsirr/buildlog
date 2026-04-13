@@ -1,9 +1,9 @@
-import { generateIntroPost } from "../_shared/ai.ts"
 import { requireUser } from "../_shared/auth.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { fetchRepoContext } from "../_shared/github.ts"
 import { safeJson } from "../_shared/http.ts"
 import { checkLimit } from "../_shared/subscription.ts"
+import { callVercelAi } from "../_shared/vercel-ai.ts"
 
 Deno.serve(async (req) => {
   const optRes = handleOptions(req)
@@ -64,15 +64,20 @@ Deno.serve(async (req) => {
 
           // Generate intro post as first draft
           if (repoRow) {
-            const content = await generateIntroPost(body.full_name, ctx)
-            await supabase.from("posts").insert({
-              user_id: user.id,
-              repo_id: repoRow.id,
-              source_type: "intro",
-              content,
-              original_content: content,
-              status: "draft",
+            const result = await callVercelAi<{ content: string }>("intro", {
+              repoName: body.full_name,
+              projectContext: ctx,
             })
+            if (result?.content) {
+              await supabase.from("posts").insert({
+                user_id: user.id,
+                repo_id: repoRow.id,
+                source_type: "intro",
+                content: result.content,
+                original_content: result.content,
+                status: "draft",
+              })
+            }
           }
         }
       }

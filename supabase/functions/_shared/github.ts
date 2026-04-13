@@ -270,6 +270,127 @@ export async function fetchRepoContext(
   return parts.join("\n\n")
 }
 
+export interface CommitContext {
+  commitMessages: string[]
+  files: string[]
+  diffs: FileDiff[]
+}
+
+/**
+ * Fetch commit messages, file paths, and real diffs for a push event.
+ * Uses the compare API (before...head) which returns the cumulative diff
+ * across all commits in the push — one API call regardless of commit count.
+ *
+ * Handles new-branch pushes (before = all zeros) by falling back to a
+ * single-commit fetch against the head SHA.
+ *
+ * Best-effort: returns partial data if API calls fail.
+ */
+export async function fetchCommitContext(
+  installationId: number,
+  repoFullName: string,
+  beforeSha: string,
+  headSha: string,
+): Promise<CommitContext> {
+  const result: CommitContext = { commitMessages: [], files: [], diffs: [] }
+
+  let token: string
+  try {
+    token = await getInstallationToken(installationId)
+  } catch (err) {
+    log.warn("failed to get installation token for commit context: {error}", { error: String(err) })
+    return result
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  }
+
+  const isFirstPush = /^0+$/.test(beforeSha)
+  const MAX_PATCH_BUDGET = 12_000
+  const MAX_FILE_PATCH = 3_000
+
+  try {
+    if (isFirstPush) {
+      // New branch / first push — no "before" to compare against.
+      // Fetch just the head commit's files.
+      const res = await fetch(
+        `https://api.github.com/repos/${repoFullName}/commits/${headSha}`,
+        { headers },
+      )
+      if (!res.ok) return result
+
+      const commit = (await res.json()) as {
+        commit: { message: string }
+        files?: Array<{
+          filename: string
+          status: string
+          additions: number
+          deletions: number
+          patch?: string
+        }>
+      }
+      result.commitMessages = [commit.commit.message.split("\n")[0]]
+      result.files = commit.files?.map((f) => f.filename) ?? []
+
+      let totalPatchSize = 0
+      for (const f of commit.files ?? []) {
+        const patchLen = f.patch?.length ?? 0
+        if (totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0) break
+        result.diffs.push({
+          filename: f.filename,
+          status: f.status,
+          additions: f.additions,
+          deletions: f.deletions,
+          patch: f.patch?.slice(0, MAX_FILE_PATCH),
+        })
+        totalPatchSize += Math.min(patchLen, MAX_FILE_PATCH)
+      }
+      return result
+    }
+
+    // Normal push — compare cumulative diff across all commits
+    const res = await fetch(
+      `https://api.github.com/repos/${repoFullName}/compare/${beforeSha}...${headSha}`,
+      { headers },
+    )
+    if (!res.ok) return result
+
+    const compare = (await res.json()) as {
+      commits: Array<{ commit: { message: string } }>
+      files?: Array<{
+        filename: string
+        status: string
+        additions: number
+        deletions: number
+        patch?: string
+      }>
+    }
+    result.commitMessages = compare.commits.map((c) => c.commit.message.split("\n")[0])
+    result.files = compare.files?.map((f) => f.filename) ?? []
+
+    let totalPatchSize = 0
+    for (const f of compare.files ?? []) {
+      const patchLen = f.patch?.length ?? 0
+      if (totalPatchSize + patchLen > MAX_PATCH_BUDGET && result.diffs.length > 0) break
+      result.diffs.push({
+        filename: f.filename,
+        status: f.status,
+        additions: f.additions,
+        deletions: f.deletions,
+        patch: f.patch?.slice(0, MAX_FILE_PATCH),
+      })
+      totalPatchSize += Math.min(patchLen, MAX_FILE_PATCH)
+    }
+  } catch (err) {
+    log.warn("failed to fetch commit context: {error}", { error: String(err) })
+  }
+
+  return result
+}
+
 export async function fetchPrContext(
   installationId: number,
   repoFullName: string,

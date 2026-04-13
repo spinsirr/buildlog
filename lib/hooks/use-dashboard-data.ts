@@ -112,7 +112,7 @@ async function fetchSettingsData(_key: string, userId: string) {
     supabase
       .from('profiles')
       .select(
-        'tone, auto_publish, email_notifications, publish_delay_minutes, github_username, x_premium'
+        'tone, auto_publish, email_notifications, publish_delay_minutes, github_username, x_premium, public_changelog'
       )
       .eq('id', userId)
       .single(),
@@ -132,6 +132,7 @@ async function fetchSettingsData(_key: string, userId: string) {
     email_notifications: profileData?.email_notifications ?? true,
     publish_delay_minutes: profileData?.publish_delay_minutes ?? 0,
     x_premium: profileData?.x_premium ?? false,
+    public_changelog: profileData?.public_changelog ?? true,
   }
 
   return {
