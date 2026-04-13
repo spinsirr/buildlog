@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /** biome-ignore-all lint/suspicious/noExplicitAny: legacy harness pending ranker-migration rewrite */
 // @ts-nocheck
 /* eslint-disable @typescript-eslint/no-explicit-any */
