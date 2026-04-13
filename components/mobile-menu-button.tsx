@@ -37,6 +37,13 @@ export function MobileMenuButton({ isLoggedIn }: { isLoggedIn: boolean }) {
             Examples
           </Link>
           <Link
+            href="/changelog"
+            onClick={() => setOpen(false)}
+            className="block border-4 border-black px-5 py-4 bg-neo-mint font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"
+          >
+            Changelogs
+          </Link>
+          <Link
             href="/pricing"
             onClick={() => setOpen(false)}
             className="block border-4 border-black px-5 py-4 bg-neo-secondary font-mono-ui text-sm font-bold uppercase tracking-wider text-center text-black neo-btn"

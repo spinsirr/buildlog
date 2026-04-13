@@ -289,6 +289,12 @@ export default function ExamplesPage() {
           </div>
           <div className="flex items-center gap-6">
             <Link
+              href="/changelog"
+              className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"
+            >
+              Changelogs
+            </Link>
+            <Link
               href="/privacy"
               className="font-mono-ui text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-70"
             >
