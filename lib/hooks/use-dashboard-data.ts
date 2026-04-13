@@ -68,11 +68,10 @@ async function fetchPostsData(_key: string, userId: string) {
 
 export function usePostsData() {
   const { userId } = useAuth()
-  return useSWR(
-    userId ? ['posts-data', userId] : null,
-    ([key, uid]) => fetchPostsData(key, uid),
-    { revalidateOnFocus: false, dedupingInterval: 10000 }
-  )
+  return useSWR(userId ? ['posts-data', userId] : null, ([key, uid]) => fetchPostsData(key, uid), {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  })
 }
 
 // --- Repos ---
@@ -96,11 +95,10 @@ async function fetchReposData() {
 
 export function useReposData() {
   const { userId } = useAuth()
-  return useSWR(
-    userId ? ['repos-data', userId] : null,
-    () => fetchReposData(),
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
-  )
+  return useSWR(userId ? ['repos-data', userId] : null, () => fetchReposData(), {
+    revalidateOnFocus: false,
+    dedupingInterval: 30000,
+  })
 }
 
 // --- Settings ---
@@ -201,9 +199,8 @@ async function fetchUsageData(_key: string, userId: string) {
 
 export function useUsageData() {
   const { userId } = useAuth()
-  return useSWR(
-    userId ? ['usage-data', userId] : null,
-    ([key, uid]) => fetchUsageData(key, uid),
-    { revalidateOnFocus: false, dedupingInterval: 10000 }
-  )
+  return useSWR(userId ? ['usage-data', userId] : null, ([key, uid]) => fetchUsageData(key, uid), {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  })
 }

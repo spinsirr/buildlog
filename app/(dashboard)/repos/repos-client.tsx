@@ -19,13 +19,7 @@ function getInstallUrl() {
   return `https://github.com/apps/${GITHUB_APP_NAME}/installations/new?state=${state}`
 }
 
-export function ReposClient({
-  repos,
-  needsInstall,
-}: {
-  repos: Repo[]
-  needsInstall: boolean
-}) {
+export function ReposClient({ repos, needsInstall }: { repos: Repo[]; needsInstall: boolean }) {
   const supabase = useMemo(() => createClient(), [])
   const searchParams = useSearchParams()
   const router = useRouter()
