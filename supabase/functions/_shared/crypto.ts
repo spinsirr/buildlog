@@ -46,7 +46,9 @@ export function bytesToUtf8(value: Uint8Array): string {
 
 export function bytesToBase64(value: Uint8Array): string {
   let binary = ""
-  for (let i = 0; i < value.length; i++) binary += String.fromCharCode(value[i])
+  for (let i = 0; i < value.length; i++) {
+    binary += String.fromCharCode(value[i])
+  }
   return btoa(binary)
 }
 
@@ -58,7 +60,10 @@ export function base64ToBytes(value: string): Uint8Array {
 }
 
 export function base64UrlEncode(value: Uint8Array): string {
-  return bytesToBase64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
+  return bytesToBase64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(
+    /=/g,
+    "",
+  )
 }
 
 export function toBase64Utf8(value: string): string {
@@ -72,15 +77,22 @@ export function toBase64Utf8(value: string): string {
  *
  * Twitter's OAuth 2.0 token endpoint strictly enforces this.
  */
-export function rfc6749BasicAuth(clientId: string, clientSecret: string): string {
+export function rfc6749BasicAuth(
+  clientId: string,
+  clientSecret: string,
+): string {
   // encodeURIComponent gives uppercase hex digits per spec, which satisfies RFC 3986.
-  return toBase64Utf8(`${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`)
+  return toBase64Utf8(
+    `${encodeURIComponent(clientId)}:${encodeURIComponent(clientSecret)}`,
+  )
 }
 
 function getAesKey(): Promise<CryptoKey> {
   const keyHex = requiredEnv("TOKEN_ENCRYPTION_KEY")
   if (keyHex.length !== 64) {
-    throw new Error("TOKEN_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)")
+    throw new Error(
+      "TOKEN_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)",
+    )
   }
 
   return crypto.subtle.importKey("raw", fromHex(keyHex), AES_ALGORITHM, false, [
@@ -102,7 +114,10 @@ export async function encrypt(plaintext: string): Promise<string> {
     ),
   )
 
-  const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - TAG_LENGTH)
+  const ciphertext = encryptedWithTag.slice(
+    0,
+    encryptedWithTag.length - TAG_LENGTH,
+  )
   const tag = encryptedWithTag.slice(encryptedWithTag.length - TAG_LENGTH)
 
   return `${toHex(iv)}:${toHex(ciphertext)}:${toHex(tag)}`
@@ -134,7 +149,10 @@ export async function decrypt(blob: string): Promise<string> {
   return bytesToUtf8(new Uint8Array(decrypted))
 }
 
-export async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
+export async function hmacSha256Hex(
+  secret: string,
+  payload: string,
+): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     utf8ToBytes(secret),
@@ -143,7 +161,11 @@ export async function hmacSha256Hex(secret: string, payload: string): Promise<st
     ["sign"],
   )
 
-  const signature = await crypto.subtle.sign(HMAC_ALGORITHM, key, utf8ToBytes(payload))
+  const signature = await crypto.subtle.sign(
+    HMAC_ALGORITHM,
+    key,
+    utf8ToBytes(payload),
+  )
   return toHex(new Uint8Array(signature))
 }
 

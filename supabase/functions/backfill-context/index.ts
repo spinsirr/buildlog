@@ -11,7 +11,9 @@ Deno.serve(async (req) => {
   const optRes = handleOptions(req)
   if (optRes) return optRes
 
-  if (req.method !== "POST") return errorResponse("Method not allowed", 405, req)
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405, req)
+  }
 
   const supabase = createServiceClient()
 
@@ -28,19 +30,27 @@ Deno.serve(async (req) => {
     return jsonResponse({ message: "No connected repos", updated: 0 }, req)
   }
 
-  const results: Array<{ repo: string; context: boolean; intro: boolean; error?: string }> = []
+  const results: Array<
+    { repo: string; context: boolean; intro: boolean; error?: string }
+  > = []
 
   for (const repo of repos) {
-    const entry: { repo: string; context: boolean; intro: boolean; error?: string } = {
+    const entry: {
+      repo: string
+      context: boolean
+      intro: boolean
+      error?: string
+    } = {
       repo: repo.full_name,
       context: false,
       intro: false,
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const installationId =
-      (repo as Record<string, unknown> & { profiles?: { github_installation_id?: number } })
-        .profiles?.github_installation_id
+    const installationId = (repo as Record<string, unknown> & {
+      profiles?: { github_installation_id?: number }
+    })
+      .profiles?.github_installation_id
     if (!installationId) {
       entry.error = "no installation_id"
       results.push(entry)
@@ -126,5 +136,8 @@ Deno.serve(async (req) => {
     results.push(entry)
   }
 
-  return jsonResponse({ results, updated: results.filter((r) => r.context).length }, req)
+  return jsonResponse({
+    results,
+    updated: results.filter((r) => r.context).length,
+  }, req)
 })

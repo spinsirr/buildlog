@@ -48,7 +48,9 @@ Deno.serve(async (req) => {
     )
 
   if ((insertedCount ?? 0) === 0) {
-    return jsonResponse({ received: true, skipped: "duplicate" }, req, { status: 200 })
+    return jsonResponse({ received: true, skipped: "duplicate" }, req, {
+      status: 200,
+    })
   }
 
   // Resolve user_id: prefer metadata, fall back to stripe_customer_id lookup
@@ -163,7 +165,9 @@ Deno.serve(async (req) => {
         const failedSubId = invoice.subscription as string | null
 
         if (!failedSubId) {
-          log.error("invoice.payment_failed: no subscription on invoice", { invoiceId: invoice.id })
+          log.error("invoice.payment_failed: no subscription on invoice", {
+            invoiceId: invoice.id,
+          })
           break
         }
 
@@ -180,11 +184,14 @@ Deno.serve(async (req) => {
           .eq("stripe_subscription_id", failedSubId)
 
         if (error) {
-          log.error("invoice.payment_failed: failed to update subscription status", {
-            subscriptionId: failedSubId,
-            status: failedStatus,
-            error: String(error),
-          })
+          log.error(
+            "invoice.payment_failed: failed to update subscription status",
+            {
+              subscriptionId: failedSubId,
+              status: failedStatus,
+              error: String(error),
+            },
+          )
         } else {
           log.info("invoice.payment_failed: subscription marked as {status}", {
             subscriptionId: failedSubId,

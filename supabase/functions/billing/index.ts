@@ -27,7 +27,9 @@ async function ensureCustomer(
     .single()
 
   if (profileErr || !profile) {
-    throw new Error(`Failed to fetch profile: ${profileErr?.message ?? "not found"}`)
+    throw new Error(
+      `Failed to fetch profile: ${profileErr?.message ?? "not found"}`,
+    )
   }
 
   let customerId = profile.stripe_customer_id as string | null
@@ -60,7 +62,9 @@ async function ensureCustomer(
       .eq("id", user.id)
 
     if (updateErr) {
-      throw new Error(`Failed to save stripe_customer_id: ${updateErr.message}`)
+      throw new Error(
+        `Failed to save stripe_customer_id: ${updateErr.message}`,
+      )
     }
 
     log.info("created customer {cid} for user {uid}", {

@@ -4,7 +4,10 @@ import { createServiceClient } from "./supabase.ts"
 
 export type LimitType = "posts" | "repos" | "platforms"
 
-export async function getUserPlan(userId: string, client?: SupabaseClient): Promise<Plan> {
+export async function getUserPlan(
+  userId: string,
+  client?: SupabaseClient,
+): Promise<Plan> {
   const supabase = client ?? createServiceClient()
   const { data } = await supabase
     .from("subscriptions")
@@ -28,7 +31,11 @@ export async function checkLimit(
   let count = 0
 
   if (type === "posts") {
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+    const startOfMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1,
+    ).toISOString()
 
     const { count: c } = await supabase
       .from("posts")
@@ -54,7 +61,9 @@ export async function checkLimit(
     count = c ?? 0
   }
 
-  const limit = (limits[`${type}_per_month` as keyof typeof limits] as number | undefined) ??
+  const limit = (limits[`${type}_per_month` as keyof typeof limits] as
+    | number
+    | undefined) ??
     (limits[type as keyof typeof limits] as number)
 
   const allowed = plan === "pro" || count < limit

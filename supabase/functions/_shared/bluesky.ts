@@ -1,7 +1,9 @@
 import { decrypt } from "./crypto.ts"
 import { createServiceClient } from "./supabase.ts"
 
-async function getCredentials(userId: string): Promise<{ handle: string; appPassword: string }> {
+async function getCredentials(
+  userId: string,
+): Promise<{ handle: string; appPassword: string }> {
   const supabase = createServiceClient()
 
   const { data: conn } = await supabase
@@ -14,7 +16,9 @@ async function getCredentials(userId: string): Promise<{ handle: string; appPass
   if (!conn) throw new Error("Bluesky not connected")
 
   if (!conn.platform_username || !conn.access_token) {
-    throw new Error("Bluesky credentials missing. Please reconnect in Settings.")
+    throw new Error(
+      "Bluesky credentials missing. Please reconnect in Settings.",
+    )
   }
 
   return {
@@ -29,35 +33,44 @@ export async function publishToBluesky(
 ): Promise<{ postUri: string; postUrl: string }> {
   const { handle, appPassword } = await getCredentials(userId)
 
-  const sessionRes = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier: handle, password: appPassword }),
-  })
+  const sessionRes = await fetch(
+    "https://bsky.social/xrpc/com.atproto.server.createSession",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: handle, password: appPassword }),
+    },
+  )
 
   if (!sessionRes.ok) {
     const body = await sessionRes.text()
     throw new Error(`Bluesky session failed: ${sessionRes.status} ${body}`)
   }
 
-  const session = (await sessionRes.json()) as { did: string; accessJwt: string }
+  const session = (await sessionRes.json()) as {
+    did: string
+    accessJwt: string
+  }
 
-  const postRes = await fetch("https://bsky.social/xrpc/com.atproto.repo.createRecord", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.accessJwt}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      repo: session.did,
-      collection: "app.bsky.feed.post",
-      record: {
-        $type: "app.bsky.feed.post",
-        text,
-        createdAt: new Date().toISOString(),
+  const postRes = await fetch(
+    "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.accessJwt}`,
+        "Content-Type": "application/json",
       },
-    }),
-  })
+      body: JSON.stringify({
+        repo: session.did,
+        collection: "app.bsky.feed.post",
+        record: {
+          $type: "app.bsky.feed.post",
+          text,
+          createdAt: new Date().toISOString(),
+        },
+      }),
+    },
+  )
 
   if (!postRes.ok) {
     const body = await postRes.text()

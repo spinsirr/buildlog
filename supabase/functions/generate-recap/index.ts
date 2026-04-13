@@ -24,7 +24,11 @@ Deno.serve(async (req) => {
   }
 
   // Enforce post limit — recaps count as posts
-  const { allowed, count, limit } = await checkLimit(user.id, "posts", supabase)
+  const { allowed, count, limit } = await checkLimit(
+    user.id,
+    "posts",
+    supabase,
+  )
   if (!allowed) {
     return jsonResponse(
       {
@@ -53,12 +57,17 @@ Deno.serve(async (req) => {
 
     if (mode === "branch" && (!targetRepo || !targetBranch)) {
       return jsonResponse(
-        { ok: false, reason: "invalid_request", error: "Branch mode requires repo and branch" },
+        {
+          ok: false,
+          reason: "invalid_request",
+          error: "Branch mode requires repo and branch",
+        },
         req,
       )
     }
 
-    const since = new Date(Date.now() - RECAP_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    const since = new Date(Date.now() - RECAP_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+      .toISOString()
 
     // Dedup check — only one recap per week (per branch in branch mode)
     const now = new Date()
@@ -88,7 +97,9 @@ Deno.serve(async (req) => {
         const sd = p.source_data as Record<string, unknown> | null
         return sd?.repo === targetRepo && sd?.branch === targetBranch
       })
-      if (hasDupe) return jsonResponse({ ok: false, reason: "recap_exists" }, req)
+      if (hasDupe) {
+        return jsonResponse({ ok: false, reason: "recap_exists" }, req)
+      }
     }
 
     const { data: profile } = await supabase
@@ -107,7 +118,12 @@ Deno.serve(async (req) => {
 
     if (installationId) {
       if (mode === "branch" && targetRepo) {
-        const data = await fetchRepoRecapData(installationId, targetRepo, since, targetBranch)
+        const data = await fetchRepoRecapData(
+          installationId,
+          targetRepo,
+          since,
+          targetBranch,
+        )
         allRepoData = [data]
       } else {
         const { data: repos } = await supabase
@@ -118,7 +134,9 @@ Deno.serve(async (req) => {
 
         if (repos && repos.length > 0) {
           for (const r of repos) {
-            if (r.project_context) projectContexts[r.full_name] = r.project_context
+            if (r.project_context) {
+              projectContexts[r.full_name] = r.project_context
+            }
           }
           const repoSlice = repos.slice(0, 5)
           const results = await Promise.allSettled(
@@ -172,19 +190,30 @@ Deno.serve(async (req) => {
       )
     }
 
-    const totalCommits = allRepoData.reduce((sum, r) => sum + r.commits.length, 0)
-    const totalPrs = allRepoData.reduce((sum, r) => sum + r.mergedPrs.length, 0)
-    const totalReleases = allRepoData.reduce((sum, r) => sum + r.releases.length, 0)
+    const totalCommits = allRepoData.reduce(
+      (sum, r) => sum + r.commits.length,
+      0,
+    )
+    const totalPrs = allRepoData.reduce(
+      (sum, r) => sum + r.mergedPrs.length,
+      0,
+    )
+    const totalReleases = allRepoData.reduce(
+      (sum, r) => sum + r.releases.length,
+      0,
+    )
 
     const sourceData: Record<string, unknown> = {
       mode,
       repos: allRepoData.map((r) => r.repoName),
-      commit_count: totalCommits,
-      pr_count: totalPrs,
-      release_count: totalReleases,
-      published_post_ids: (recentPosts ?? []).map((p: { created_at: string }) => p.created_at),
+      "commit_count": totalCommits,
+      "pr_count": totalPrs,
+      "release_count": totalReleases,
+      "published_post_ids": (recentPosts ?? []).map(
+        (p: { "created_at": string }) => p.created_at,
+      ),
       window: "7d",
-      generated_at: new Date().toISOString(),
+      "generated_at": new Date().toISOString(),
     }
     if (targetRepo) sourceData.repo = targetRepo
     if (targetBranch) sourceData.branch = targetBranch
@@ -203,7 +232,9 @@ Deno.serve(async (req) => {
       .single()
 
     if (insertError) {
-      log.error("failed to insert recap: {error}", { error: insertError.message })
+      log.error("failed to insert recap: {error}", {
+        error: insertError.message,
+      })
       return jsonResponse(
         { ok: false, reason: "generation_error", error: insertError.message },
         req,

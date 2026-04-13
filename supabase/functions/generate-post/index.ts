@@ -32,7 +32,10 @@ Deno.serve(async (req) => {
     if (isRegenerate) return await handleRegenerate(req, user.id, supabase)
     return await handleGenerate(req, user.id, supabase)
   } catch (err) {
-    log.error("unhandled error: {error}", { error: String(err), stack: (err as Error).stack })
+    log.error("unhandled error: {error}", {
+      error: String(err),
+      stack: (err as Error).stack,
+    })
     return errorResponse("Internal server error", 500, req)
   }
 })
@@ -107,14 +110,26 @@ async function handleGenerate(
   const { sourceType, repoName, data, repoId } = body
 
   if (!sourceType || !repoName || !data || !repoId) {
-    return errorResponse("Missing required fields: sourceType, repoName, data, repoId", 400, req)
+    return errorResponse(
+      "Missing required fields: sourceType, repoName, data, repoId",
+      400,
+      req,
+    )
   }
 
   if (!["commit", "pr", "release"].includes(sourceType)) {
-    return errorResponse("sourceType must be one of: commit, pr, release", 400, req)
+    return errorResponse(
+      "sourceType must be one of: commit, pr, release",
+      400,
+      req,
+    )
   }
 
-  const { allowed, plan, count, limit } = await checkLimit(userId, "posts", supabase)
+  const { allowed, plan, count, limit } = await checkLimit(
+    userId,
+    "posts",
+    supabase,
+  )
   if (!allowed) {
     return jsonResponse(
       {
@@ -217,7 +232,11 @@ async function handleRegenerate(
   // Intro posts use a different generation path
   if (post.source_type === "intro") {
     if (!projectContext) {
-      return errorResponse("No project context available to regenerate intro post", 400, req)
+      return errorResponse(
+        "No project context available to regenerate intro post",
+        400,
+        req,
+      )
     }
     const result = await callVercelAi<{ content: string }>("intro", {
       repoName,
@@ -225,7 +244,9 @@ async function handleRegenerate(
       tone: profile?.tone ?? "casual",
       contentBudget: profile?.x_premium === true ? 4000 : 280,
     })
-    if (!result?.content) return errorResponse("AI generation failed", 500, req)
+    if (!result?.content) {
+      return errorResponse("AI generation failed", 500, req)
+    }
 
     const { data: updatedPost, error: updateError } = await supabase
       .from("posts")
@@ -238,7 +259,9 @@ async function handleRegenerate(
       .select()
       .single()
     if (updateError) {
-      log.error("regenerate intro: update error: {error}", { error: String(updateError) })
+      log.error("regenerate intro: update error: {error}", {
+        error: String(updateError),
+      })
       return errorResponse("Failed to update post", 500, req)
     }
     return jsonResponse({ post: updatedPost }, req, { status: 200 })
@@ -262,7 +285,9 @@ async function handleRegenerate(
       )
       diffs = prCtx.diffs
     } catch (err) {
-      log.warn("regenerate: failed to fetch PR diffs: {error}", { error: String(err) })
+      log.warn("regenerate: failed to fetch PR diffs: {error}", {
+        error: String(err),
+      })
     }
   }
 
@@ -291,7 +316,9 @@ async function handleRegenerate(
     .select()
     .single()
   if (updateError) {
-    log.error("regenerate: update error: {error}", { error: String(updateError) })
+    log.error("regenerate: update error: {error}", {
+      error: String(updateError),
+    })
     return errorResponse("Failed to update post", 500, req)
   }
 
@@ -353,7 +380,9 @@ async function handleXhsCopy(
       )
       diffs = prCtx.diffs
     } catch (err) {
-      log.warn("xhs-copy: failed to fetch PR diffs: {error}", { error: String(err) })
+      log.warn("xhs-copy: failed to fetch PR diffs: {error}", {
+        error: String(err),
+      })
     }
   }
 
@@ -368,7 +397,10 @@ async function handleXhsCopy(
     data: { ...(sourceData as EventData), diffs },
   })
 
-  const result = await callVercelAi<{ content: string }>("xhs", { event, lang })
+  const result = await callVercelAi<{ content: string }>("xhs", {
+    event,
+    lang,
+  })
   if (!result?.content) return errorResponse("AI generation failed", 500, req)
 
   return jsonResponse({ content: result.content }, req, { status: 200 })

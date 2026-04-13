@@ -39,12 +39,16 @@ interface AgentApiResult {
   stepCount: number
 }
 
-async function callAgentApi(event: AgentApiEvent): Promise<AgentApiResult | null> {
+async function callAgentApi(
+  event: AgentApiEvent,
+): Promise<AgentApiResult | null> {
   const appUrl = Deno.env.get("BUILDLOG_APP_URL")
   const secret = Deno.env.get("AGENT_API_SECRET")
 
   if (!appUrl || !secret) {
-    log.warn("agent API not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)")
+    log.warn(
+      "agent API not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)",
+    )
     return null
   }
 
@@ -129,11 +133,17 @@ function isCiConfig(path: string): boolean {
 function isDocOrToolingFile(path: string): boolean {
   const lower = path.toLowerCase()
   const name = lower.split("/").pop() ?? ""
-  if (lower.endsWith(".md") || lower.endsWith(".mdx") || lower.endsWith(".txt")) return true
-  if (name === "readme" || name === "changelog" || name === "license") return true
+  if (
+    lower.endsWith(".md") || lower.endsWith(".mdx") || lower.endsWith(".txt")
+  ) return true
+  if (name === "readme" || name === "changelog" || name === "license") {
+    return true
+  }
   if (name === ".gitignore" || name === ".gitattributes") return true
   if (name === ".editorconfig") return true
-  if (name.startsWith(".prettierrc") || name === "prettier.config.js") return true
+  if (name.startsWith(".prettierrc") || name === "prettier.config.js") {
+    return true
+  }
   if (name.startsWith(".eslintrc") || name === "eslint.config.js") return true
   if (name === "biome.json" || name === "biome.jsonc") return true
   return false
@@ -147,7 +157,9 @@ function preFilterPush(commits: PushCommit[]): string | null {
   if (commits.length === 0) return "no_commits"
 
   // All merge commits — GitHub merge commits carry no product info
-  if (commits.every((c) => c.message.startsWith("Merge "))) return "merge_commits"
+  if (commits.every((c) => c.message.startsWith("Merge "))) {
+    return "merge_commits"
+  }
 
   const uniqueFiles = [
     ...new Set(
@@ -169,13 +181,19 @@ function preFilterPush(commits: PushCommit[]): string | null {
   // Docs + tooling config only, confirmed by conventional commit prefix.
   // Only skip when BOTH signals agree to avoid dropping legitimate docs features.
   const firstMsg = commits[0]?.message ?? ""
-  const isDocCommitPrefix = /^(docs|chore|style|build|ci|test)(\([^)]+\))?:/i.test(firstMsg)
-  if (isDocCommitPrefix && uniqueFiles.every(isDocOrToolingFile)) return "docs_or_tooling_only"
+  const isDocCommitPrefix = /^(docs|chore|style|build|ci|test)(\([^)]+\))?:/i
+    .test(firstMsg)
+  if (isDocCommitPrefix && uniqueFiles.every(isDocOrToolingFile)) {
+    return "docs_or_tooling_only"
+  }
 
   return null
 }
 
-async function verifySignature(body: string, signature: string): Promise<boolean> {
+async function verifySignature(
+  body: string,
+  signature: string,
+): Promise<boolean> {
   const secret = Deno.env.get("GITHUB_WEBHOOK_SECRET")
   if (!secret) {
     log.error("missing GITHUB_WEBHOOK_SECRET")
@@ -249,10 +267,13 @@ async function handleInstallationEvent(
         .from("profiles")
         .update({ "github_installation_id": installationId })
         .eq("id", profile.id)
-      log.info("webhook: linked installation {installationId} for user {userId}", {
-        installationId,
-        userId: profile.id,
-      })
+      log.info(
+        "webhook: linked installation {installationId} for user {userId}",
+        {
+          installationId,
+          userId: profile.id,
+        },
+      )
     }
   } else if (action === "deleted") {
     // Clear installation_id when app is uninstalled
@@ -260,13 +281,19 @@ async function handleInstallationEvent(
       .from("profiles")
       .update({ "github_installation_id": null })
       .eq("github_installation_id", installationId)
-    log.info("webhook: cleared installation {installationId} on uninstall", { installationId })
+    log.info("webhook: cleared installation {installationId} on uninstall", {
+      installationId,
+    })
   }
 
   return jsonResponse({ ok: true }, req)
 }
 
-async function handleWebhook(req: Request, body: string, event: string): Promise<Response> {
+async function handleWebhook(
+  req: Request,
+  body: string,
+  event: string,
+): Promise<Response> {
   const payload = JSON.parse(body)
   const installationId = payload.installation?.id
 
@@ -336,7 +363,10 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
 
   // Parse the event type and extract relevant data
   let sourceType: "commit" | "pr" | "release" | "tag" | null = null
-  let postData: Record<string, string | string[] | number | FileDiff[] | undefined> = {}
+  let postData: Record<
+    string,
+    string | string[] | number | FileDiff[] | undefined
+  > = {}
 
   if (event === "push" && payload.commits?.length > 0) {
     sourceType = "commit"
@@ -355,12 +385,19 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
         repo: repoFullName,
         reason: skipReason,
       })
-      return jsonResponse({ ok: true, skipped: `prefilter_${skipReason}` }, req)
+      return jsonResponse(
+        { ok: true, skipped: `prefilter_${skipReason}` },
+        req,
+      )
     }
 
     if (commits.length === 1) {
       const c = commits[0]
-      const allFiles = [...(c.added ?? []), ...(c.modified ?? []), ...(c.removed ?? [])]
+      const allFiles = [
+        ...(c.added ?? []),
+        ...(c.modified ?? []),
+        ...(c.removed ?? []),
+      ]
       postData = {
         message: c.message,
         url: c.url,
@@ -369,7 +406,9 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       }
     } else {
       // Summarize multiple commits
-      const messages = commits.map((c) => c.message.split("\n")[0]).join("\n- ")
+      const messages = commits.map((c) => c.message.split("\n")[0]).join(
+        "\n- ",
+      )
       const allFiles = commits.flatMap((c) => [
         ...(c.added ?? []),
         ...(c.modified ?? []),
@@ -388,21 +427,31 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     // read what changed, not just the commit message + file names.
     // Webhook payload has `before` (pre-push SHA) and `after` / `head_commit.id`.
     const beforeSha = typeof payload.before === "string" ? payload.before : undefined
-    const afterSha = (typeof payload.after === "string" ? payload.after : undefined)
-      ?? payload.head_commit?.id
+    const afterSha = (typeof payload.after === "string" ? payload.after : undefined) ??
+      payload.head_commit?.id
     if (beforeSha && afterSha) {
       try {
-        const ctx = await fetchCommitContext(installationId, repoFullName, beforeSha, afterSha)
-        if (ctx.commitMessages.length > 0) postData.commitMessages = ctx.commitMessages
+        const ctx = await fetchCommitContext(
+          installationId,
+          repoFullName,
+          beforeSha,
+          afterSha,
+        )
+        if (ctx.commitMessages.length > 0) {
+          postData.commitMessages = ctx.commitMessages
+        }
         if (ctx.files.length > 0) {
           postData.files = ctx.files
           postData.filesChanged = ctx.files.length
         }
         if (ctx.diffs.length > 0) postData.diffs = ctx.diffs
       } catch (err) {
-        log.warn("failed to fetch commit context, continuing with webhook data: {error}", {
-          error: String(err),
-        })
+        log.warn(
+          "failed to fetch commit context, continuing with webhook data: {error}",
+          {
+            error: String(err),
+          },
+        )
       }
     }
   } else if (
@@ -418,15 +467,24 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       commitMessages: string[]
       files: string[]
       diffs: Array<
-        { filename: string; status: string; additions: number; deletions: number; patch?: string }
+        {
+          filename: string
+          status: string
+          additions: number
+          deletions: number
+          patch?: string
+        }
       >
     } = { commitMessages: [], files: [], diffs: [] }
     try {
       prCtx = await fetchPrContext(installationId, repoFullName, pr.number)
     } catch (err) {
-      log.warn("failed to fetch PR context, continuing with basic data: {error}", {
-        error: String(err),
-      })
+      log.warn(
+        "failed to fetch PR context, continuing with basic data: {error}",
+        {
+          error: String(err),
+        },
+      )
     }
 
     postData = {
@@ -455,16 +513,29 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
       commitMessages: string[]
       files: string[]
       diffs: Array<
-        { filename: string; status: string; additions: number; deletions: number; patch?: string }
+        {
+          filename: string
+          status: string
+          additions: number
+          deletions: number
+          patch?: string
+        }
       >
       previousTag?: string
     } = { commitMessages: [], files: [], diffs: [] }
     try {
-      tagCtx = await fetchTagContext(installationId, repoFullName, payload.ref as string)
+      tagCtx = await fetchTagContext(
+        installationId,
+        repoFullName,
+        payload.ref as string,
+      )
     } catch (err) {
-      log.warn("failed to fetch tag context, continuing with basic data: {error}", {
-        error: String(err),
-      })
+      log.warn(
+        "failed to fetch tag context, continuing with basic data: {error}",
+        {
+          error: String(err),
+        },
+      )
     }
 
     postData = {
@@ -610,10 +681,13 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     })
     content = result?.content ?? "Shipping update posted to BuildLog."
     if (!result?.content) {
-      log.warn("fallback generation failed for {sourceType} in {repo}, using placeholder", {
-        sourceType,
-        repo: repoFullName,
-      })
+      log.warn(
+        "fallback generation failed for {sourceType} in {repo}, using placeholder",
+        {
+          sourceType,
+          repo: repoFullName,
+        },
+      )
     }
   }
 
@@ -630,7 +704,8 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     const headCommit = payload.head_commit
     strippedData.commit_sha = headCommit?.id
     strippedData.message = postData.message
-    strippedData.author = headCommit?.author?.name ?? headCommit?.author?.username
+    strippedData.author = headCommit?.author?.name ??
+      headCommit?.author?.username
     strippedData.branch = (payload.ref as string)?.replace("refs/heads/", "")
     strippedData.url = postData.url
     strippedData.files_changed = postData.filesChanged
@@ -672,7 +747,12 @@ async function handleWebhook(req: Request, body: string, event: string): Promise
     .single()
 
   if (shouldPublish && post) {
-    const result = await fetchPlatformsAndPublish(supabase, profile.id, post.id, content)
+    const result = await fetchPlatformsAndPublish(
+      supabase,
+      profile.id,
+      post.id,
+      content,
+    )
     const hasFailures = Object.keys(result.errors).length > 0
 
     if (result.publishedPlatforms.length > 0) {

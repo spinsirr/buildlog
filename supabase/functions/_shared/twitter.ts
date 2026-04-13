@@ -13,7 +13,10 @@ export async function publishToTwitter(
   userId: string,
   text: string,
 ): Promise<{ tweetId: string; tweetUrl: string }> {
-  const { accessToken, connection } = await getValidToken(twitterConfig, userId)
+  const { accessToken, connection } = await getValidToken(
+    twitterConfig,
+    userId,
+  )
 
   const res = await fetch("https://api.twitter.com/2/tweets", {
     method: "POST",

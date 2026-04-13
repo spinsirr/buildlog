@@ -55,7 +55,15 @@ async function storeOAuthState(
 
 async function retrieveOAuthState(
   state: string,
-): Promise<{ userId: string; platform: string; codeVerifier: string; returnUrl: string } | null> {
+): Promise<
+  | {
+    userId: string
+    platform: string
+    codeVerifier: string
+    returnUrl: string
+  }
+  | null
+> {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from("oauth_states")
@@ -120,11 +128,15 @@ async function oauthInitiate(
   }
 
   const clientId = Deno.env.get(provider.envClientId)
-  if (!clientId) return errorResponse(`${provider.name} OAuth not configured`, 500, req)
+  if (!clientId) {
+    return errorResponse(`${provider.name} OAuth not configured`, 500, req)
+  }
 
   // Read return_url from request body (frontend passes window.location.origin)
   const body = await safeJson<{ return_url?: string }>(req)
-  const returnUrl = sanitizeReturnUrl(body?.return_url ?? "https://buildlog.ink")
+  const returnUrl = sanitizeReturnUrl(
+    body?.return_url ?? "https://buildlog.ink",
+  )
 
   const state = base64UrlEncode(randomBytes(32))
   const redirectUri = `${getEdgeFunctionBaseUrl()}/${platform}/callback`
@@ -143,7 +155,10 @@ async function oauthInitiate(
     const verifierBytes = randomBytes(32)
     codeVerifier = base64UrlEncode(verifierBytes)
     const challengeBytes = new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier)),
+      await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(codeVerifier),
+      ),
     )
     params.code_challenge = base64UrlEncode(challengeBytes)
     params.code_challenge_method = "S256"
@@ -176,13 +191,17 @@ async function oauthCallback(
   const code = url.searchParams.get("code")
   const state = url.searchParams.get("state")
   if (!code || !state) {
-    return redirectResponse(`https://buildlog.ink/settings?error=${platform}_missing_params`)
+    return redirectResponse(
+      `https://buildlog.ink/settings?error=${platform}_missing_params`,
+    )
   }
 
   const oauthState = await retrieveOAuthState(state)
   if (!oauthState || oauthState.platform !== platform) {
     log.error("invalid oauth state: {platform}", { platform })
-    return redirectResponse(`https://buildlog.ink/settings?error=${platform}_invalid_state`)
+    return redirectResponse(
+      `https://buildlog.ink/settings?error=${platform}_invalid_state`,
+    )
   }
 
   const frontendUrl = oauthState.returnUrl
@@ -249,11 +268,14 @@ async function oauthCallback(
       provider: provider.name,
       status: userRes.status,
     })
-    return redirectResponse(`${frontendUrl}/settings?error=${platform}_user_fetch`)
+    return redirectResponse(
+      `${frontendUrl}/settings?error=${platform}_user_fetch`,
+    )
   }
 
   const userData = (await userRes.json()) as Record<string, unknown>
-  const { id: platformUserId, username: platformUsername } = provider.extractUser(userData)
+  const { id: platformUserId, username: platformUsername } = provider
+    .extractUser(userData)
 
   // Upsert connection
   const supabase = createServiceClient()
@@ -329,11 +351,17 @@ async function blueskyConnect(req: Request): Promise<Response> {
     return errorResponse("Missing handle or appPassword", 400, req)
   }
 
-  const sessionRes = await fetch("https://bsky.social/xrpc/com.atproto.server.createSession", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier: body.handle, password: body.appPassword }),
-  })
+  const sessionRes = await fetch(
+    "https://bsky.social/xrpc/com.atproto.server.createSession",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: body.handle,
+        password: body.appPassword,
+      }),
+    },
+  )
 
   if (!sessionRes.ok) {
     if (sessionRes.status === 401) {
@@ -346,20 +374,24 @@ async function blueskyConnect(req: Request): Promise<Response> {
     return errorResponse("Failed to validate Bluesky credentials", 400, req)
   }
 
-  const sessionData = (await sessionRes.json()) as { did: string; handle: string }
+  const sessionData = (await sessionRes.json()) as {
+    did: string
+    handle: string
+  }
   const supabase = createServiceClient()
   const encryptedAppPassword = await encrypt(body.appPassword)
 
-  const { error: upsertError } = await supabase.from("platform_connections").upsert(
-    {
-      user_id: user.id,
-      platform: "bluesky",
-      access_token: encryptedAppPassword,
-      platform_user_id: sessionData.did,
-      platform_username: sessionData.handle,
-    },
-    { onConflict: "user_id,platform" },
-  )
+  const { error: upsertError } = await supabase.from("platform_connections")
+    .upsert(
+      {
+        user_id: user.id,
+        platform: "bluesky",
+        access_token: encryptedAppPassword,
+        platform_user_id: sessionData.did,
+        platform_username: sessionData.handle,
+      },
+      { onConflict: "user_id,platform" },
+    )
 
   if (upsertError) {
     return errorResponse("Failed to save Bluesky connection", 500, req)

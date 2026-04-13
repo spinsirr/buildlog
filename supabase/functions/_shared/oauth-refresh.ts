@@ -127,7 +127,10 @@ export async function getValidToken(
         userId,
         await decrypt(conn.refresh_token as string),
       )
-      return { accessToken: newToken, connection: conn as Record<string, unknown> }
+      return {
+        accessToken: newToken,
+        connection: conn as Record<string, unknown>,
+      }
     }
     throw new Error(
       `${config.platform} token expired. Please reconnect in Settings.`,

@@ -25,7 +25,9 @@ export async function callVercelAi<T>(
   const secret = Deno.env.get("AGENT_API_SECRET")
 
   if (!appUrl || !secret) {
-    log.warn("Vercel AI not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)")
+    log.warn(
+      "Vercel AI not configured (missing BUILDLOG_APP_URL or AGENT_API_SECRET)",
+    )
     return null
   }
 

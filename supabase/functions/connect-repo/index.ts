@@ -51,7 +51,10 @@ Deno.serve(async (req) => {
         .single()
 
       if (profile?.github_installation_id) {
-        const ctx = await fetchRepoContext(profile.github_installation_id, body.full_name)
+        const ctx = await fetchRepoContext(
+          profile.github_installation_id,
+          body.full_name,
+        )
         if (ctx) {
           // Store project context
           const { data: repoRow } = await supabase
@@ -121,7 +124,10 @@ Deno.serve(async (req) => {
 
         if (!repo) return errorResponse("Repo not found", 404, req)
 
-        const ctx = await fetchRepoContext(profile.github_installation_id, repo.full_name)
+        const ctx = await fetchRepoContext(
+          profile.github_installation_id,
+          repo.full_name,
+        )
         if (ctx) {
           await supabase
             .from("connected_repos")
