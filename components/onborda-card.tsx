@@ -81,18 +81,26 @@ export function OnbordaCard({
   arrow,
 }: CardComponentProps) {
   // Step 0: centered overlay, no arrow
+  // onborda wraps card in an absolute-positioned framer-motion div,
+  // so we use fixed + !important to break out of that positioning
   if (currentStep === 0) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
-        <div className="pointer-events-auto">
-          <CardInner
-            step={step}
-            currentStep={currentStep}
-            totalSteps={totalSteps}
-            nextStep={nextStep}
-            prevStep={prevStep}
-          />
-        </div>
+      <div
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
+        }}
+      >
+        <CardInner
+          step={step}
+          currentStep={currentStep}
+          totalSteps={totalSteps}
+          nextStep={nextStep}
+          prevStep={prevStep}
+        />
       </div>
     )
   }
