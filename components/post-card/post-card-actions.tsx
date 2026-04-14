@@ -1,6 +1,6 @@
 'use client'
 
-import { Eye, Loader2, Pencil, RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react'
+import { Eye, Linkedin, Loader2, Pencil, RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
@@ -11,12 +11,14 @@ export function PostCardActions({
   busy,
   regenerating,
   xhsLoading,
+  linkedInLoading,
   overLimit,
   connectedPlatforms,
   onEdit,
   onRegenerate,
   onShowPreview,
   onGenerateXhs,
+  onGenerateLinkedIn,
   onDelete,
 }: {
   post: Post
@@ -24,12 +26,14 @@ export function PostCardActions({
   busy: boolean
   regenerating: boolean
   xhsLoading: boolean
+  linkedInLoading: boolean
   overLimit: boolean
   connectedPlatforms: string[]
   onEdit: () => void
   onRegenerate: () => void
   onShowPreview: () => void
   onGenerateXhs: () => void
+  onGenerateLinkedIn: () => void
   onDelete: () => void
 }) {
   return (
@@ -93,6 +97,22 @@ export function PostCardActions({
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Send className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      )}
+      {post.source_type !== 'manual' && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onGenerateLinkedIn}
+          disabled={busy || linkedInLoading}
+          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-blue-400 disabled:cursor-not-allowed"
+          aria-label="Generate LinkedIn post"
+        >
+          {linkedInLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Linkedin className="h-3.5 w-3.5" />
           )}
         </Button>
       )}

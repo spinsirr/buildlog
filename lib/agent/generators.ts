@@ -7,6 +7,8 @@ import {
   buildContentSystemPrompt,
   buildIntroPrompt,
   buildIntroSystemPrompt,
+  buildLinkedInPrompt,
+  buildLinkedInSystemPrompt,
   buildRecapPrompt,
   buildRecapSystemPrompt,
   buildXhsPrompt,
@@ -181,6 +183,57 @@ export async function generateXhsPost(
       abortSignal: timeoutSignal(),
     })
     result = retry.text.trim()
+  }
+  /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
+
+  return result
+}
+
+/**
+ * Generate a LinkedIn-optimised variant of an event. Longer-form, hook-first,
+ * short-paragraph format tuned for the LinkedIn algorithm (dwell time, depth
+ * score, niche expertise signals).
+ */
+export async function generateLinkedInPost(
+  event: AgentEvent,
+  angle: string,
+  highlights: string,
+  model: LanguageModel = defaultModel()
+): Promise<string> {
+  const charLimit = 3000
+  const system = buildLinkedInSystemPrompt(event)
+  const prompt = buildLinkedInPrompt(event, angle, highlights)
+
+  /* eslint-disable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
+  const { text } = await generateText({
+    model,
+    system,
+    prompt,
+    maxOutputTokens: 2000,
+    temperature: 0.75,
+    abortSignal: timeoutSignal(),
+  })
+  let result = text.trim()
+
+  // Retry if over budget or incomplete
+  if (result.length > charLimit || !isComplete(result)) {
+    const reason =
+      result.length > charLimit
+        ? `Your previous attempt was ${result.length} characters. Rewrite under ${charLimit} characters.`
+        : `Your previous attempt ended mid-sentence. Rewrite it as a complete post with proper punctuation and hashtags.`
+    const retry = await generateText({
+      model,
+      system,
+      prompt: `${prompt}\n\nIMPORTANT: ${reason}`,
+      maxOutputTokens: 2000,
+      temperature: 0.5,
+      abortSignal: timeoutSignal(),
+    })
+    const retryText = retry.text.trim()
+    result =
+      retryText.length <= charLimit && isComplete(retryText)
+        ? retryText
+        : truncateAtSentence(retryText.length > result.length ? retryText : result, charLimit)
   }
   /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
 

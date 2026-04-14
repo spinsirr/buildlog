@@ -178,6 +178,7 @@ type LowSignalDisclosureProps = {
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
   onGenerateXhs: (id: string, lang: 'en' | 'zh') => Promise<string>
+  onGenerateLinkedIn: (id: string) => Promise<string>
   onSchedule: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit: number
@@ -223,6 +224,7 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
                 onDelete={handlers.onDelete}
                 onRegenerate={handlers.onRegenerate}
                 onGenerateXhs={handlers.onGenerateXhs}
+                onGenerateLinkedIn={handlers.onGenerateLinkedIn}
                 onSchedule={handlers.onSchedule}
                 connectedPlatforms={handlers.connectedPlatforms}
                 charLimit={handlers.charLimit}
@@ -390,6 +392,15 @@ export function PostsClient() {
     return result.data.content
   }
 
+  async function handleGenerateLinkedIn(id: string): Promise<string> {
+    const result = await callEdgeFunction<{ content: string }>('generate-post', {
+      path: 'linkedin-copy',
+      body: { id },
+    })
+    if (!result.ok) throw new Error(result.error || 'Generation failed')
+    return result.data.content
+  }
+
   async function handleSchedule(id: string, scheduledAt: string | null) {
     const result = await callEdgeFunction<{ post: Post }>('schedule-post', {
       body: { id, scheduled_at: scheduledAt },
@@ -422,6 +433,7 @@ export function PostsClient() {
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
             onGenerateXhs={handleGenerateXhs}
+            onGenerateLinkedIn={handleGenerateLinkedIn}
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
@@ -462,6 +474,7 @@ export function PostsClient() {
               onDelete={handleDelete}
               onRegenerate={handleRegenerate}
               onGenerateXhs={handleGenerateXhs}
+              onGenerateLinkedIn={handleGenerateLinkedIn}
               onSchedule={handleSchedule}
               connectedPlatforms={connectedPlatforms}
               charLimit={charLimit}
@@ -476,6 +489,7 @@ export function PostsClient() {
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
             onGenerateXhs={handleGenerateXhs}
+            onGenerateLinkedIn={handleGenerateLinkedIn}
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
