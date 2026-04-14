@@ -70,18 +70,25 @@ export async function generateContent(
   let content = text.trim()
   if (content.length < 10) return null
 
-  if (content.length > contentBudget) {
+  // Retry if over budget OR incomplete (missing sentence-ending punctuation)
+  if (content.length > contentBudget || !isComplete(content)) {
+    const reason =
+      content.length > contentBudget
+        ? `Your previous attempt was ${content.length} characters. Rewrite under ${contentBudget} characters while keeping it complete and engaging.`
+        : `Your previous attempt ended mid-sentence. Rewrite it as a complete, self-contained post that ends with proper punctuation and 1-2 hashtags.`
     const retry = await generateText({
       model,
       system: systemPrompt,
-      prompt: `${userPrompt}\n\nIMPORTANT: Your previous attempt was ${content.length} characters. Rewrite under ${contentBudget} characters while keeping it complete and engaging.`,
+      prompt: `${userPrompt}\n\nIMPORTANT: ${reason}`,
       maxOutputTokens: event.xPremium ? 2000 : 800,
       temperature: 0.5,
       abortSignal: timeoutSignal(),
     })
     const retryText = retry.text.trim()
     content =
-      retryText.length <= contentBudget ? retryText : truncateAtSentence(retryText, contentBudget)
+      retryText.length <= contentBudget && isComplete(retryText)
+        ? retryText
+        : truncateAtSentence(retryText.length > content.length ? retryText : content, contentBudget)
   }
   /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
 
@@ -207,17 +214,25 @@ export async function generateRecap(
   })
   let result = text.trim()
 
-  if (result.length > charLimit) {
+  // Retry if over budget OR incomplete
+  if (result.length > charLimit || !isComplete(result)) {
+    const reason =
+      result.length > charLimit
+        ? `Your previous attempt was ${result.length} characters. Rewrite under ${charLimit} characters.`
+        : `Your previous attempt ended mid-sentence. Rewrite it as a complete post with proper punctuation and hashtags.`
     const retry = await generateText({
       model,
       system,
-      prompt: `${prompt}\n\nIMPORTANT: Your previous attempt was ${result.length} characters. Rewrite under ${charLimit} characters.`,
+      prompt: `${prompt}\n\nIMPORTANT: ${reason}`,
       maxOutputTokens: charLimit > 1000 ? 2000 : 600,
       temperature: 0.5,
       abortSignal: timeoutSignal(),
     })
     const retryText = retry.text.trim()
-    result = retryText.length <= charLimit ? retryText : truncateAtSentence(retryText, charLimit)
+    result =
+      retryText.length <= charLimit && isComplete(retryText)
+        ? retryText
+        : truncateAtSentence(retryText.length > result.length ? retryText : result, charLimit)
   }
   /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
 
