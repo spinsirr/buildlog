@@ -209,7 +209,7 @@ YOUR JOB: Read the technical context below and write a concise post about what w
 
 CRITICAL RULES:
 - MUST be under ${contentBudget} characters total
-- Write exactly ONE complete post — never end mid-sentence or mid-thought
+- The post MUST be a complete, self-contained statement. Every sentence must end properly. Never trail off with a comma, dash, or open quote. Read your output back — if it feels like the next word is missing, rewrite it shorter.
 - Sound authentic and human — not like a bot or marketing copy
 - No excessive emojis (0-2 max)
 - End with 1-2 relevant hashtags
@@ -307,7 +307,7 @@ YOUR JOB: Write an introductory post about a project. This is NOT a shipping upd
 
 CRITICAL RULES:
 - MUST be under ${contentBudget} characters total
-- Write exactly ONE complete post — never end mid-sentence
+- The post MUST be a complete, self-contained statement. Every sentence must end properly. Never trail off with a comma, dash, or open quote.
 - Sound authentic — like a developer genuinely excited about their project
 - No excessive emojis (0-2 max)
 - End with 1-2 relevant hashtags
@@ -369,6 +369,7 @@ export function buildXhsSystemPrompt(event: AgentEvent, lang: XhsLang = 'en'): s
 
 格式规则：
 - 字数控制在 200-500 字符
+- 每句话必须写完整，不能以逗号、破折号或引号结尾。宁可少写一个细节也不要断句。
 - 第一行是标题，用 emoji 开头，简洁有力
 - 正文分段，每段用 emoji 作为小标题或要点标记
 - 语气简洁专业，像产品更新公告
@@ -393,6 +394,7 @@ CORE PRINCIPLE:
 
 FORMAT RULES:
 - Total length: 200–500 characters.
+- Every sentence must end properly. Never trail off with a comma, dash, or open quote. Cut a detail before cutting a sentence.
 - First line is the title — start with an emoji, keep it short and punchy.
 - Body is segmented into short paragraphs, each led by an emoji acting as a mini-heading or bullet.
 - Tone: concise and professional, like a product release note.
@@ -458,6 +460,7 @@ ${toneInstructions[tone] ?? toneInstructions.casual}
 
 CRITICAL RULES:
 - MUST be under ${charLimit} characters
+- The post MUST be a complete, self-contained statement. Every sentence must end properly. Never trail off with a comma, dash, or open quote. If you're running long, cut a detail — don't cut a sentence in half.
 - ${mode === 'branch' ? 'Focus on the feature story — what problem it solves, what changed' : 'Highlight the overall theme or direction of the week'}
 - Mention 2-4 key things shipped or worked on
 - End with 1-2 relevant hashtags
