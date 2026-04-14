@@ -228,7 +228,10 @@ export function useRealtimePosts() {
           globalMutate(
             (key: unknown) =>
               Array.isArray(key) &&
-              (key[0] === 'posts-data' || key[0] === 'dashboard-data' || key[0] === 'usage-data')
+              (key[0] === 'posts-data' ||
+                key[0] === 'dashboard-data' ||
+                key[0] === 'usage-data' ||
+                key[0] === 'draft-count')
           )
         }
       )
