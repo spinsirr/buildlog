@@ -13,8 +13,7 @@ ALTER TABLE public.connected_repos
   ALTER COLUMN watched_events
   SET DEFAULT ARRAY['pull_request', 'release', 'create_tag']::text[];
 
--- 2. Backfill existing rows that currently have NULL (= watch-all)
--- Only touches rows where the user never explicitly configured watched_events.
-UPDATE public.connected_repos
-  SET watched_events = ARRAY['pull_request', 'release', 'create_tag']::text[]
-  WHERE watched_events IS NULL;
+-- 2. No backfill — NULL can mean either "never configured" or "user explicitly
+-- chose watch-all via EventPicker". We can't distinguish the two, so we leave
+-- existing rows untouched to avoid silently changing anyone's configuration.
+-- New repos will pick up the column default automatically.

@@ -11,12 +11,5 @@ export default function SettingsPage() {
   if (isLoading || !data) return <SettingsSkeleton />
   if (error) return <FetchError onRetry={() => mutate()} />
 
-  return (
-    <SettingsClient
-      initialConnections={data.connections}
-      initialProfile={data.profile}
-      initialPlan={data.plan}
-      githubUsername={data.githubUsername}
-    />
-  )
+  return <SettingsClient />
 }

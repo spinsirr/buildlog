@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useSWRConfig } from 'swr'
 import { PostCard } from '@/components/post-card'
 import { RecapBranchPicker } from '@/components/recap-branch-picker'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
+import { usePostsData } from '@/lib/hooks/use-dashboard-data'
 import { getEffectiveLimit } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
@@ -233,23 +235,20 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
   )
 }
 
-export function PostsClient({
-  initialPosts,
-  initialConnectedPlatforms,
-  xPremium,
-}: {
-  initialPosts: Post[]
-  initialConnectedPlatforms: string[]
-  xPremium: boolean
-}) {
+type PostsData = { posts: Post[]; connectedPlatforms: string[]; xPremium: boolean }
+
+export function PostsClient() {
   const supabase = useMemo(() => createClient(), [])
+  const { mutate: globalMutate } = useSWRConfig()
+  const { data, mutate } = usePostsData()
+  const posts = (data?.posts ?? []) as Post[]
+  const connectedPlatforms = data?.connectedPlatforms ?? []
+  const xPremium = data?.xPremium ?? false
   const publishingRef = useRef(false)
   const searchParams = useSearchParams()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [showNewPost, setShowNewPost] = useState(false)
-  const [posts, setPosts] = useState(initialPosts)
   const [search, setSearch] = useState('')
-  const connectedPlatforms = initialConnectedPlatforms
   const charLimit = getEffectiveLimit(connectedPlatforms, xPremium)
   const [recapLoading, setRecapLoading] = useState(false)
   const [branchPickerOpen, setBranchPickerOpen] = useState(false)
@@ -285,7 +284,7 @@ export function PostsClient({
       }
       const label = opts?.mode === 'branch' ? 'Branch recap' : 'Weekly recap'
       toast.success(`${label} generated!`)
-      refreshPosts()
+      mutate()
     } catch {
       toast.error('Failed to generate recap')
     } finally {
@@ -306,15 +305,23 @@ export function PostsClient({
       if (publishingRef.current) return
       publishingRef.current = true
       try {
-        setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)))
-        const result = await callEdgeFunction<{ error?: string }>('publish-post', {
-          body: { id, content: updates.content },
-        })
-        if (!result.ok) {
-          await refreshPosts()
-          throw new Error(result.error || 'Failed to publish')
-        }
-        await refreshPosts()
+        await mutate(
+          async () => {
+            const result = await callEdgeFunction<{ error?: string }>('publish-post', {
+              body: { id, content: updates.content },
+            })
+            if (!result.ok) throw new Error(result.error || 'Failed to publish')
+            return undefined // revalidate from server
+          },
+          {
+            optimisticData: (current: PostsData | undefined) => ({
+              ...current!,
+              posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...updates } : p)),
+            }),
+            rollbackOnError: true,
+          }
+        )
+        globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
       } finally {
         publishingRef.current = false
       }
@@ -324,19 +331,32 @@ export function PostsClient({
         .update({ content: updates.content })
         .eq('id', id)
       if (error) {
-        await refreshPosts()
+        mutate()
         throw new Error(error.message)
       }
     }
   }
 
   async function handleDelete(id: string) {
-    setPosts((prev) => prev.filter((p) => p.id !== id))
-    const { error } = await supabase.from('posts').delete().eq('id', id)
-    if (error) {
-      toast.error('Delete failed', { description: error.message })
-      await refreshPosts()
-    }
+    mutate(
+      async (current: PostsData | undefined) => {
+        const { error } = await supabase.from('posts').delete().eq('id', id)
+        if (error) {
+          toast.error('Delete failed', { description: error.message })
+          throw error
+        }
+        return { ...current!, posts: current!.posts.filter((p: Post) => p.id !== id) }
+      },
+      {
+        optimisticData: (current: PostsData | undefined) => ({
+          ...current!,
+          posts: current!.posts.filter((p: Post) => p.id !== id),
+        }),
+        rollbackOnError: true,
+        revalidate: false,
+      }
+    )
+    globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
   }
 
   async function handleRegenerate(id: string) {
@@ -345,8 +365,13 @@ export function PostsClient({
       body: { id },
     })
     if (!result.ok) throw new Error(result.error || 'Failed to regenerate')
-    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...result.data.post } : p)))
-    await refreshPosts()
+    mutate(
+      (current: PostsData | undefined) => ({
+        ...current!,
+        posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...result.data.post } : p)),
+      }),
+      { revalidate: false }
+    )
   }
 
   async function handleGenerateXhs(id: string, lang: 'en' | 'zh'): Promise<string> {
@@ -363,20 +388,7 @@ export function PostsClient({
       body: { id, scheduled_at: scheduledAt },
     })
     if (!result.ok) throw new Error(result.error || 'Failed to schedule')
-    await refreshPosts()
-  }
-
-  async function refreshPosts() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
-    const { data } = await supabase
-      .from('posts')
-      .select('*, connected_repos(full_name)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-    setPosts(data ?? [])
+    mutate()
   }
 
   const filtered = search.trim()
@@ -545,7 +557,8 @@ export function PostsClient({
       {showNewPost && (
         <NewPostForm
           onCreated={() => {
-            refreshPosts()
+            mutate()
+            globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
             setShowNewPost(false)
           }}
           charLimit={charLimit}

@@ -88,7 +88,7 @@ export function ReposClient({ repos, needsInstall }: { repos: Repo[]; needsInsta
             )}
           </div>
         ) : (
-          <RepoList initialRepos={repos} />
+          <RepoList />
         )}
       </div>
     </div>
