@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
+import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
 import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
