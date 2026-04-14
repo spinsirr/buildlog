@@ -42,7 +42,7 @@ export function useDashboardData() {
   return useSWR(
     userId ? ['dashboard-data', userId] : null,
     ([key, uid]) => fetchDashboardData(key, uid),
-    { revalidateOnFocus: false, dedupingInterval: 10000 }
+    { revalidateOnFocus: false, dedupingInterval: 10000, keepPreviousData: true }
   )
 }
 
@@ -71,6 +71,7 @@ export function usePostsData() {
   return useSWR(userId ? ['posts-data', userId] : null, ([key, uid]) => fetchPostsData(key, uid), {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
+    keepPreviousData: true,
   })
 }
 
@@ -98,6 +99,7 @@ export function useReposData() {
   return useSWR(userId ? ['repos-data', userId] : null, () => fetchReposData(), {
     revalidateOnFocus: false,
     dedupingInterval: 30000,
+    keepPreviousData: true,
   })
 }
 
@@ -148,7 +150,7 @@ export function useSettingsData() {
   return useSWR(
     userId ? ['settings-data', userId] : null,
     ([key, uid]) => fetchSettingsData(key, uid),
-    { revalidateOnFocus: false, dedupingInterval: 10000 }
+    { revalidateOnFocus: false, dedupingInterval: 10000, keepPreviousData: true }
   )
 }
 
@@ -203,5 +205,6 @@ export function useUsageData() {
   return useSWR(userId ? ['usage-data', userId] : null, ([key, uid]) => fetchUsageData(key, uid), {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
+    keepPreviousData: true,
   })
 }

@@ -11,11 +11,5 @@ export default function PostsPage() {
   if (isLoading || !data) return <PostsSkeleton />
   if (error) return <FetchError onRetry={() => mutate()} />
 
-  return (
-    <PostsClient
-      initialPosts={data.posts}
-      initialConnectedPlatforms={data.connectedPlatforms}
-      xPremium={data.xPremium}
-    />
-  )
+  return <PostsClient />
 }

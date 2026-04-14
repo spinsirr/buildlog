@@ -101,6 +101,19 @@ export function PostCardMeta({
       >
         {post.source_type === 'intro' ? 'intro' : post.source_type}
       </Badge>
+      {post.signal && (
+        <Badge
+          variant="secondary"
+          className={cn(
+            'text-[10px] border-0',
+            post.signal === 'high'
+              ? 'bg-neo-accent/10 text-neo-accent'
+              : 'bg-zinc-800 text-zinc-500'
+          )}
+        >
+          {post.signal === 'high' ? 'high signal' : 'low signal'}
+        </Badge>
+      )}
       {post.connected_repos && (
         <span className="text-[11px] text-zinc-500 font-mono">
           {post.connected_repos.full_name}

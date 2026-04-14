@@ -4,6 +4,7 @@ import { Plus, RefreshCw, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { useSWRConfig } from 'swr'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { callEdgeFunction } from '@/lib/edge-function'
+import { useReposData } from '@/lib/hooks/use-dashboard-data'
 import { createClient } from '@/lib/supabase/client'
 import type { Repo } from '@/lib/types'
 import { timeAgo } from '@/lib/utils'
@@ -236,9 +238,11 @@ function BranchPicker({
   )
 }
 
-export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
+export function RepoList() {
   const router = useRouter()
-  const [repos, setRepos] = useState(initialRepos)
+  const { mutate: globalMutate } = useSWRConfig()
+  const { data: reposData, mutate } = useReposData()
+  const repos = (reposData?.repos ?? []) as Repo[]
   const [pending, setPending] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -260,10 +264,10 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
         }
         return
       }
-      setRepos((prev) => prev.map((r) => (r.id === repo.id ? { ...r, connected: true } : r)))
       setSearch('')
       setModalOpen(false)
-      router.refresh()
+      mutate()
+      globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
     } finally {
       setPending(null)
     }
@@ -280,27 +284,41 @@ export function RepoList({ initialRepos }: { initialRepos: Repo[] }) {
         toast.error(result.error || 'Something went wrong')
         return
       }
-      setRepos((prev) =>
-        prev.map((r) =>
-          r.id === repo.id
-            ? { ...r, connected: false, watched_branches: null, watched_events: null }
-            : r
-        )
-      )
-      router.refresh()
+      mutate()
+      globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
     } finally {
       setPending(null)
     }
   }
 
   function handleBranchUpdate(repoId: number, branches: string[] | null) {
-    setRepos((prev) =>
-      prev.map((r) => (r.id === repoId ? { ...r, watched_branches: branches } : r))
+    mutate(
+      (current) =>
+        current
+          ? {
+              ...current,
+              repos: current.repos.map((r: Repo) =>
+                r.id === repoId ? { ...r, watched_branches: branches } : r
+              ),
+            }
+          : current,
+      { revalidate: false }
     )
   }
 
   function handleEventUpdate(repoId: number, events: string[] | null) {
-    setRepos((prev) => prev.map((r) => (r.id === repoId ? { ...r, watched_events: events } : r)))
+    mutate(
+      (current) =>
+        current
+          ? {
+              ...current,
+              repos: current.repos.map((r: Repo) =>
+                r.id === repoId ? { ...r, watched_events: events } : r
+              ),
+            }
+          : current,
+      { revalidate: false }
+    )
   }
 
   async function handleRefreshContext(repo: Repo) {

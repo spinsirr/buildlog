@@ -4,6 +4,7 @@ import { Check, ChevronDown, CreditCard, Globe, Loader2, Sparkles } from 'lucide
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { useAuth } from '@/components/auth-provider'
 import { ChangelogUrlCopy } from '@/components/changelog-url-copy'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,10 +13,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { callEdgeFunction } from '@/lib/edge-function'
-import { PLANS, type Plan } from '@/lib/plans'
+import { useSettingsData } from '@/lib/hooks/use-dashboard-data'
+import { PLANS } from '@/lib/plans'
 import { PLATFORM_IDS, platformConfig } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
-import type { Connection, ProfileSettings } from '@/lib/types'
+import type { ProfileSettings } from '@/lib/types'
 
 const PLATFORMS = PLATFORM_IDS.map((id) => ({
   id,
@@ -43,22 +45,23 @@ const TONES = [
   { value: 'technical', label: 'Technical', description: 'Detailed with terminology' },
 ] as const
 
-export function SettingsClient({
-  initialConnections,
-  initialProfile,
-  initialPlan,
-  githubUsername,
-}: {
-  initialConnections: Connection[]
-  initialProfile: ProfileSettings
-  initialPlan: Plan
-  githubUsername: string | null
-}) {
+export function SettingsClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
+  const { userId } = useAuth()
+  const { data, mutate } = useSettingsData()
+  const connections = data?.connections ?? []
+  const profile = data?.profile ?? {
+    tone: 'casual',
+    auto_publish: false,
+    email_notifications: true,
+    x_premium: false,
+    public_changelog: true,
+  }
+  const plan = data?.plan ?? 'free'
+  const githubUsername = data?.githubUsername ?? null
   const [isPending, startTransition] = useTransition()
-  const [connections, setConnections] = useState(initialConnections)
 
   // Handle OAuth redirect results (?connected=twitter or ?error=twitter_denied)
   // and Stripe checkout results (?checkout=success or ?checkout=canceled)
@@ -76,23 +79,7 @@ export function SettingsClient({
     } else if (connected) {
       const label = PLATFORMS.find((p) => p.id === connected)?.label ?? connected
       toast.success(`${label} connected successfully`)
-      supabase
-        .from('platform_connections')
-        .select('platform, platform_username')
-        .then(
-          ({ data: rows }: { data: { platform: string; platform_username: string }[] | null }) => {
-            if (rows) {
-              setConnections((prev) =>
-                prev.map((c) => {
-                  const row = rows.find((r: { platform: string }) => r.platform === c.platform)
-                  return row
-                    ? { ...c, connected: true, platform_username: row.platform_username }
-                    : { ...c, connected: false, platform_username: null }
-                })
-              )
-            }
-          }
-        )
+      mutate()
       router.replace('/settings', { scroll: false })
     } else if (error) {
       const platform = error.split('_')[0]
@@ -103,9 +90,7 @@ export function SettingsClient({
       })
       router.replace('/settings', { scroll: false })
     }
-  }, [searchParams, router, supabase])
-
-  const [profile, setProfile] = useState(initialProfile)
+  }, [searchParams, router, mutate])
   const [actionPlatform, setActionPlatform] = useState<string | null>(null)
   const [savingTone, setSavingTone] = useState(false)
   const [billingLoading, setBillingLoading] = useState(false)
@@ -150,88 +135,65 @@ export function SettingsClient({
     }
   }
 
-  async function handleAutoPublishToggle(checked: boolean) {
-    const prev = profile.auto_publish
-    setProfile((p) => ({ ...p, auto_publish: checked }))
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ auto_publish: checked })
-        .eq('id', user.id)
-      if (error) {
-        setProfile((p) => ({ ...p, auto_publish: prev }))
-        toast.error('Update failed', { description: 'Failed to update auto-publish setting' })
+  async function handleProfileToggle(
+    field: keyof ProfileSettings,
+    value: boolean,
+    errorMsg: string
+  ) {
+    if (!userId) return
+    mutate(
+      async (current) => {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ [field]: value })
+          .eq('id', userId)
+        if (error) {
+          toast.error('Update failed', { description: errorMsg })
+          throw error
+        }
+        return current ? { ...current, profile: { ...current.profile, [field]: value } } : current
+      },
+      {
+        optimisticData: (current) =>
+          current ? { ...current, profile: { ...current.profile, [field]: value } } : current!,
+        rollbackOnError: true,
+        revalidate: false,
       }
-    }
+    )
   }
 
-  async function handleEmailNotificationsToggle(checked: boolean) {
-    const prev = profile.email_notifications
-    setProfile((p) => ({ ...p, email_notifications: checked }))
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ email_notifications: checked })
-        .eq('id', user.id)
-      if (error) {
-        setProfile((p) => ({ ...p, email_notifications: prev }))
-        toast.error('Update failed', { description: 'Failed to update notification setting' })
-      }
-    }
+  function handleAutoPublishToggle(checked: boolean) {
+    handleProfileToggle('auto_publish', checked, 'Failed to update auto-publish setting')
   }
 
-  async function handleXPremiumToggle(checked: boolean) {
-    const prev = profile.x_premium
-    setProfile((p) => ({ ...p, x_premium: checked }))
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ x_premium: checked })
-        .eq('id', user.id)
-      if (error) {
-        setProfile((p) => ({ ...p, x_premium: prev }))
-        toast.error('Update failed', { description: 'Failed to update X Premium setting' })
-      }
-    }
+  function handleEmailNotificationsToggle(checked: boolean) {
+    handleProfileToggle('email_notifications', checked, 'Failed to update notification setting')
   }
 
-  async function handlePublicChangelogToggle(checked: boolean) {
-    const prev = profile.public_changelog
-    setProfile((p) => ({ ...p, public_changelog: checked }))
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ public_changelog: checked })
-        .eq('id', user.id)
-      if (error) {
-        setProfile((p) => ({ ...p, public_changelog: prev }))
-        toast.error('Update failed', { description: 'Failed to update directory visibility' })
-      }
-    }
+  function handleXPremiumToggle(checked: boolean) {
+    handleProfileToggle('x_premium', checked, 'Failed to update X Premium setting')
+  }
+
+  function handlePublicChangelogToggle(checked: boolean) {
+    handleProfileToggle('public_changelog', checked, 'Failed to update directory visibility')
   }
 
   async function handleToneChange(newTone: string) {
+    if (!userId) return
     setSavingTone(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
-        await supabase.from('profiles').update({ tone: newTone }).eq('id', user.id)
-      }
-      setProfile((prev) => ({ ...prev, tone: newTone }))
+      await mutate(
+        async (current) => {
+          await supabase.from('profiles').update({ tone: newTone }).eq('id', userId)
+          return current ? { ...current, profile: { ...current.profile, tone: newTone } } : current
+        },
+        {
+          optimisticData: (current) =>
+            current ? { ...current, profile: { ...current.profile, tone: newTone } } : current!,
+          rollbackOnError: true,
+          revalidate: false,
+        }
+      )
     } finally {
       setSavingTone(false)
     }
@@ -239,7 +201,7 @@ export function SettingsClient({
 
   async function handleConnect(platform: string) {
     // Twitter is Pro-only
-    if (platform === 'twitter' && initialPlan === 'free') {
+    if (platform === 'twitter' && plan === 'free') {
       toast.error('Twitter requires Pro', {
         description: 'Upgrade to Pro to connect Twitter.',
         action: { label: 'Upgrade', onClick: () => handleUpgrade() },
@@ -297,14 +259,10 @@ export function SettingsClient({
         return
       }
       setShowBskyForm(false)
-      setConnections((prev) =>
-        prev.map((c) =>
-          c.platform === 'bluesky' ? { ...c, connected: true, platform_username: bskyHandle } : c
-        )
-      )
       setBskyHandle('')
       setBskyPassword('')
       toast.success('Bluesky connected')
+      mutate()
     } finally {
       setBskyLoading(false)
     }
@@ -314,14 +272,10 @@ export function SettingsClient({
     setActionPlatform(platform)
     startTransition(async () => {
       await callEdgeFunction('social-disconnect', { path: platform })
-      setConnections((prev) =>
-        prev.map((c) =>
-          c.platform === platform ? { ...c, connected: false, platform_username: null } : c
-        )
-      )
       const label = PLATFORMS.find((p) => p.id === platform)?.label ?? platform
       toast.success(`${label} disconnected`)
       setActionPlatform(null)
+      mutate()
     })
   }
 
@@ -334,8 +288,8 @@ export function SettingsClient({
     public_changelog: publicChangelog,
   } = profile
 
-  const isPro = initialPlan === 'pro'
-  const limits = PLANS[initialPlan]
+  const isPro = plan === 'pro'
+  const limits = PLANS[plan]
   const isTwitterConnected = connections.find((c) => c.platform === 'twitter')?.connected ?? false
 
   return (
@@ -470,7 +424,7 @@ export function SettingsClient({
                     </div>
                   </div>
 
-                  {platform.id === 'twitter' && initialPlan === 'free' && !connected ? (
+                  {platform.id === 'twitter' && plan === 'free' && !connected ? (
                     <Button
                       size="sm"
                       variant="outline"
