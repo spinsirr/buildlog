@@ -1,4 +1,5 @@
-import useSWR from 'swr'
+import { useEffect } from 'react'
+import useSWR, { mutate as globalMutate } from 'swr'
 import { useAuth } from '@/components/auth-provider'
 import { createClient } from '@/lib/supabase/client'
 import type { Post, Repo } from '@/lib/types'
@@ -207,4 +208,34 @@ export function useUsageData() {
     dedupingInterval: 10000,
     keepPreviousData: true,
   })
+}
+
+// --- Realtime subscription for posts ---
+
+/** Subscribe to Supabase Realtime on the `posts` table and revalidate SWR caches on changes. */
+export function useRealtimePosts() {
+  const { userId } = useAuth()
+
+  useEffect(() => {
+    if (!userId) return
+
+    const channel = supabase
+      .channel(`posts:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${userId}` },
+        () => {
+          globalMutate(
+            (key: unknown) =>
+              Array.isArray(key) &&
+              (key[0] === 'posts-data' || key[0] === 'dashboard-data' || key[0] === 'usage-data')
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
 }
