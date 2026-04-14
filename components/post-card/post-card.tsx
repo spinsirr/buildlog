@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
 import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
@@ -18,6 +19,7 @@ export function PostCard({
   onDelete,
   onRegenerate,
   onGenerateXhs,
+  onGenerateLinkedIn,
   onSchedule,
   connectedPlatforms,
   charLimit = 280,
@@ -27,6 +29,7 @@ export function PostCard({
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
   onGenerateXhs: (id: string, lang: XhsLang) => Promise<string>
+  onGenerateLinkedIn: (id: string) => Promise<string>
   onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit?: number
@@ -40,6 +43,9 @@ export function PostCard({
   const [xhsContent, setXhsContent] = useState<string | null>(null)
   const [xhsLoading, setXhsLoading] = useState(false)
   const [xhsLang, setXhsLang] = useState<XhsLang | null>(null)
+  const [showLinkedIn, setShowLinkedIn] = useState(false)
+  const [linkedInContent, setLinkedInContent] = useState<string | null>(null)
+  const [linkedInLoading, setLinkedInLoading] = useState(false)
 
   const charCount = (editing ? editContent : post.content).length
   const overLimit = charCount > charLimit
@@ -131,6 +137,31 @@ export function PostCard({
     }
   }, [])
 
+  const handleOpenLinkedIn = useCallback(() => {
+    setLinkedInContent(null)
+    setShowLinkedIn(true)
+  }, [])
+
+  const handleLinkedInGenerate = useCallback(async () => {
+    setLinkedInLoading(true)
+    try {
+      const content = await onGenerateLinkedIn(post.id)
+      setLinkedInContent(content)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Generation failed')
+      setShowLinkedIn(false)
+    }
+    setLinkedInLoading(false)
+  }, [onGenerateLinkedIn, post.id])
+
+  const handleLinkedInOpenChange = useCallback((open: boolean) => {
+    setShowLinkedIn(open)
+    if (!open) {
+      setLinkedInContent(null)
+      setLinkedInLoading(false)
+    }
+  }, [])
+
   const handleEdit = useCallback(() => {
     setEditContent(post.content)
     setEditing(true)
@@ -190,12 +221,14 @@ export function PostCard({
             busy={busy}
             regenerating={regenerating}
             xhsLoading={xhsLoading}
+            linkedInLoading={linkedInLoading}
             overLimit={overLimit}
             connectedPlatforms={connectedPlatforms}
             onEdit={handleEdit}
             onRegenerate={handleRegenerate}
             onShowPreview={handleShowPreview}
             onGenerateXhs={handleOpenXhs}
+            onGenerateLinkedIn={handleOpenLinkedIn}
             onDelete={handleDelete}
           />
         </div>
@@ -218,6 +251,14 @@ export function PostCard({
         loading={xhsLoading}
         lang={xhsLang}
         onGenerate={handleXhsGenerate}
+      />
+
+      <LinkedInCopyModal
+        open={showLinkedIn}
+        onOpenChange={handleLinkedInOpenChange}
+        content={linkedInContent}
+        loading={linkedInLoading}
+        onGenerate={handleLinkedInGenerate}
       />
     </Card>
   )

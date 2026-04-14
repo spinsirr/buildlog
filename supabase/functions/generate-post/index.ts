@@ -26,8 +26,10 @@ Deno.serve(async (req) => {
   const parts = parsePathParts(req, "generate-post")
   const isRegenerate = parts[0] === "regenerate"
   const isXhsCopy = parts[0] === "xhs-copy"
+  const isLinkedInCopy = parts[0] === "linkedin-copy"
 
   try {
+    if (isLinkedInCopy) return await handleLinkedInCopy(req, user.id, supabase)
     if (isXhsCopy) return await handleXhsCopy(req, user.id, supabase)
     if (isRegenerate) return await handleRegenerate(req, user.id, supabase)
     return await handleGenerate(req, user.id, supabase)
@@ -400,6 +402,96 @@ async function handleXhsCopy(
   const result = await callVercelAi<{ content: string }>("xhs", {
     event,
     lang,
+  })
+  if (!result?.content) return errorResponse("AI generation failed", 500, req)
+
+  return jsonResponse({ content: result.content }, req, { status: 200 })
+}
+
+async function handleLinkedInCopy(
+  req: Request,
+  userId: string,
+  supabase: SupabaseClient,
+): Promise<Response> {
+  const body = await safeJson<{ id: string }>(req)
+  if (!body?.id) return errorResponse("Missing required field: id", 400, req)
+
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select("id, user_id, source_type, source_data, repo_id, angle, content")
+    .eq("id", body.id)
+    .single()
+
+  if (fetchError || !post || post.user_id !== userId) {
+    return errorResponse("Post not found", 404, req)
+  }
+
+  if (post.source_type === "manual") {
+    return errorResponse("Cannot generate LinkedIn copy for manual posts", 400, req)
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("github_installation_id, tone, x_premium")
+    .eq("id", userId)
+    .single()
+
+  let repoName = "unknown/repo"
+  let projectContext: string | null = null
+  if (post.repo_id) {
+    const { data: repo } = await supabase
+      .from("connected_repos")
+      .select("full_name, project_context")
+      .eq("id", post.repo_id)
+      .single()
+    if (repo?.full_name) repoName = repo.full_name
+    projectContext = repo?.project_context ?? null
+  }
+
+  const sourceData = (post.source_data ?? {}) as Record<string, unknown>
+  let diffs: FileDiff[] = []
+
+  if (
+    post.source_type === "pr" &&
+    profile?.github_installation_id &&
+    sourceData.repo &&
+    sourceData.pr_number
+  ) {
+    try {
+      const prCtx = await fetchPrContext(
+        profile.github_installation_id,
+        sourceData.repo as string,
+        sourceData.pr_number as number,
+      )
+      diffs = prCtx.diffs
+    } catch (err) {
+      log.warn("linkedin-copy: failed to fetch PR diffs: {error}", {
+        error: String(err),
+      })
+    }
+  }
+
+  const event = buildEvent({
+    sourceType: post.source_type as VercelEvent["sourceType"],
+    repoName,
+    repoId: post.repo_id ?? "",
+    userId,
+    projectContext,
+    tone: profile?.tone ?? "casual",
+    xPremium: profile?.x_premium === true,
+    data: { ...(sourceData as EventData), diffs },
+  })
+
+  // Use the original ranker angle if available, fall back to a generic one.
+  // Derive highlights from the existing post content so the LinkedIn variant
+  // can riff on the same material.
+  const angle = (post.angle as string) || "shipping update"
+  const highlights = (post.content as string) || ""
+
+  const result = await callVercelAi<{ content: string }>("linkedin", {
+    event,
+    angle,
+    highlights,
   })
   if (!result?.content) return errorResponse("AI generation failed", 500, req)
 

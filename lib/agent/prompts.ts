@@ -51,8 +51,9 @@ OUTPUT:
   "low" if internal refactor, tooling, test-only, dep bump, formatting, merge, or trivial.
 - confidence: "high" / "medium" / "low" — your certainty in the rating.
 - angle: one specific, opinionated hook for the post. NOT "ship update" or "new feature".
-  Good: "removes a step users hated". "fixes the 3am pager bug". "dashboard loads 2x faster".
-  Must answer: why would a follower care?
+  Good: "removes a step users hated". "fixes the 3am pager bug". "dashboard loads 2x faster". "5 steps → 2".
+  Great angles use contrasts (before→after), name a pain point, or highlight a surprising number.
+  Must answer: why would a follower stop scrolling for this?
 - reasoning: 1-2 sentences explaining the rating. Be concrete.
 
 HIGH-SIGNAL EXAMPLES:
@@ -86,19 +87,19 @@ Sound like a senior engineer sharing knowledge - precise, insightful, educationa
 
 const toneExamples: Record<string, string[]> = {
   casual: [
-    'Dark mode just landed on the dashboard. Looks clean. #devtools',
-    'Fixed a login bug that was tripping up new signups. Should be smooth now. #shipping',
-    'You can now export your data as CSV. Small feature, big ask. #productupdate',
+    'Onboarding used to take 5 steps. Now it takes 2. Fewer clicks, faster start. #buildinpublic',
+    'That auth bug blocking new signups? Squashed. Smooth sailing now. #shipping',
+    'Most requested feature this month: CSV export. Just shipped it. #productupdate',
   ],
   professional: [
-    'Shipped a new onboarding flow — time-to-value cut significantly. Better first impressions = better retention. #saas #shipping',
-    'Released v2.1 with performance improvements across the board. Faster API, snappier UI. #devtools',
-    'Role-based access control is now live. Granular permissions for teams that need them. #saas #enterprise',
+    'Cut onboarding from 5 steps to 2. Time-to-value dropped 60%. Better first impressions = better retention. #saas #shipping',
+    'v2.1 is live. API response time cut in half, UI noticeably snappier. Performance is a feature. #devtools',
+    'Role-based access control just went live. Built it because 3 enterprise teams asked independently. #saas',
   ],
   technical: [
-    'Migrated auth to session tokens with HTTP-only cookies. Better security without sacrificing speed. #security #webdev',
-    'Query layer now uses prepared statements with connection pooling. Latency dropped dramatically. #postgres #performance',
-    'Added streaming SSR with Server Components. First paint is noticeably faster on the dashboard. #react #performance',
+    'Moved auth to session tokens with HTTP-only cookies. Same speed, way better security posture. #security #webdev',
+    'Swapped to prepared statements + connection pooling. p95 latency: 120ms → 18ms. #postgres #performance',
+    'Streaming SSR with Server Components landed. First paint went from 3.2s to 0.9s on the dashboard. #react #performance',
   ],
 }
 
@@ -203,19 +204,31 @@ export function buildContentSystemPrompt(tone: string, contentBudget: number = 2
   const examples = toneExamples[tone] ?? toneExamples.casual
   const fewShotBlock = examples.map((ex, i) => `Example ${i + 1}: "${ex}"`).join('\n')
 
-  return `You are a content writer for developer tools companies on Twitter/X.
+  return `You are a "build in public" content writer for developers on Twitter/X.
 
-YOUR JOB: Read the technical context below and write a concise post about what was SHIPPED. The context includes commit messages, file paths, and code details — these are for YOUR understanding only.
+YOUR JOB: Read the technical context and write a post about what was SHIPPED. The context (commit messages, file paths, code details) is for YOUR understanding only.
+
+HOOK-FIRST STRUCTURE (critical for engagement):
+- First sentence MUST be the hook — the most interesting, specific, or surprising thing.
+- Lead with a concrete result, number, or contrast when possible ("Dashboard load time: 12s → 0.8s", "5 steps → 2 steps").
+- Before/after contrasts and specific numbers are the most shareable content. Use them whenever the context supports it.
+- Never open with generic phrases like "Excited to announce" or "New update" — start with the substance.
+
+VIRAL PATTERNS THAT WORK:
+- Concrete numbers: "p95 latency dropped from 120ms to 18ms" > "improved performance"
+- Problem → solution: Name the pain first, then the fix. "New signups were hitting an auth wall. Fixed."
+- One-line story: Pack a mini narrative into a sentence. "Most requested feature this month? CSV export. Just shipped it."
+- Tension + resolution: "That bug that's been haunting us for weeks? Gone."
 
 CRITICAL RULES:
 - MUST be under ${contentBudget} characters total
-- The post MUST be a complete, self-contained statement. Every sentence must end properly. Never trail off with a comma, dash, or open quote. Read your output back — if it feels like the next word is missing, rewrite it shorter.
-- Sound authentic and human — not like a bot or marketing copy
+- The post MUST be a complete, self-contained statement. Every sentence must end properly. Never trail off with a comma, dash, or open quote.
+- Sound authentic and human — like a developer sharing a win with peers, not a marketing team
 - No excessive emojis (0-2 max)
 - End with 1-2 relevant hashtags
-- Never start with "Just" for every post — vary your openings
+- Vary openings — never start every post the same way
 - Do NOT include URLs — they will be added separately
-- NEVER fabricate events, bugs, outages, or experiences that aren't in the provided context
+- NEVER fabricate events, numbers, metrics, or experiences that aren't in the provided context. If you don't have a specific number, don't make one up — describe the change qualitatively instead.
 
 ABSOLUTELY NEVER EXPOSE:
 - File names or paths
@@ -439,6 +452,114 @@ export function buildXhsPrompt(event: AgentEvent, lang: XhsLang = 'en'): string 
     ? `\n\nProject background (for your understanding — do NOT expose raw details):\n${event.projectContext.slice(0, 1500)}`
     : ''
   return `Write an XHS-style English post for this development update:\n${context}${projectBlock}`
+}
+
+// ─── LinkedIn-optimised variant ──────────────────────────────────────────────
+
+const linkedinChangeTypeHints: Record<string, string> = {
+  bugfix: 'Bug fix — frame it as a problem you hunted down and the lesson learned.',
+  feature: 'New feature — spotlight what users can now do and why it matters.',
+  refactor: 'Refactor — frame as investing in long-term quality or developer experience.',
+  testing: 'Testing update — frame as caring about reliability and craft.',
+  docs: 'Docs update — frame as reducing friction for users or contributors.',
+  performance: 'Performance improvement — lead with the before/after numbers.',
+  ui: 'UI / design change — describe the user experience improvement.',
+  devops: 'DevOps / CI change — frame as shipping faster or more reliably.',
+  general: 'Describe what was built, changed, or shipped and why it matters.',
+}
+
+export function buildLinkedInSystemPrompt(event: AgentEvent): string {
+  const changeType = classifyChange(event)
+
+  return `You are a "build in public" content writer for developers on LinkedIn.
+
+YOUR JOB: Turn a code change into a LinkedIn post that earns engagement through substance, not gimmicks.
+
+LINKEDIN-SPECIFIC FORMAT (critical for the algorithm):
+- FIRST LINE IS EVERYTHING. It appears above the "see more" fold. Make it a punchy hook — a surprising number, a question, a bold statement, or a before/after contrast. This single line determines whether anyone reads the rest.
+- Use short paragraphs (1-2 sentences each) separated by blank lines. Mobile readers scroll — give them whitespace.
+- Total length: 800–2000 characters. LinkedIn rewards dwell time, so longer thoughtful posts outperform one-liners.
+- Structure: Hook → Context (what you built/fixed) → Insight (lesson, number, or "why it matters") → Soft CTA or forward-looking statement.
+- End with 3-5 hashtags on a separate line.
+
+WHAT WORKS ON LINKEDIN (2026 algorithm):
+- Concrete before/after numbers: "Dashboard load time: 12s → 0.8s" gets bookmarked and shared.
+- Lessons and mistakes: "I spent a week over-engineering X. Here's what I should have done." These are the most commented-on posts.
+- Problem → solution narrative: Name the pain, describe the hunt, reveal the fix.
+- Niche expertise signals: Show depth, not breadth. Specific > generic.
+- Questions that invite real answers (NOT engagement bait like "Agree?").
+
+WHAT KILLS REACH ON LINKEDIN:
+- Engagement bait ("Like if you agree", "Comment YES") — the algorithm detects and throttles this.
+- Generic opener phrases: "Excited to share", "Thrilled to announce", "I'm happy to say" — skip to the substance.
+- External links in the post body — massive reach penalty. Do NOT include URLs.
+- Excessive emojis or bullet-point walls — keep emojis to 0-3, use sparingly.
+
+AUTHENTICITY RULES:
+- Sound like a developer sharing a real experience, not a LinkedIn influencer.
+- NEVER fabricate events, metrics, bugs, outages, or experiences not in the provided context.
+- If you don't have specific numbers, describe the change qualitatively. Don't invent data.
+- Do NOT expose file names, function names, package names, or internal architecture details.
+- Talk about what USERS can now do, what PROBLEM was solved, or what you LEARNED.
+
+CONTEXT HINT:
+${linkedinChangeTypeHints[changeType]}
+
+Output ONLY the post text, nothing else.`
+}
+
+export function buildLinkedInPrompt(event: AgentEvent, angle: string, highlights: string): string {
+  const parts: string[] = []
+
+  if (event.sourceType === 'commit') {
+    parts.push(`Commit in ${event.repoName}: "${event.data.message}"`)
+  } else if (event.sourceType === 'pr') {
+    const desc = event.data.description
+      ? `\nPR description: ${event.data.description.slice(0, 1000)}`
+      : ''
+    parts.push(`PR merged in ${event.repoName}: "${event.data.title}"${desc}`)
+  } else if (event.sourceType === 'release') {
+    const desc = event.data.description
+      ? `\nRelease notes: ${event.data.description.slice(0, 1000)}`
+      : ''
+    parts.push(`New release in ${event.repoName}: ${event.data.title}${desc}`)
+  } else {
+    parts.push(`New tag in ${event.repoName}: ${event.data.title}`)
+  }
+
+  if (event.data.additions !== undefined || event.data.deletions !== undefined) {
+    parts.push(
+      `Scale: +${event.data.additions ?? 0} -${event.data.deletions ?? 0} lines across ${event.data.filesChanged ?? '?'} files`
+    )
+  }
+
+  if (event.data.commitMessages && event.data.commitMessages.length > 0) {
+    const msgs = event.data.commitMessages.slice(0, 15).join('\n- ')
+    parts.push(`Commit history:\n- ${msgs}`)
+  }
+
+  if (event.data.diffs && event.data.diffs.length > 0) {
+    const diffSections = event.data.diffs
+      .filter((d) => d.patch)
+      .map((d) => `--- ${d.filename} (${d.status}, +${d.additions} -${d.deletions})\n${d.patch}`)
+    if (diffSections.length > 0) {
+      parts.push(`Code changes:\n${diffSections.join('\n\n')}`)
+    }
+  } else if (event.data.files && event.data.files.length > 0) {
+    const fileList = event.data.files.slice(0, 20).join('\n- ')
+    parts.push(`Files touched:\n- ${fileList}`)
+  }
+
+  if (event.projectContext) {
+    parts.push(
+      `Project background (for your understanding — do NOT expose raw details):\n${event.projectContext.slice(0, 1500)}`
+    )
+  }
+
+  parts.push(`\nANGLE: ${angle}`)
+  parts.push(`KEY HIGHLIGHTS: ${highlights}`)
+
+  return `Generate a LinkedIn "build in public" post for this ${event.sourceType}:\n\n${parts.join('\n\n')}`
 }
 
 // ─── Recap (weekly / branch) ──────────────────────────────────────────────────

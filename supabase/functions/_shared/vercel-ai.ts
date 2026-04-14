@@ -4,7 +4,7 @@ const log = getLog("vercel-ai")
 
 const TIMEOUT_MS = 45_000
 
-type VercelAiPath = "generate" | "xhs" | "intro" | "recap" | "decide"
+type VercelAiPath = "generate" | "xhs" | "linkedin" | "intro" | "recap" | "decide"
 
 /**
  * Call a Vercel Function AI route from a Supabase Edge Function.
