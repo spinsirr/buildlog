@@ -322,7 +322,10 @@ export function PostsClient() {
             rollbackOnError: true,
           }
         )
-        globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
+        globalMutate(
+          (key: unknown) =>
+            Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
+        )
       } finally {
         publishingRef.current = false
       }
@@ -357,7 +360,10 @@ export function PostsClient() {
         revalidate: false,
       }
     )
-    globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
+    globalMutate(
+      (key: unknown) =>
+        Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
+    )
   }
 
   async function handleRegenerate(id: string) {
@@ -559,7 +565,10 @@ export function PostsClient() {
         <NewPostForm
           onCreated={() => {
             mutate()
-            globalMutate((key: unknown) => Array.isArray(key) && key[0] === 'dashboard-data')
+            globalMutate(
+              (key: unknown) =>
+                Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
+            )
             setShowNewPost(false)
           }}
           charLimit={charLimit}

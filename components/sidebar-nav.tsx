@@ -4,6 +4,7 @@ import { BarChart3, FileText, GitFork, LayoutDashboard, Settings } from 'lucide-
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
+import { useAuth } from '@/components/auth-provider'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
@@ -21,25 +22,25 @@ export const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings, id: 'onborda-nav-settings' },
 ]
 
-async function fetchDraftCount() {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return 0
+const supabase = createClient()
+
+async function fetchDraftCount(_key: string, userId: string) {
   const { count } = await supabase
     .from('posts')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('status', 'draft')
   return count ?? 0
 }
 
 export function SidebarNav() {
   const pathname = usePathname()
-  const { data: draftCount } = useSWR('draft-count', fetchDraftCount, {
-    dedupingInterval: 30000,
-  })
+  const { userId } = useAuth()
+  const { data: draftCount } = useSWR(
+    userId ? ['draft-count', userId] : null,
+    ([key, uid]) => fetchDraftCount(key, uid),
+    { dedupingInterval: 30000, keepPreviousData: true }
+  )
 
   return (
     <nav aria-label="Dashboard" className="flex-1 px-3 py-4 space-y-1">
