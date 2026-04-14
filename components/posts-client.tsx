@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
-import { usePostsData } from '@/lib/hooks/use-dashboard-data'
+import { usePostsData, useRealtimePosts } from '@/lib/hooks/use-dashboard-data'
 import { getEffectiveLimit } from '@/lib/platforms'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
@@ -241,6 +241,7 @@ export function PostsClient() {
   const supabase = useMemo(() => createClient(), [])
   const { mutate: globalMutate } = useSWRConfig()
   const { data, mutate } = usePostsData()
+  useRealtimePosts()
   const posts = (data?.posts ?? []) as Post[]
   const connectedPlatforms = data?.connectedPlatforms ?? []
   const xPremium = data?.xPremium ?? false
