@@ -3,14 +3,13 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
-import { PlatformVariantsModal } from '@/components/platform-variants-modal'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
-import { PostCardPreviewActions, PostCardPrimaryActions } from './post-card-actions'
+import { PostCardActions } from './post-card-actions'
 import { PostCardEditor } from './post-card-editor'
 import { PostCardHeader, PostCardMeta } from './post-card-header'
 
@@ -24,7 +23,6 @@ export function PostCard({
   onSchedule,
   connectedPlatforms,
   charLimit = 280,
-  plan = 'free',
 }: {
   post: Post
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
@@ -35,7 +33,6 @@ export function PostCard({
   onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit?: number
-  plan?: 'free' | 'pro'
 }) {
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState(post.content)
@@ -49,7 +46,6 @@ export function PostCard({
   const [showLinkedIn, setShowLinkedIn] = useState(false)
   const [linkedInContent, setLinkedInContent] = useState<string | null>(null)
   const [linkedInLoading, setLinkedInLoading] = useState(false)
-  const [showVariants, setShowVariants] = useState(false)
 
   const charCount = (editing ? editContent : post.content).length
   const overLimit = charCount > charLimit
@@ -180,14 +176,6 @@ export function PostCard({
     setShowPreview(true)
   }, [])
 
-  const handleOpenVariants = useCallback(() => {
-    setShowVariants(true)
-  }, [])
-
-  const handleUpgrade = useCallback(() => {
-    window.location.href = '/settings'
-  }, [])
-
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardContent className="pt-4 space-y-4">
@@ -214,36 +202,36 @@ export function PostCard({
           charLimit={charLimit}
           overLimit={overLimit}
           editing={editing}
-          plan={plan}
         />
 
         <Separator className="bg-zinc-800" />
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center justify-between">
           <PostCardMeta
             post={post}
             charCount={charCount}
             charLimit={charLimit}
             overLimit={overLimit}
             editing={editing}
-            plan={plan}
           />
 
-          <PostCardPrimaryActions
+          <PostCardActions
             post={post}
             editing={editing}
             busy={busy}
             regenerating={regenerating}
+            xhsLoading={xhsLoading}
+            linkedInLoading={linkedInLoading}
             overLimit={overLimit}
             connectedPlatforms={connectedPlatforms}
             onEdit={handleEdit}
             onRegenerate={handleRegenerate}
-            onPublish={handleShowPreview}
+            onShowPreview={handleShowPreview}
+            onGenerateXhs={handleOpenXhs}
+            onGenerateLinkedIn={handleOpenLinkedIn}
             onDelete={handleDelete}
           />
         </div>
-
-        <PostCardPreviewActions post={post} plan={plan} onOpenVariants={handleOpenVariants} />
       </CardContent>
 
       <PostPreviewModal
@@ -271,23 +259,6 @@ export function PostCard({
         content={linkedInContent}
         loading={linkedInLoading}
         onGenerate={handleLinkedInGenerate}
-      />
-
-      <PlatformVariantsModal
-        open={showVariants}
-        onOpenChange={setShowVariants}
-        isPro={plan === 'pro'}
-        linkedInLoading={linkedInLoading}
-        xhsLoading={xhsLoading}
-        onGenerateLinkedIn={() => {
-          setShowVariants(false)
-          handleOpenLinkedIn()
-        }}
-        onGenerateXhs={() => {
-          setShowVariants(false)
-          handleOpenXhs()
-        }}
-        onUpgrade={handleUpgrade}
       />
     </Card>
   )

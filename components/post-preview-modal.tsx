@@ -68,14 +68,8 @@ export function PostPreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800">
         <DialogHeader>
-          <DialogTitle className="text-zinc-50">X / Twitter Preview</DialogTitle>
+          <DialogTitle className="text-zinc-50">Post Preview</DialogTitle>
         </DialogHeader>
-
-        <p className="text-xs text-zinc-400">
-          This is the default short-form preview. You can still publish this version to any
-          connected platform, or optionally generate LinkedIn and Xiaohongshu variants from Premium
-          Variants.
-        </p>
 
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 space-y-3">
           <div className="flex items-center gap-2">

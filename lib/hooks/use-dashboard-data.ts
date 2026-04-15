@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import { useAuth } from '@/components/auth-provider'
-import { resolveBillingState } from '@/lib/billing'
 import { createClient } from '@/lib/supabase/client'
 import type { Post, Repo } from '@/lib/types'
 
@@ -51,32 +50,20 @@ export function useDashboardData() {
 // --- Posts ---
 
 async function fetchPostsData(_key: string, userId: string) {
-  const [{ data: posts }, { data: connectionRows }, { data: profile }, { data: sub }] =
-    await Promise.all([
-      supabase
-        .from('posts')
-        .select('*, connected_repos(full_name)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false }),
-      supabase.from('platform_connections').select('platform').eq('user_id', userId),
-      supabase.from('profiles').select('x_premium').eq('id', userId).single(),
-      supabase
-        .from('subscriptions')
-        .select(
-          'status, plan_key, access_status, current_period_end, cancel_at_period_end, trial_ends_at, stripe_price_id, price_lookup_key'
-        )
-        .eq('user_id', userId)
-        .maybeSingle(),
-    ])
-
-  const billing = resolveBillingState(sub)
+  const [{ data: posts }, { data: connectionRows }, { data: profile }] = await Promise.all([
+    supabase
+      .from('posts')
+      .select('*, connected_repos(full_name)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    supabase.from('platform_connections').select('platform').eq('user_id', userId),
+    supabase.from('profiles').select('x_premium').eq('id', userId).single(),
+  ])
 
   return {
     posts: posts ?? [],
     connectedPlatforms: (connectionRows ?? []).map((r: { platform: string }) => r.platform),
     xPremium: profile?.x_premium ?? false,
-    billing,
-    plan: billing.effectivePlanKey,
   }
 }
 
@@ -132,13 +119,7 @@ async function fetchSettingsData(_key: string, userId: string) {
       )
       .eq('id', userId)
       .single(),
-    supabase
-      .from('subscriptions')
-      .select(
-        'status, plan_key, access_status, current_period_end, cancel_at_period_end, trial_ends_at, stripe_price_id, price_lookup_key'
-      )
-      .eq('user_id', userId)
-      .maybeSingle(),
+    supabase.from('subscriptions').select('status').eq('user_id', userId).maybeSingle(),
   ])
 
   const connections = ['twitter', 'linkedin', 'bluesky'].map((platform) => {
@@ -157,13 +138,10 @@ async function fetchSettingsData(_key: string, userId: string) {
     public_changelog: profileData?.public_changelog ?? true,
   }
 
-  const billing = resolveBillingState(sub)
-
   return {
     connections,
     profile,
-    billing,
-    plan: billing.effectivePlanKey,
+    plan: (sub?.status === 'active' ? 'pro' : 'free') as 'pro' | 'free',
     githubUsername: profileData?.github_username ?? null,
   }
 }
@@ -182,14 +160,11 @@ export function useSettingsData() {
 async function fetchUsageData(_key: string, userId: string) {
   const { data: sub } = await supabase
     .from('subscriptions')
-    .select(
-      'status, plan_key, access_status, current_period_end, cancel_at_period_end, trial_ends_at, stripe_price_id, price_lookup_key'
-    )
+    .select('status')
     .eq('user_id', userId)
     .maybeSingle()
 
-  const billing = resolveBillingState(sub)
-  const plan = billing.effectivePlanKey
+  const plan = (sub?.status === 'active' ? 'pro' : 'free') as 'pro' | 'free'
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
@@ -213,7 +188,6 @@ async function fetchUsageData(_key: string, userId: string) {
   ])
 
   return {
-    billing,
     plan,
     posts: (allPosts ?? []) as {
       status: string

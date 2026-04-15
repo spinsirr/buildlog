@@ -54,10 +54,7 @@ export function XhsCopyModal({
 
         {showLangPicker ? (
           <div className="space-y-4 py-2">
-            <p className="text-sm text-zinc-400">
-              Pick a language to generate and preview an XHS-style version. The default short-form
-              draft is still available if you want to post that instead.
-            </p>
+            <p className="text-sm text-zinc-400">Pick a language for the XHS-style post.</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -67,7 +64,7 @@ export function XhsCopyModal({
                 <span className="text-2xl">🇬🇧</span>
                 <span className="font-display font-bold text-zinc-100">English</span>
                 <span className="font-mono-ui text-[11px] uppercase tracking-widest text-zinc-500">
-                  XHS-style preview
+                  Twitter · LinkedIn
                 </span>
               </button>
               <button
@@ -78,7 +75,7 @@ export function XhsCopyModal({
                 <span className="text-2xl">🇨🇳</span>
                 <span className="font-display font-bold text-zinc-100">中文</span>
                 <span className="font-mono-ui text-[11px] uppercase tracking-widest text-zinc-500">
-                  小红书预览
+                  小红书
                 </span>
               </button>
             </div>
@@ -97,8 +94,8 @@ export function XhsCopyModal({
             </div>
             <p className="text-[11px] text-zinc-600">
               {lang === 'zh'
-                ? '这是小红书版本预览，复制后打开小红书 App 粘贴发布。你也可以继续使用默认短文版本。'
-                : 'This is the generated XHS-style preview. Copy and paste into your target platform, or keep using the default short-form version.'}
+                ? '复制后打开小红书 App 粘贴发布'
+                : 'Copy and paste into your target platform'}
             </p>
           </div>
         )}

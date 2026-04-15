@@ -182,7 +182,6 @@ type LowSignalDisclosureProps = {
   onSchedule: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit: number
-  plan: 'free' | 'pro'
 }
 
 function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) {
@@ -229,7 +228,6 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
                 onSchedule={handlers.onSchedule}
                 connectedPlatforms={handlers.connectedPlatforms}
                 charLimit={handlers.charLimit}
-                plan={handlers.plan}
               />
             </div>
           ))}
@@ -239,8 +237,7 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
   )
 }
 
-type PostsData = NonNullable<ReturnType<typeof usePostsData>['data']>
-const SCHEDULING_COMING_SOON = true
+type PostsData = { posts: Post[]; connectedPlatforms: string[]; xPremium: boolean }
 
 export function PostsClient() {
   const supabase = useMemo(() => createClient(), [])
@@ -250,7 +247,6 @@ export function PostsClient() {
   const posts = (data?.posts ?? []) as Post[]
   const connectedPlatforms = data?.connectedPlatforms ?? []
   const xPremium = data?.xPremium ?? false
-  const plan = data?.plan ?? 'free'
   const publishingRef = useRef(false)
   const searchParams = useSearchParams()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -441,7 +437,6 @@ export function PostsClient() {
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
-            plan={plan}
           />
         ))}
       </div>
@@ -483,7 +478,6 @@ export function PostsClient() {
               onSchedule={handleSchedule}
               connectedPlatforms={connectedPlatforms}
               charLimit={charLimit}
-              plan={plan}
             />
           ))
         )}
@@ -499,7 +493,6 @@ export function PostsClient() {
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
-            plan={plan}
           />
         )}
       </div>
@@ -510,16 +503,9 @@ export function PostsClient() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
-              Posts
-            </h1>
-            {SCHEDULING_COMING_SOON && (
-              <span className="inline-flex items-center border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-mono-ui font-bold uppercase tracking-widest text-zinc-400">
-                Scheduling coming soon
-              </span>
-            )}
-          </div>
+          <h1 className="text-2xl font-display font-bold uppercase tracking-tight text-zinc-50">
+            Posts
+          </h1>
           <p className="text-sm text-zinc-400 mt-1">
             Review AI-generated drafts and publish to your platforms.
           </p>
@@ -614,11 +600,7 @@ export function PostsClient() {
           <TabsTrigger value="published" className="data-[state=active]:bg-zinc-800">
             Published ({published.length})
           </TabsTrigger>
-          <TabsTrigger
-            value="scheduled"
-            disabled={SCHEDULING_COMING_SOON}
-            className="data-[state=active]:bg-zinc-800"
-          >
+          <TabsTrigger value="scheduled" className="data-[state=active]:bg-zinc-800">
             Scheduled ({scheduled.length})
           </TabsTrigger>
         </TabsList>
@@ -651,14 +633,7 @@ export function PostsClient() {
           )}
         </TabsContent>
         <TabsContent value="scheduled" className="mt-4">
-          {SCHEDULING_COMING_SOON ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <p className="text-sm text-zinc-400">Scheduled posts are coming soon.</p>
-              <p className="text-xs text-zinc-500">
-                The scheduling flow is not live yet, so this queue is hidden for now.
-              </p>
-            </div>
-          ) : scheduled.length === 0 ? (
+          {scheduled.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
               <p className="text-sm text-zinc-500">No scheduled posts.</p>
               <p className="text-xs text-zinc-500">Schedule a draft to see it here.</p>

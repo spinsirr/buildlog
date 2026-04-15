@@ -50,9 +50,7 @@ export function LinkedInCopyModal({
         {showPrompt ? (
           <div className="space-y-4 py-2">
             <p className="text-sm text-zinc-400">
-              Generate a longer-form, hook-first LinkedIn version. Once generated, you can review
-              the full LinkedIn-specific preview here before copying it. The default short-form
-              draft is still available if you prefer to post that version to LinkedIn.
+              Generate a longer-form, hook-first post optimised for the LinkedIn algorithm.
             </p>
             <button
               type="button"
@@ -64,7 +62,7 @@ export function LinkedInCopyModal({
                 'transition-colors'
               )}
             >
-              Generate LinkedIn preview
+              Generate LinkedIn post
             </button>
           </div>
         ) : loading ? (
@@ -78,8 +76,7 @@ export function LinkedInCopyModal({
               <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{content}</p>
             </div>
             <p className="text-[11px] text-zinc-600">
-              LinkedIn-specific preview. Copy and paste into LinkedIn. No links in the post body for
-              max reach. You can also keep using the default short-form version instead.
+              Copy and paste into LinkedIn. No links in the post body for max reach.
             </p>
           </div>
         )}
