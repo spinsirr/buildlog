@@ -1,4 +1,5 @@
 import { requireUser } from "../_shared/auth.ts"
+import { BILLING_PLANS } from "../_shared/billing.ts"
 import { errorResponse, handleOptions, jsonResponse } from "../_shared/cors.ts"
 import { parsePathParts, safeJson, sanitizeReturnUrl } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
@@ -8,6 +9,22 @@ import type Stripe from "npm:stripe@18.0.0"
 
 await setupLogger()
 const log = getLog("billing")
+
+const PRO_MONTHLY_LOOKUP_KEY = BILLING_PLANS.pro.stripeLookupKey
+
+function getTrialDaysFromPrice(price: Stripe.Price): number | undefined {
+  const rawTrialDays = price.metadata?.trial_days
+  if (!rawTrialDays) return undefined
+
+  const trialDays = Number.parseInt(rawTrialDays, 10)
+  if (!Number.isFinite(trialDays) || trialDays <= 0) {
+    throw new Error(
+      `Invalid trial_days metadata on price ${price.id}: ${rawTrialDays}`,
+    )
+  }
+
+  return trialDays
+}
 
 /**
  * Ensure a valid Stripe customer exists for the user.
@@ -102,23 +119,39 @@ Deno.serve(async (req) => {
 
       // Fetch price by lookup key
       const prices = await stripe.prices.list({
-        lookup_keys: ["pro_monthly"],
+        lookup_keys: [PRO_MONTHLY_LOOKUP_KEY],
       })
-      const priceId = prices.data?.[0]?.id
-      if (!priceId) {
-        log.error("checkout: no price with lookup_key=pro_monthly found")
+      const price = prices.data?.[0]
+      if (!price) {
+        log.error("checkout: no price with lookup_key={lookupKey} found", {
+          lookupKey: PRO_MONTHLY_LOOKUP_KEY,
+        })
         return errorResponse("No Pro plan price found", 500, req)
       }
+      const trialDays = getTrialDaysFromPrice(price)
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "subscription",
-        line_items: [{ price: priceId, quantity: 1 }],
+        line_items: [{ price: price.id, quantity: 1 }],
         success_url: `${frontendUrl}/settings?checkout=success`,
         cancel_url: `${frontendUrl}/settings?checkout=canceled`,
-        metadata: { user_id: user.id },
+        metadata: {
+          user_id: user.id,
+          plan_key: price.metadata?.plan_key ?? BILLING_PLANS.pro.key,
+          price_id: price.id,
+          price_lookup_key: PRO_MONTHLY_LOOKUP_KEY,
+          trial_days: String(trialDays ?? 0),
+        },
         subscription_data: {
-          metadata: { user_id: user.id },
+          ...(trialDays ? { trial_period_days: trialDays } : {}),
+          metadata: {
+            user_id: user.id,
+            plan_key: price.metadata?.plan_key ?? BILLING_PLANS.pro.key,
+            price_id: price.id,
+            price_lookup_key: PRO_MONTHLY_LOOKUP_KEY,
+            trial_days: String(trialDays ?? 0),
+          },
         },
       })
 

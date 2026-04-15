@@ -4,6 +4,25 @@ import Link from 'next/link'
 import { LandingNav } from '@/components/landing-nav'
 import { LogoMark } from '@/components/logo-mark'
 
+type PlanFeature = {
+  text: string
+  included: boolean
+  comingSoon?: boolean
+}
+
+type PlanDefinition = {
+  name: string
+  price: string
+  period: string
+  description: string
+  accent: string
+  cta: string
+  ctaStyle: string
+  popular?: boolean
+  disabled?: boolean
+  features: PlanFeature[]
+}
+
 const FAQ_ITEMS = [
   {
     q: 'What counts as a post?',
@@ -56,7 +75,7 @@ export const metadata: Metadata = {
   },
 }
 
-const PLANS = [
+const PLANS: PlanDefinition[] = [
   {
     name: 'Free',
     price: '$0',
@@ -94,7 +113,7 @@ const PLANS = [
       { text: 'Public changelog page', included: true },
       { text: 'Auto-publish on push', included: true },
       { text: 'Platform-optimized content', included: true },
-      { text: 'Weekly digest generation', included: true },
+      { text: 'Weekly digest generation', included: true, comingSoon: true },
       { text: 'Priority support', included: true },
     ],
   },
@@ -108,15 +127,15 @@ const PLANS = [
     ctaStyle: 'bg-neo-muted',
     disabled: true,
     features: [
-      { text: 'Everything in Pro', included: true },
-      { text: 'Up to 10 team members', included: true },
-      { text: 'Shared post queue + approval flow', included: true },
-      { text: 'Content calendar', included: true },
-      { text: 'Brand voice training', included: true },
-      { text: 'Team activity dashboard', included: true },
-      { text: 'Release launch sequences', included: true },
-      { text: 'Analytics & insights', included: true },
-      { text: 'API access', included: true },
+      { text: 'Everything in Pro', included: true, comingSoon: true },
+      { text: 'Up to 10 team members', included: true, comingSoon: true },
+      { text: 'Shared post queue + approval flow', included: true, comingSoon: true },
+      { text: 'Content calendar', included: true, comingSoon: true },
+      { text: 'Brand voice training', included: true, comingSoon: true },
+      { text: 'Team activity dashboard', included: true, comingSoon: true },
+      { text: 'Release launch sequences', included: true, comingSoon: true },
+      { text: 'Analytics & insights', included: true, comingSoon: true },
+      { text: 'API access', included: true, comingSoon: true },
     ],
   },
 ]
@@ -251,11 +270,18 @@ export default function PricingPage() {
                               aria-hidden="true"
                             />
                           )}
-                          <span
-                            className={`font-mono-ui text-sm ${f.included ? 'text-black' : 'text-black/30'}`}
-                          >
-                            {f.text}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`font-mono-ui text-sm ${f.included ? 'text-black' : 'text-black/30'}`}
+                            >
+                              {f.text}
+                            </span>
+                            {f.comingSoon && (
+                              <span className="inline-flex items-center border-2 border-black/70 px-2 py-0.5 font-mono-ui text-[10px] font-bold uppercase tracking-wider text-black/70">
+                                Coming soon
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
