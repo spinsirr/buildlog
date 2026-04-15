@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
 import { PlatformVariantsModal } from '@/components/platform-variants-modal'
@@ -14,7 +14,11 @@ import { PostCardPreviewActions, PostCardPrimaryActions } from './post-card-acti
 import { PostCardEditor } from './post-card-editor'
 import { PostCardHeader, PostCardMeta } from './post-card-header'
 
-export function PostCard({
+// Memoized so that parent re-renders (search typing, tab switches, sibling
+// state changes) don't cascade into every card in the list. Props are a mix
+// of primitives, stable handler refs (see `useCallback` in posts-client), and
+// the `post` object whose identity is stable across SWR dedupes.
+export const PostCard = memo(function PostCard({
   post,
   onUpdate,
   onDelete,
@@ -291,4 +295,4 @@ export function PostCard({
       />
     </Card>
   )
-}
+})
