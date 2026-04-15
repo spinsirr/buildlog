@@ -58,7 +58,7 @@ export default function UsagePage() {
   if (isLoading || !data) return <UsageSkeleton />
   if (error) return <FetchError onRetry={() => mutate()} />
 
-  const { billing, plan, posts, repoCount, platformCount, monthStart } = data
+  const { plan, posts, repoCount, platformCount, monthStart } = data
   const limits = PLANS[plan]
 
   const publishedPosts = posts.filter((p) => p.status === 'published')
@@ -100,19 +100,9 @@ export default function UsagePage() {
               : 'bg-zinc-800 text-zinc-400 border-0'
           )}
         >
-          {plan === 'pro'
-            ? billing.isInGracePeriod
-              ? 'Pro grace period'
-              : 'Pro plan'
-            : 'Free plan'}
+          {plan === 'pro' ? 'Pro' : 'Free'} plan
         </Badge>
       </div>
-
-      {billing.isInGracePeriod && (
-        <p className="text-xs text-amber-400">
-          Billing is in a grace period. Your paid limits stay active until the current period ends.
-        </p>
-      )}
 
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="pb-3">

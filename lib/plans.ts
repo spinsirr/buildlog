@@ -1,18 +1,17 @@
-import { BILLING_PLANS, type BillingPlanKey } from '@/lib/billing'
-
+// CANONICAL COPY: supabase/functions/_shared/plans.ts — keep both files in sync
 export const PLANS = {
   free: {
-    name: BILLING_PLANS.free.name,
-    posts_per_month: BILLING_PLANS.free.limits.postsPerMonth,
-    repos: BILLING_PLANS.free.limits.repos,
-    platforms: BILLING_PLANS.free.limits.platforms,
+    name: 'Free',
+    posts_per_month: 5,
+    repos: 1,
+    platforms: 1,
   },
   pro: {
-    name: BILLING_PLANS.pro.name,
-    posts_per_month: BILLING_PLANS.pro.limits.postsPerMonth,
-    repos: BILLING_PLANS.pro.limits.repos,
-    platforms: BILLING_PLANS.pro.limits.platforms,
+    name: 'Pro',
+    posts_per_month: Infinity,
+    repos: Infinity,
+    platforms: Infinity,
   },
 } as const
 
-export type Plan = BillingPlanKey
+export type Plan = keyof typeof PLANS
