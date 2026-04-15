@@ -1,4 +1,3 @@
-// CANONICAL COPY: lib/plans.ts — keep both files in sync
 export const PLANS = {
   free: {
     name: "Free",
@@ -8,9 +7,9 @@ export const PLANS = {
   },
   pro: {
     name: "Pro",
-    posts_per_month: Infinity,
-    repos: Infinity,
-    platforms: Infinity,
+    posts_per_month: Number.POSITIVE_INFINITY,
+    repos: Number.POSITIVE_INFINITY,
+    platforms: Number.POSITIVE_INFINITY,
   },
 } as const
 

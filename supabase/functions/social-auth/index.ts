@@ -5,7 +5,7 @@ import { base64UrlEncode, encrypt, randomBytes, rfc6749BasicAuth } from "../_sha
 import { parsePathParts, safeJson, sanitizeReturnUrl } from "../_shared/http.ts"
 import { getLog, setupLogger } from "../_shared/logger.ts"
 import { OAUTH_PROVIDERS, type OAuthProviderConfig } from "../_shared/providers.ts"
-import { checkLimit, getUserPlan } from "../_shared/subscription.ts"
+import { checkLimit, hasEntitlement } from "../_shared/subscription.ts"
 import { createServiceClient } from "../_shared/supabase.ts"
 
 await setupLogger()
@@ -101,8 +101,8 @@ async function oauthInitiate(
 
   // Twitter is Pro-only (API costs)
   if (platform === "twitter") {
-    const plan = await getUserPlan(user.id)
-    if (plan === "free") {
+    const canUseTwitter = await hasEntitlement(user.id, "twitter_publish")
+    if (!canUseTwitter) {
       return jsonResponse(
         {
           error: "Twitter is available on the Pro plan. Upgrade to connect Twitter.",

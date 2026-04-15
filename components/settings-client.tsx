@@ -60,6 +60,7 @@ export function SettingsClient() {
     public_changelog: true,
   }
   const plan = data?.plan ?? 'free'
+  const billing = data?.billing
   const githubUsername = data?.githubUsername ?? null
   const [isPending, startTransition] = useTransition()
 
@@ -290,6 +291,11 @@ export function SettingsClient() {
 
   const isPro = plan === 'pro'
   const limits = PLANS[plan]
+  const billingSummary = isPro
+    ? billing?.isInGracePeriod
+      ? 'Pro access is active during your current billing grace period.'
+      : 'Pro plan — unlimited everything.'
+    : `Free — ${limits.posts_per_month} posts/mo, ${limits.repos} repo, ${limits.platforms} platform.`
   const isTwitterConnected = connections.find((c) => c.platform === 'twitter')?.connected ?? false
 
   return (
@@ -308,11 +314,7 @@ export function SettingsClient() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-zinc-50">Plan & Billing</CardTitle>
-              <p className="text-sm text-zinc-400 mt-1">
-                {isPro
-                  ? 'Pro plan — unlimited everything.'
-                  : `Free — ${limits.posts_per_month} posts/mo, ${limits.repos} repo, ${limits.platforms} platform.`}
-              </p>
+              <p className="text-sm text-zinc-400 mt-1">{billingSummary}</p>
             </div>
             <Badge
               className={
@@ -326,6 +328,12 @@ export function SettingsClient() {
           </div>
         </CardHeader>
         <CardContent>
+          {billing?.isInGracePeriod && (
+            <p className="mb-4 text-xs text-amber-400">
+              Payment needs attention, but your Pro access remains active until the current period
+              ends.
+            </p>
+          )}
           {isPro ? (
             <Button
               variant="outline"

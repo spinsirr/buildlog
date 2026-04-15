@@ -12,12 +12,14 @@ export function PostCardHeader({
   charLimit,
   overLimit,
   editing,
+  plan = 'free',
 }: {
   post: Post
   charCount: number
   charLimit?: number
   overLimit: boolean
   editing: boolean
+  plan?: 'free' | 'pro'
 }) {
   return (
     <>
@@ -63,12 +65,14 @@ export function PostCardMeta({
   charLimit = 280,
   overLimit,
   editing,
+  plan = 'free',
 }: {
   post: Post
   charCount: number
   charLimit?: number
   overLimit: boolean
   editing: boolean
+  plan?: 'free' | 'pro'
 }) {
   const commitHash =
     post.source_data && typeof post.source_data === 'object' && 'url' in post.source_data
@@ -88,8 +92,13 @@ export function PostCardMeta({
               : 'bg-zinc-800 text-zinc-400'
         )}
       >
-        {post.status}
+        {post.status === 'draft' ? 'unpublished' : post.status}
       </Badge>
+      {post.status === 'draft' && (
+        <Badge variant="secondary" className="text-[10px] border-0 bg-zinc-800 text-zinc-300">
+          {plan === 'pro' ? 'short-form default' : 'short-form'}
+        </Badge>
+      )}
       <Badge
         variant="secondary"
         className={cn(
