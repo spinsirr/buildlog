@@ -392,9 +392,7 @@ export function PostsClient() {
       mutate(
         (current: PostsData | undefined) => ({
           ...current!,
-          posts: current!.posts.map((p: Post) =>
-            p.id === id ? { ...p, ...result.data.post } : p
-          ),
+          posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...result.data.post } : p)),
         }),
         { revalidate: false }
       )
