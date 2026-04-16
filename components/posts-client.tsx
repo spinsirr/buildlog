@@ -3,7 +3,7 @@
 import { ChevronDown, FileText, GitBranch, Loader2, Plus, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useSWRConfig } from 'swr'
 import { PostCard } from '@/components/post-card'
@@ -303,123 +303,142 @@ export function PostsClient() {
     }
   }, [searchParams])
 
-  async function handleUpdate(id: string, updates: Record<string, unknown>) {
-    if (updates.status === 'published') {
-      if (publishingRef.current) return
-      publishingRef.current = true
-      try {
-        await mutate(
-          async () => {
-            const result = await callEdgeFunction<{ error?: string }>('publish-post', {
-              body: { id, content: updates.content },
-            })
-            if (!result.ok) throw new Error(result.error || 'Failed to publish')
-            return undefined // revalidate from server
-          },
-          {
-            optimisticData: (current: PostsData | undefined) => ({
-              ...current!,
-              posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...updates } : p)),
-            }),
-            rollbackOnError: true,
-          }
-        )
-        globalMutate(
-          (key: unknown) =>
-            Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
-        )
-      } finally {
-        publishingRef.current = false
-      }
-    } else {
-      const { error } = await supabase
-        .from('posts')
-        .update({ content: updates.content })
-        .eq('id', id)
-      if (error) {
-        mutate()
-        throw new Error(error.message)
-      }
-    }
-  }
-
-  async function handleDelete(id: string) {
-    mutate(
-      async (current: PostsData | undefined) => {
-        const { error } = await supabase.from('posts').delete().eq('id', id)
-        if (error) {
-          toast.error('Delete failed', { description: error.message })
-          throw error
+  // Handlers are memoized so that PostCard (wrapped in React.memo) gets stable
+  // prop references across parent re-renders (search typing, tab switches).
+  // Without this, every keystroke would recreate all handlers, break memo
+  // equality, and re-render every card in the list.
+  const handleUpdate = useCallback(
+    async (id: string, updates: Record<string, unknown>) => {
+      if (updates.status === 'published') {
+        if (publishingRef.current) return
+        publishingRef.current = true
+        try {
+          await mutate(
+            async () => {
+              const result = await callEdgeFunction<{ error?: string }>('publish-post', {
+                body: { id, content: updates.content },
+              })
+              if (!result.ok) throw new Error(result.error || 'Failed to publish')
+              return undefined // revalidate from server
+            },
+            {
+              optimisticData: (current: PostsData | undefined) => ({
+                ...current!,
+                posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...updates } : p)),
+              }),
+              rollbackOnError: true,
+            }
+          )
+          globalMutate(
+            (key: unknown) =>
+              Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
+          )
+        } finally {
+          publishingRef.current = false
         }
-        return { ...current!, posts: current!.posts.filter((p: Post) => p.id !== id) }
-      },
-      {
-        optimisticData: (current: PostsData | undefined) => ({
-          ...current!,
-          posts: current!.posts.filter((p: Post) => p.id !== id),
-        }),
-        rollbackOnError: true,
-        revalidate: false,
+      } else {
+        const { error } = await supabase
+          .from('posts')
+          .update({ content: updates.content })
+          .eq('id', id)
+        if (error) {
+          mutate()
+          throw new Error(error.message)
+        }
       }
-    )
-    globalMutate(
-      (key: unknown) =>
-        Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
-    )
-  }
+    },
+    [mutate, globalMutate, supabase]
+  )
 
-  async function handleRegenerate(id: string) {
-    const result = await callEdgeFunction<{ post: Post }>('generate-post', {
-      path: 'regenerate',
-      body: { id },
-    })
-    if (!result.ok) throw new Error(result.error || 'Failed to regenerate')
-    mutate(
-      (current: PostsData | undefined) => ({
-        ...current!,
-        posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...result.data.post } : p)),
-      }),
-      { revalidate: false }
-    )
-  }
+  const handleDelete = useCallback(
+    async (id: string) => {
+      mutate(
+        async (current: PostsData | undefined) => {
+          const { error } = await supabase.from('posts').delete().eq('id', id)
+          if (error) {
+            toast.error('Delete failed', { description: error.message })
+            throw error
+          }
+          return { ...current!, posts: current!.posts.filter((p: Post) => p.id !== id) }
+        },
+        {
+          optimisticData: (current: PostsData | undefined) => ({
+            ...current!,
+            posts: current!.posts.filter((p: Post) => p.id !== id),
+          }),
+          rollbackOnError: true,
+          revalidate: false,
+        }
+      )
+      globalMutate(
+        (key: unknown) =>
+          Array.isArray(key) && (key[0] === 'draft-count' || key[0] === 'dashboard-data')
+      )
+    },
+    [mutate, globalMutate, supabase]
+  )
 
-  async function handleGenerateXhs(id: string, lang: 'en' | 'zh'): Promise<string> {
+  const handleRegenerate = useCallback(
+    async (id: string) => {
+      const result = await callEdgeFunction<{ post: Post }>('generate-post', {
+        path: 'regenerate',
+        body: { id },
+      })
+      if (!result.ok) throw new Error(result.error || 'Failed to regenerate')
+      mutate(
+        (current: PostsData | undefined) => ({
+          ...current!,
+          posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...result.data.post } : p)),
+        }),
+        { revalidate: false }
+      )
+    },
+    [mutate]
+  )
+
+  const handleGenerateXhs = useCallback(async (id: string, lang: 'en' | 'zh'): Promise<string> => {
     const result = await callEdgeFunction<{ content: string }>('generate-post', {
       path: 'xhs-copy',
       body: { id, lang },
     })
     if (!result.ok) throw new Error(result.error || 'Generation failed')
     return result.data.content
-  }
+  }, [])
 
-  async function handleGenerateLinkedIn(id: string): Promise<string> {
+  const handleGenerateLinkedIn = useCallback(async (id: string): Promise<string> => {
     const result = await callEdgeFunction<{ content: string }>('generate-post', {
       path: 'linkedin-copy',
       body: { id },
     })
     if (!result.ok) throw new Error(result.error || 'Generation failed')
     return result.data.content
-  }
+  }, [])
 
-  async function handleSchedule(id: string, scheduledAt: string | null) {
-    const result = await callEdgeFunction<{ post: Post }>('schedule-post', {
-      body: { id, scheduled_at: scheduledAt },
-    })
-    if (!result.ok) throw new Error(result.error || 'Failed to schedule')
-    mutate()
-  }
+  const handleSchedule = useCallback(
+    async (id: string, scheduledAt: string | null) => {
+      const result = await callEdgeFunction<{ post: Post }>('schedule-post', {
+        body: { id, scheduled_at: scheduledAt },
+      })
+      if (!result.ok) throw new Error(result.error || 'Failed to schedule')
+      mutate()
+    },
+    [mutate]
+  )
 
-  const filtered = search.trim()
-    ? posts.filter(
-        (p) =>
-          p.content.toLowerCase().includes(search.toLowerCase()) ||
-          p.connected_repos?.full_name.toLowerCase().includes(search.toLowerCase())
-      )
-    : posts
-  const allPosts = filtered
-  const drafts = allPosts.filter((p) => p.status === 'draft')
-  const published = allPosts.filter((p) => p.status === 'published')
-  const scheduled = allPosts.filter((p) => p.status === 'scheduled')
+  // Memoized so that unrelated re-renders (e.g., opening the NewPost form)
+  // don't re-filter/re-partition the entire posts array.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return posts
+    return posts.filter(
+      (p) =>
+        p.content.toLowerCase().includes(q) ||
+        p.connected_repos?.full_name.toLowerCase().includes(q)
+    )
+  }, [posts, search])
+  const drafts = useMemo(() => filtered.filter((p) => p.status === 'draft'), [filtered])
+  const published = useMemo(() => filtered.filter((p) => p.status === 'published'), [filtered])
+  const scheduled = useMemo(() => filtered.filter((p) => p.status === 'scheduled'), [filtered])
 
   function renderPosts(postList: Post[]) {
     if (postList.length === 0) return <EmptyState />
@@ -592,7 +611,7 @@ export function PostsClient() {
       <Tabs defaultValue="all">
         <TabsList className="bg-zinc-900 border border-zinc-800">
           <TabsTrigger value="all" className="data-[state=active]:bg-zinc-800">
-            All ({allPosts.length})
+            All ({filtered.length})
           </TabsTrigger>
           <TabsTrigger value="draft" className="data-[state=active]:bg-zinc-800">
             Draft ({drafts.length})
@@ -606,7 +625,7 @@ export function PostsClient() {
         </TabsList>
 
         <TabsContent value="all" className="mt-4">
-          {renderPosts(allPosts)}
+          {renderPosts(filtered)}
         </TabsContent>
         <TabsContent value="draft" className="mt-4">
           {drafts.length === 0 ? (
