@@ -5,13 +5,12 @@ import { toast } from 'sonner'
 import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
 import { PostCardEditor } from './post-card-editor'
-import { PostCardHeader, PostCardMeta } from './post-card-header'
+import { PostCardBadges, PostCardMeta } from './post-card-header'
 
 // Memoized so that parent re-renders (search typing, tab switches, sibling
 // state changes) don't cascade into every card in the list. Props are a mix
@@ -106,8 +105,6 @@ export const PostCard = memo(function PostCard({
     setRegenerating(false)
   }, [onRegenerate, post.id])
 
-  // Opening the modal only shows the language picker — generation happens
-  // after the user picks en/zh so we don't commit tokens until they choose.
   const handleOpenXhs = useCallback(() => {
     setXhsContent(null)
     setXhsLang(null)
@@ -182,7 +179,9 @@ export const PostCard = memo(function PostCard({
 
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
-      <CardContent className="pt-4 space-y-4">
+      <CardContent className="pt-1 space-y-4">
+        <PostCardBadges post={post} />
+
         {editing ? (
           <PostCardEditor
             editContent={editContent}
@@ -200,17 +199,7 @@ export const PostCard = memo(function PostCard({
           </p>
         )}
 
-        <PostCardHeader
-          post={post}
-          charCount={charCount}
-          charLimit={charLimit}
-          overLimit={overLimit}
-          editing={editing}
-        />
-
-        <Separator className="bg-zinc-800" />
-
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
           <PostCardMeta
             post={post}
             charCount={charCount}
@@ -224,15 +213,11 @@ export const PostCard = memo(function PostCard({
             editing={editing}
             busy={busy}
             regenerating={regenerating}
-            xhsLoading={xhsLoading}
-            linkedInLoading={linkedInLoading}
             overLimit={overLimit}
             connectedPlatforms={connectedPlatforms}
             onEdit={handleEdit}
             onRegenerate={handleRegenerate}
             onShowPreview={handleShowPreview}
-            onGenerateXhs={handleOpenXhs}
-            onGenerateLinkedIn={handleOpenLinkedIn}
             onDelete={handleDelete}
           />
         </div>

@@ -1,7 +1,14 @@
 'use client'
 
-import { Eye, Linkedin, Loader2, Pencil, RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react'
+import { Crown, Loader2, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 
@@ -10,81 +17,48 @@ export function PostCardActions({
   editing,
   busy,
   regenerating,
-  xhsLoading,
-  linkedInLoading,
   overLimit,
   connectedPlatforms,
   onEdit,
   onRegenerate,
   onShowPreview,
-  onGenerateXhs,
-  onGenerateLinkedIn,
   onDelete,
+  onOpenVariants,
 }: {
   post: Post
   editing: boolean
   busy: boolean
   regenerating: boolean
-  xhsLoading: boolean
-  linkedInLoading: boolean
   overLimit: boolean
   connectedPlatforms: string[]
   onEdit: () => void
   onRegenerate: () => void
   onShowPreview: () => void
-  onGenerateXhs: () => void
-  onGenerateLinkedIn: () => void
   onDelete: () => void
+  onOpenVariants?: () => void
 }) {
   return (
-    <div className="flex items-center gap-0.5">
-      {post.status === 'draft' && post.source_type !== 'manual' && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRegenerate}
-          disabled={regenerating || busy}
-          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-amber-400 disabled:cursor-not-allowed"
-          aria-label="Regenerate with AI"
-        >
-          {regenerating ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )}
-        </Button>
-      )}
+    <div className="flex items-center gap-1.5">
       {!editing && (
         <Button
           variant="ghost"
           size="icon"
           onClick={onEdit}
           disabled={busy}
-          className="min-h-[44px] min-w-[44px] disabled:cursor-not-allowed"
-          aria-label="Edit post"
+          className="h-7 w-7 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"
+          aria-label="Edit"
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>
       )}
-      {post.status === 'draft' && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onShowPreview}
-          disabled={busy}
-          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-sky-400 disabled:cursor-not-allowed"
-          aria-label="Preview post"
-        >
-          <Eye className="h-3.5 w-3.5" />
-        </Button>
-      )}
+
       {post.status === 'draft' && (
         <Button
           variant="ghost"
           size="icon"
           onClick={onShowPreview}
           disabled={busy || overLimit}
-          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-neo-accent disabled:cursor-not-allowed"
+          className="h-7 w-7 text-zinc-500 hover:text-neo-accent hover:bg-zinc-800"
           aria-label={
             overLimit
               ? 'Post exceeds character limit'
@@ -100,48 +74,45 @@ export function PostCardActions({
           )}
         </Button>
       )}
-      {post.source_type !== 'manual' && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onGenerateLinkedIn}
-          disabled={busy || linkedInLoading}
-          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-blue-400 disabled:cursor-not-allowed"
-          aria-label="Generate LinkedIn post"
+
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
+          disabled={busy}
         >
-          {linkedInLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Linkedin className="h-3.5 w-3.5" />
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-zinc-200">
+          {post.status === 'draft' && post.source_type !== 'manual' && (
+            <DropdownMenuItem
+              onClick={onRegenerate}
+              disabled={regenerating || busy}
+              className="focus:bg-zinc-800"
+            >
+              {regenerating ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              )}
+              Regenerate draft
+            </DropdownMenuItem>
           )}
-        </Button>
-      )}
-      {post.source_type !== 'manual' && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onGenerateXhs}
-          disabled={busy || xhsLoading}
-          className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-red-400 disabled:cursor-not-allowed"
-          aria-label="生成小红书文案"
-        >
-          {xhsLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Sparkles className="h-3.5 w-3.5" />
+          {post.status === 'draft' && onOpenVariants && (
+            <DropdownMenuItem onClick={onOpenVariants} className="focus:bg-zinc-800">
+              <Crown className="mr-2 h-3.5 w-3.5" />
+              Platform variants
+            </DropdownMenuItem>
           )}
-        </Button>
-      )}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onDelete}
-        disabled={busy}
-        className="min-h-[44px] min-w-[44px] text-zinc-400 hover:text-red-400 disabled:cursor-not-allowed"
-        aria-label="Delete post"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
+          <DropdownMenuSeparator className="bg-zinc-800" />
+          <DropdownMenuItem
+            onClick={onDelete}
+            className="focus:bg-zinc-800 text-red-400 focus:text-red-300"
+          >
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

@@ -6,77 +6,15 @@ import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 import { cn, draftAgeBucket, draftAgeText, timeAgo } from '@/lib/utils'
 
-export function PostCardHeader({
-  post,
-  charCount,
-  charLimit,
-  overLimit,
-  editing,
-}: {
-  post: Post
-  charCount: number
-  charLimit?: number
-  overLimit: boolean
-  editing: boolean
-}) {
-  return (
-    <>
-      {post.status === 'published' && (
-        <div className="flex items-center gap-3">
-          {post.platform_post_url && (
-            <a
-              href={post.platform_post_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-neo-accent hover:text-neo-accent/80 transition-colors"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View post
-            </a>
-          )}
-          {post.platforms && post.platforms.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              {post.platforms.map((p) => (
-                <Badge
-                  key={p}
-                  variant="secondary"
-                  className={cn(
-                    'text-[10px] border-0',
-                    platformConfig[p]?.color ?? 'bg-zinc-800 text-zinc-400'
-                  )}
-                >
-                  {platformConfig[p]?.label ?? p}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </>
-  )
-}
-
-/** Metadata row: status badge, source type, repo info, character count */
-export function PostCardMeta({
-  post,
-  charCount,
-  charLimit = 280,
-  overLimit,
-  editing,
-}: {
-  post: Post
-  charCount: number
-  charLimit?: number
-  overLimit: boolean
-  editing: boolean
-}) {
+/** Top badges: status, source type, signal, repo */
+export function PostCardBadges({ post }: { post: Post }) {
   const commitHash =
     post.source_data && typeof post.source_data === 'object' && 'url' in post.source_data
       ? (post.source_data.url as string)?.split('/').pop()?.slice(0, 7)
       : null
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 flex-wrap">
       <Badge
         variant="secondary"
         className={cn(
@@ -120,12 +58,31 @@ export function PostCardMeta({
           {commitHash && <span className="text-zinc-600"> @ {commitHash}</span>}
         </span>
       )}
+    </div>
+  )
+}
+
+/** Bottom-row metadata: char count, age, view post link, platform badges */
+export function PostCardMeta({
+  post,
+  charCount,
+  charLimit = 280,
+  overLimit,
+  editing,
+}: {
+  post: Post
+  charCount: number
+  charLimit?: number
+  overLimit: boolean
+  editing: boolean
+}) {
+  return (
+    <div className="flex items-center gap-3">
       {!editing && (
         <span className={cn('text-[11px] font-mono', overLimit ? 'text-red-400' : 'text-zinc-500')}>
           {charCount}/{charLimit}
         </span>
       )}
-      {/* Time anchor — explicit age for ADHD time blindness */}
       <span
         className={cn(
           'text-[11px] font-mono',
@@ -140,6 +97,33 @@ export function PostCardMeta({
       >
         {post.status === 'draft' ? draftAgeText(post.created_at) : timeAgo(post.created_at)}
       </span>
+      {post.status === 'published' && post.platforms && post.platforms.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          {post.platforms.map((p) => (
+            <Badge
+              key={p}
+              variant="secondary"
+              className={cn(
+                'text-[10px] border-0',
+                platformConfig[p]?.color ?? 'bg-zinc-800 text-zinc-400'
+              )}
+            >
+              {platformConfig[p]?.label ?? p}
+            </Badge>
+          ))}
+        </div>
+      )}
+      {post.status === 'published' && post.platform_post_url && (
+        <a
+          href={post.platform_post_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          <ExternalLink className="h-3 w-3" />
+          View post
+        </a>
+      )}
     </div>
   )
 }
