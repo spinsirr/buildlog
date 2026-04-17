@@ -12,7 +12,7 @@ import {
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 
-export function PostCardPrimaryActions({
+export function PostCardActions({
   post,
   editing,
   busy,
@@ -21,7 +21,7 @@ export function PostCardPrimaryActions({
   connectedPlatforms,
   onEdit,
   onRegenerate,
-  onPublish,
+  onShowPreview,
   onDelete,
   onOpenVariants,
 }: {
@@ -33,7 +33,7 @@ export function PostCardPrimaryActions({
   connectedPlatforms: string[]
   onEdit: () => void
   onRegenerate: () => void
-  onPublish: () => void
+  onShowPreview: () => void
   onDelete: () => void
   onOpenVariants?: () => void
 }) {
@@ -56,7 +56,7 @@ export function PostCardPrimaryActions({
         <Button
           variant="ghost"
           size="icon"
-          onClick={onPublish}
+          onClick={onShowPreview}
           disabled={busy || overLimit}
           className="h-7 w-7 text-zinc-500 hover:text-neo-accent hover:bg-zinc-800"
           aria-label={

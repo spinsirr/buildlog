@@ -3,13 +3,12 @@
 import { memo, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
-import { PlatformVariantsModal } from '@/components/platform-variants-modal'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
-import { PostCardPrimaryActions } from './post-card-actions'
+import { PostCardActions } from './post-card-actions'
 import { PostCardEditor } from './post-card-editor'
 import { PostCardBadges, PostCardMeta } from './post-card-header'
 
@@ -27,7 +26,6 @@ export const PostCard = memo(function PostCard({
   onSchedule,
   connectedPlatforms,
   charLimit = 280,
-  plan = 'free',
 }: {
   post: Post
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
@@ -38,7 +36,6 @@ export const PostCard = memo(function PostCard({
   onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit?: number
-  plan?: 'free' | 'pro'
 }) {
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState(post.content)
@@ -52,7 +49,6 @@ export const PostCard = memo(function PostCard({
   const [showLinkedIn, setShowLinkedIn] = useState(false)
   const [linkedInContent, setLinkedInContent] = useState<string | null>(null)
   const [linkedInLoading, setLinkedInLoading] = useState(false)
-  const [showVariants, setShowVariants] = useState(false)
 
   const charCount = (editing ? editContent : post.content).length
   const overLimit = charCount > charLimit
@@ -109,8 +105,6 @@ export const PostCard = memo(function PostCard({
     setRegenerating(false)
   }, [onRegenerate, post.id])
 
-  // Opening the modal only shows the language picker — generation happens
-  // after the user picks en/zh so we don't commit tokens until they choose.
   const handleOpenXhs = useCallback(() => {
     setXhsContent(null)
     setXhsLang(null)
@@ -183,14 +177,6 @@ export const PostCard = memo(function PostCard({
     setShowPreview(true)
   }, [])
 
-  const handleOpenVariants = useCallback(() => {
-    setShowVariants(true)
-  }, [])
-
-  const handleUpgrade = useCallback(() => {
-    window.location.href = '/settings'
-  }, [])
-
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
       <CardContent className="pt-1 space-y-4">
@@ -222,7 +208,7 @@ export const PostCard = memo(function PostCard({
             editing={editing}
           />
 
-          <PostCardPrimaryActions
+          <PostCardActions
             post={post}
             editing={editing}
             busy={busy}
@@ -231,9 +217,8 @@ export const PostCard = memo(function PostCard({
             connectedPlatforms={connectedPlatforms}
             onEdit={handleEdit}
             onRegenerate={handleRegenerate}
-            onPublish={handleShowPreview}
+            onShowPreview={handleShowPreview}
             onDelete={handleDelete}
-            onOpenVariants={handleOpenVariants}
           />
         </div>
       </CardContent>
@@ -263,23 +248,6 @@ export const PostCard = memo(function PostCard({
         content={linkedInContent}
         loading={linkedInLoading}
         onGenerate={handleLinkedInGenerate}
-      />
-
-      <PlatformVariantsModal
-        open={showVariants}
-        onOpenChange={setShowVariants}
-        isPro={plan === 'pro'}
-        linkedInLoading={linkedInLoading}
-        xhsLoading={xhsLoading}
-        onGenerateLinkedIn={() => {
-          setShowVariants(false)
-          handleOpenLinkedIn()
-        }}
-        onGenerateXhs={() => {
-          setShowVariants(false)
-          handleOpenXhs()
-        }}
-        onUpgrade={handleUpgrade}
       />
     </Card>
   )
