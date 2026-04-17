@@ -6,59 +6,6 @@ import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 import { cn, draftAgeBucket, draftAgeText, timeAgo } from '@/lib/utils'
 
-export function PostCardHeader({
-  post,
-  charCount,
-  charLimit,
-  overLimit,
-  editing,
-  plan = 'free',
-}: {
-  post: Post
-  charCount: number
-  charLimit?: number
-  overLimit: boolean
-  editing: boolean
-  plan?: 'free' | 'pro'
-}) {
-  return (
-    <>
-      {post.status === 'published' && (
-        <div className="flex items-center gap-3">
-          {post.platform_post_url && (
-            <a
-              href={post.platform_post_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-neo-accent hover:text-neo-accent/80 transition-colors"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View post
-            </a>
-          )}
-          {post.platforms && post.platforms.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              {post.platforms.map((p) => (
-                <Badge
-                  key={p}
-                  variant="secondary"
-                  className={cn(
-                    'text-[10px] border-0',
-                    platformConfig[p]?.color ?? 'bg-zinc-800 text-zinc-400'
-                  )}
-                >
-                  {platformConfig[p]?.label ?? p}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </>
-  )
-}
-
-/** Metadata row: status badge, source type, repo info, character count */
 /** Top badges: status, source type, signal, repo */
 export function PostCardBadges({ post }: { post: Post }) {
   const commitHash =
