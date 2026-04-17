@@ -447,7 +447,7 @@ export function PostsClient() {
   function renderPosts(postList: Post[]) {
     if (postList.length === 0) return <EmptyState />
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-5">
         {postList.map((post) => (
           <PostCard
             key={post.id}
@@ -477,7 +477,7 @@ export function PostsClient() {
     const lowSignal = draftList.filter((p) => p.signal === 'low')
 
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-5">
         {highSignal.length === 0 ? (
           lowSignal.length === 0 ? (
             <EmptyState />

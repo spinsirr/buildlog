@@ -1,5 +1,5 @@
 export { PlatformVariantsModal } from '../platform-variants-modal'
 export { PostCard } from './post-card'
-export { PostCardPreviewActions, PostCardPrimaryActions } from './post-card-actions'
+export { PostCardPrimaryActions } from './post-card-actions'
 export { PostCardEditor } from './post-card-editor'
-export { PostCardHeader, PostCardMeta } from './post-card-header'
+export { PostCardBadges, PostCardMeta } from './post-card-header'

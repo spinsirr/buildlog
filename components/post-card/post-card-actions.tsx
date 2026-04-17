@@ -1,7 +1,14 @@
 'use client'
 
-import { Crown, Loader2, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { Crown, Loader2, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { platformConfig } from '@/lib/platforms'
 import type { Post } from '@/lib/types'
 
@@ -16,6 +23,7 @@ export function PostCardPrimaryActions({
   onRegenerate,
   onPublish,
   onDelete,
+  onOpenVariants,
 }: {
   post: Post
   editing: boolean
@@ -27,127 +35,84 @@ export function PostCardPrimaryActions({
   onRegenerate: () => void
   onPublish: () => void
   onDelete: () => void
+  onOpenVariants?: () => void
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-[11px] font-mono-ui uppercase tracking-[0.18em] text-zinc-500">
-            Draft Actions
-          </p>
-          <p className="text-xs text-zinc-400">
-            Refresh the source draft, edit the copy, or send this version to publish.
-          </p>
-        </div>
+    <div className="flex items-center gap-1.5">
+      {!editing && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onEdit}
+          disabled={busy}
+          className="h-7 w-7 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"
+          aria-label="Edit"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
 
-        <div className="flex flex-wrap items-center gap-2">
+      {post.status === 'draft' && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onPublish}
+          disabled={busy || overLimit}
+          className="h-7 w-7 text-zinc-500 hover:text-neo-accent hover:bg-zinc-800"
+          aria-label={
+            overLimit
+              ? 'Post exceeds character limit'
+              : connectedPlatforms.length === 0
+                ? 'No platforms connected'
+                : `Publish to ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(' + ')}`
+          }
+        >
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      )}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
+          disabled={busy}
+        >
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800 text-zinc-200">
           {post.status === 'draft' && post.source_type !== 'manual' && (
-            <Button
-              variant="outline"
-              size="sm"
+            <DropdownMenuItem
               onClick={onRegenerate}
               disabled={regenerating || busy}
-              className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-amber-300"
+              className="focus:bg-zinc-800"
             >
               {regenerating ? (
                 <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <RefreshCw className="mr-2 h-3.5 w-3.5" />
               )}
-              Refresh draft
-            </Button>
+              Regenerate draft
+            </DropdownMenuItem>
           )}
-
-          {!editing && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onEdit}
-              disabled={busy}
-              className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-            >
-              <Pencil className="mr-2 h-3.5 w-3.5" />
-              Edit
-            </Button>
+          {post.status === 'draft' && onOpenVariants && (
+            <DropdownMenuItem onClick={onOpenVariants} className="focus:bg-zinc-800">
+              <Crown className="mr-2 h-3.5 w-3.5" />
+              Platform variants
+            </DropdownMenuItem>
           )}
-
-          {post.status === 'draft' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onPublish}
-              disabled={busy || overLimit}
-              className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-neo-accent"
-              aria-label={
-                overLimit
-                  ? 'Post exceeds character limit'
-                  : connectedPlatforms.length === 0
-                    ? 'No platforms connected'
-                    : `Publish to ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(' + ')}`
-              }
-            >
-              {busy ? (
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="mr-2 h-3.5 w-3.5" />
-              )}
-              Publish
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
+          <DropdownMenuSeparator className="bg-zinc-800" />
+          <DropdownMenuItem
             onClick={onDelete}
-            disabled={busy}
-            className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-red-300"
+            className="focus:bg-zinc-800 text-red-400 focus:text-red-300"
           >
             <Trash2 className="mr-2 h-3.5 w-3.5" />
             Delete
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function PostCardPreviewActions({
-  post,
-  plan = 'free',
-  onOpenVariants,
-}: {
-  post: Post
-  plan?: 'free' | 'pro'
-  onOpenVariants: () => void
-}) {
-  if (post.status !== 'draft') return null
-
-  const isPro = plan === 'pro'
-
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-[11px] font-mono-ui uppercase tracking-[0.18em] text-zinc-500">
-            Premium Feature
-          </p>
-          <p className="text-xs text-zinc-400">
-            The base draft is short-form by default. Premium unlocks platform-specific rewrites.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenVariants}
-            className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-amber-300"
-          >
-            <Crown className="mr-2 h-3.5 w-3.5" />
-            {isPro ? 'Open variants' : 'Premium variants'}
-          </Button>
-        </div>
-      </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }
