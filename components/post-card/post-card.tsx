@@ -6,6 +6,7 @@ import { PostDetailModal } from '@/components/post-detail-modal'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
 import { platformConfig } from '@/lib/platforms'
+import { anyPlatformOverLimit } from '@/lib/posts'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
 import { PostCardBadges, PostCardMeta } from './post-card-header'
@@ -46,7 +47,12 @@ export const PostCard = memo(function PostCard({
   const [showDetails, setShowDetails] = useState(false)
 
   const charCount = post.content.length
-  const overLimit = charCount > charLimit
+  // Publish is only blocked when a platform's effective content (variant or
+  // default) exceeds that platform's own limit. A long default used by
+  // LinkedIn doesn't block publish when Twitter has its own short variant.
+  const publishBlocked = anyPlatformOverLimit(post, connectedPlatforms, xPremium)
+  // Default-vs-min-limit is still useful for the meta row ballpark counter.
+  const defaultOverMinLimit = charCount > charLimit
 
   const handleConfirmPublish = useCallback(async () => {
     setBusy(true)
@@ -109,7 +115,7 @@ export const PostCard = memo(function PostCard({
             post={post}
             charCount={charCount}
             charLimit={charLimit}
-            overLimit={overLimit}
+            overLimit={defaultOverMinLimit}
             editing={false}
           />
 
@@ -118,7 +124,7 @@ export const PostCard = memo(function PostCard({
             editing={false}
             busy={busy}
             regenerating={regenerating}
-            overLimit={overLimit}
+            overLimit={publishBlocked}
             connectedPlatforms={connectedPlatforms}
             onEdit={handleOpenDetails}
             onRegenerate={handleRegenerate}
@@ -136,6 +142,7 @@ export const PostCard = memo(function PostCard({
         busy={busy}
         connectedPlatforms={connectedPlatforms}
         charLimit={charLimit}
+        publishBlocked={publishBlocked}
       />
 
       <PostDetailModal

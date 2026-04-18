@@ -76,8 +76,15 @@ export function PostDetailModal({
         await onSave(post.id, { content })
       }
       const updated = await onGenerateVariant(post.id, platform)
+      // Only merge the just-generated platform into local state. Preserves
+      // any unsaved edits the user has made in other variant tabs.
+      const serverVariant = updated.platform_variants?.[platform]
+      if (typeof serverVariant === 'string') {
+        setVariants((prev) => ({ ...prev, [platform]: serverVariant }))
+      }
+      // Default content may have just been persisted above; updated.content
+      // reflects the source of truth either way.
       setContent(updated.content)
-      setVariants(updated.platform_variants ?? {})
       toast.success(`${platformConfig[platform]?.label ?? platform} variant generated`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Generation failed')
@@ -119,6 +126,13 @@ export function PostDetailModal({
   const defaultLimit = getContentLimit('twitter', xPremium)
   const defaultCount = content.length
   const defaultOver = defaultCount > defaultLimit
+  // Saving an oversized variant would be accepted here but fail at publish
+  // time when the platform rejects it. Block Save up front so the failure
+  // mode is "fix it now" instead of "mystery publish error later".
+  const anyVariantOver = Object.entries(variants).some(
+    ([platform, text]) => text.length > getContentLimit(platform, xPremium)
+  )
+  const saveBlocked = defaultOver || anyVariantOver
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -266,7 +280,7 @@ export function PostDetailModal({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={saving || generating !== null || defaultOver}
+            disabled={saving || generating !== null || saveBlocked}
             className="bg-neo-accent hover:bg-neo-accent/90 text-white"
           >
             {saving ? (
