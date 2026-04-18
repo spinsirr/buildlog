@@ -7,9 +7,9 @@ import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { MobileSidebar } from '@/components/mobile-sidebar'
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth()
+  const { userId, loading } = useAuth()
 
-  if (loading || !session) {
+  if (loading || !userId) {
     return (
       <div className="min-h-screen bg-zinc-950" aria-busy="true">
         <span className="sr-only">Loading...</span>

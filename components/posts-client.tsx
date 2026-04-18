@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useSWRConfig } from 'swr'
 import { PostCard } from '@/components/post-card'
+import { PostDetailModal } from '@/components/post-detail-modal'
+import { PostPreviewModal } from '@/components/post-preview-modal'
 import { RecapBranchPicker } from '@/components/recap-branch-picker'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
@@ -19,7 +21,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { callEdgeFunction } from '@/lib/edge-function'
 import { usePostsData, useRealtimePosts } from '@/lib/hooks/use-dashboard-data'
-import { getEffectiveLimit } from '@/lib/platforms'
+import { getEffectiveLimit, platformConfig } from '@/lib/platforms'
+import { anyPlatformOverLimit } from '@/lib/posts'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -174,15 +177,10 @@ function EmptyState() {
 /** Collapsible section for AI-rated low-signal drafts. */
 type LowSignalDisclosureProps = {
   drafts: Post[]
-  onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
-  onGenerateVariant: (id: string, platform: string) => Promise<Post>
-  onSaveDetails: (
-    id: string,
-    updates: { content?: string; platform_variants?: Record<string, string> }
-  ) => Promise<void>
-  onSchedule: (id: string, scheduledAt: string | null) => Promise<void>
+  onOpenPreview: (post: Post) => void
+  onOpenDetails: (post: Post) => void
   connectedPlatforms: string[]
   charLimit: number
   xPremium: boolean
@@ -224,12 +222,10 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
               )}
               <PostCard
                 post={post}
-                onUpdate={handlers.onUpdate}
                 onDelete={handlers.onDelete}
                 onRegenerate={handlers.onRegenerate}
-                onGenerateVariant={handlers.onGenerateVariant}
-                onSaveDetails={handlers.onSaveDetails}
-                onSchedule={handlers.onSchedule}
+                onOpenPreview={handlers.onOpenPreview}
+                onOpenDetails={handlers.onOpenDetails}
                 connectedPlatforms={handlers.connectedPlatforms}
                 charLimit={handlers.charLimit}
                 xPremium={handlers.xPremium}
@@ -250,7 +246,13 @@ export function PostsClient() {
   const { data, mutate } = usePostsData()
   useRealtimePosts()
   const posts = (data?.posts ?? []) as Post[]
-  const connectedPlatforms = data?.connectedPlatforms ?? []
+  // Derive array references from the SWR cache so they stay stable across
+  // re-renders (search keystrokes etc.) — a fresh `[]` every render would
+  // break React.memo equality on PostCard's connectedPlatforms prop.
+  const connectedPlatforms = useMemo<string[]>(
+    () => data?.connectedPlatforms ?? [],
+    [data?.connectedPlatforms]
+  )
   const xPremium = data?.xPremium ?? false
   const publishingRef = useRef(false)
   const searchParams = useSearchParams()
@@ -260,6 +262,14 @@ export function PostsClient() {
   const charLimit = getEffectiveLimit(connectedPlatforms, xPremium)
   const [recapLoading, setRecapLoading] = useState(false)
   const [branchPickerOpen, setBranchPickerOpen] = useState(false)
+  // Preview and detail modals are hosted at this level (not inside each
+  // PostCard) so only one instance of each exists in the tree. Mounting a
+  // modal per card costs real time: every card-level re-render ran two
+  // Radix Dialog component bodies, and PostDetailModal's two JSON.stringify
+  // calls on every render multiplied by N cards was the dominant jank.
+  const [previewPost, setPreviewPost] = useState<Post | null>(null)
+  const [detailsPost, setDetailsPost] = useState<Post | null>(null)
+  const [publishBusy, setPublishBusy] = useState(false)
 
   async function handleGenerateRecap(opts?: {
     mode?: 'week' | 'branch'
@@ -446,16 +456,31 @@ export function PostsClient() {
     [supabase, mutate]
   )
 
-  const handleSchedule = useCallback(
-    async (id: string, scheduledAt: string | null) => {
-      const result = await callEdgeFunction<{ post: Post }>('schedule-post', {
-        body: { id, scheduled_at: scheduledAt },
+  // Stable openers for the lifted preview/detail modals. Using useState's
+  // setter directly would be stable, but wrapping gives a typed, single
+  // import site for both paths and keeps PostCard's prop surface small.
+  const openPreview = useCallback((post: Post) => setPreviewPost(post), [])
+  const openDetails = useCallback((post: Post) => setDetailsPost(post), [])
+
+  const handleConfirmPublish = useCallback(async () => {
+    if (!previewPost) return
+    setPublishBusy(true)
+    try {
+      await handleUpdate(previewPost.id, { status: 'published' })
+      setPreviewPost(null)
+      toast.success('Published! 🎉', {
+        description: `Live on ${connectedPlatforms
+          .map((p) => platformConfig[p]?.label ?? p)
+          .join(', ')}`,
+        duration: 4000,
       })
-      if (!result.ok) throw new Error(result.error || 'Failed to schedule')
-      mutate()
-    },
-    [mutate]
-  )
+    } catch (err) {
+      // SWR's rollbackOnError in handleUpdate already restores the optimistic
+      // status — no manual revert needed here.
+      toast.error(err instanceof Error ? err.message : 'Failed to publish')
+    }
+    setPublishBusy(false)
+  }, [previewPost, handleUpdate, connectedPlatforms])
 
   // Memoized so that unrelated re-renders (e.g., opening the NewPost form)
   // don't re-filter/re-partition the entire posts array.
@@ -480,12 +505,10 @@ export function PostsClient() {
           <PostCard
             key={post.id}
             post={post}
-            onUpdate={handleUpdate}
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
-            onGenerateVariant={handleGenerateVariant}
-            onSaveDetails={handleSaveDetails}
-            onSchedule={handleSchedule}
+            onOpenPreview={openPreview}
+            onOpenDetails={openDetails}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
             xPremium={xPremium}
@@ -522,12 +545,10 @@ export function PostsClient() {
             <PostCard
               key={post.id}
               post={post}
-              onUpdate={handleUpdate}
               onDelete={handleDelete}
               onRegenerate={handleRegenerate}
-              onGenerateVariant={handleGenerateVariant}
-              onSaveDetails={handleSaveDetails}
-              onSchedule={handleSchedule}
+              onOpenPreview={openPreview}
+              onOpenDetails={openDetails}
               connectedPlatforms={connectedPlatforms}
               charLimit={charLimit}
               xPremium={xPremium}
@@ -538,12 +559,10 @@ export function PostsClient() {
         {lowSignal.length > 0 && (
           <LowSignalDisclosure
             drafts={lowSignal}
-            onUpdate={handleUpdate}
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
-            onGenerateVariant={handleGenerateVariant}
-            onSaveDetails={handleSaveDetails}
-            onSchedule={handleSchedule}
+            onOpenPreview={openPreview}
+            onOpenDetails={openDetails}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
             xPremium={xPremium}
@@ -697,6 +716,35 @@ export function PostsClient() {
           )}
         </TabsContent>
       </Tabs>
+
+      {previewPost && (
+        <PostPreviewModal
+          content={previewPost.content}
+          open={true}
+          onOpenChange={(o) => {
+            if (!o) setPreviewPost(null)
+          }}
+          onConfirmPublish={handleConfirmPublish}
+          busy={publishBusy}
+          connectedPlatforms={connectedPlatforms}
+          charLimit={charLimit}
+          publishBlocked={anyPlatformOverLimit(previewPost, connectedPlatforms, xPremium)}
+        />
+      )}
+
+      {detailsPost && (
+        <PostDetailModal
+          post={detailsPost}
+          open={true}
+          onOpenChange={(o) => {
+            if (!o) setDetailsPost(null)
+          }}
+          connectedPlatforms={connectedPlatforms}
+          xPremium={xPremium}
+          onGenerateVariant={handleGenerateVariant}
+          onSave={handleSaveDetails}
+        />
+      )}
     </div>
   )
 }

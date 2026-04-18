@@ -212,32 +212,47 @@ export function useUsageData() {
 
 // --- Realtime subscription for posts ---
 
-/** Subscribe to Supabase Realtime on the `posts` table and revalidate SWR caches on changes. */
+/**
+ * Subscribe to Supabase Realtime on the `posts` table and revalidate SWR caches on changes.
+ *
+ * A burst of row changes (e.g. a bulk publish, or a backfill inserting many
+ * posts at once) would otherwise fire one invalidation per row, cascading
+ * into 4 parallel refetches per event. We coalesce bursts to a single
+ * invalidation on the next tick.
+ */
 export function useRealtimePosts() {
   const { userId } = useAuth()
 
   useEffect(() => {
     if (!userId) return
 
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const scheduleInvalidate = () => {
+      if (pending) return
+      pending = setTimeout(() => {
+        pending = null
+        globalMutate(
+          (key: unknown) =>
+            Array.isArray(key) &&
+            (key[0] === 'posts-data' ||
+              key[0] === 'dashboard-data' ||
+              key[0] === 'usage-data' ||
+              key[0] === 'draft-count')
+        )
+      }, 150)
+    }
+
     const channel = supabase
       .channel(`posts:${userId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${userId}` },
-        () => {
-          globalMutate(
-            (key: unknown) =>
-              Array.isArray(key) &&
-              (key[0] === 'posts-data' ||
-                key[0] === 'dashboard-data' ||
-                key[0] === 'usage-data' ||
-                key[0] === 'draft-count')
-          )
-        }
+        scheduleInvalidate
       )
       .subscribe()
 
     return () => {
+      if (pending) clearTimeout(pending)
       supabase.removeChannel(channel)
     }
   }, [userId])

@@ -2,10 +2,7 @@
 
 import { memo, useCallback, useState } from 'react'
 import { toast } from 'sonner'
-import { PostDetailModal } from '@/components/post-detail-modal'
-import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
-import { platformConfig } from '@/lib/platforms'
 import { anyPlatformOverLimit } from '@/lib/posts'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
@@ -15,36 +12,31 @@ import { PostCardBadges, PostCardMeta } from './post-card-header'
 // state changes) don't cascade into every card in the list. Props are a mix
 // of primitives, stable handler refs (see `useCallback` in posts-client), and
 // the `post` object whose identity is stable across SWR dedupes.
+//
+// Preview + detail modals are mounted ONCE at the parent level (posts-client),
+// not per-card, because rendering N hidden Radix Dialog trees costs real time
+// on every list re-render (JSON.stringify in PostDetailModal was the worst).
 export const PostCard = memo(function PostCard({
   post,
-  onUpdate,
   onDelete,
   onRegenerate,
-  onGenerateVariant,
-  onSaveDetails,
-  onSchedule,
+  onOpenPreview,
+  onOpenDetails,
   connectedPlatforms,
   charLimit = 280,
   xPremium,
 }: {
   post: Post
-  onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
-  onGenerateVariant: (id: string, platform: string) => Promise<Post>
-  onSaveDetails: (
-    id: string,
-    updates: { content?: string; platform_variants?: Record<string, string> }
-  ) => Promise<void>
-  onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
+  onOpenPreview: (post: Post) => void
+  onOpenDetails: (post: Post) => void
   connectedPlatforms: string[]
   charLimit?: number
   xPremium: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
-  const [showDetails, setShowDetails] = useState(false)
 
   const charCount = post.content.length
   // Publish is only blocked when a platform's effective content (variant or
@@ -53,24 +45,6 @@ export const PostCard = memo(function PostCard({
   const publishBlocked = anyPlatformOverLimit(post, connectedPlatforms, xPremium)
   // Default-vs-min-limit is still useful for the meta row ballpark counter.
   const defaultOverMinLimit = charCount > charLimit
-
-  const handleConfirmPublish = useCallback(async () => {
-    setBusy(true)
-    const previousStatus = post.status
-    try {
-      await onUpdate(post.id, { status: 'published' })
-      setShowPreview(false)
-      toast.success('Published! 🎉', {
-        description: `Live on ${connectedPlatforms.map((p) => platformConfig[p]?.label ?? p).join(', ')}`,
-        duration: 4000,
-      })
-    } catch (err) {
-      // Revert optimistic UI state on error
-      await onUpdate(post.id, { status: previousStatus }).catch(() => {})
-      toast.error(err instanceof Error ? err.message : 'Failed to publish')
-    }
-    setBusy(false)
-  }, [onUpdate, post.id, post.status, connectedPlatforms])
 
   const handleDelete = useCallback(async () => {
     if (!confirm('Delete this post?')) return
@@ -95,13 +69,8 @@ export const PostCard = memo(function PostCard({
     setRegenerating(false)
   }, [onRegenerate, post.id])
 
-  const handleOpenDetails = useCallback(() => {
-    setShowDetails(true)
-  }, [])
-
-  const handleShowPreview = useCallback(() => {
-    setShowPreview(true)
-  }, [])
+  const handleOpenDetails = useCallback(() => onOpenDetails(post), [onOpenDetails, post])
+  const handleOpenPreview = useCallback(() => onOpenPreview(post), [onOpenPreview, post])
 
   return (
     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
@@ -128,32 +97,11 @@ export const PostCard = memo(function PostCard({
             connectedPlatforms={connectedPlatforms}
             onEdit={handleOpenDetails}
             onRegenerate={handleRegenerate}
-            onShowPreview={handleShowPreview}
+            onShowPreview={handleOpenPreview}
             onDelete={handleDelete}
           />
         </div>
       </CardContent>
-
-      <PostPreviewModal
-        content={post.content}
-        open={showPreview}
-        onOpenChange={setShowPreview}
-        onConfirmPublish={handleConfirmPublish}
-        busy={busy}
-        connectedPlatforms={connectedPlatforms}
-        charLimit={charLimit}
-        publishBlocked={publishBlocked}
-      />
-
-      <PostDetailModal
-        post={post}
-        open={showDetails}
-        onOpenChange={setShowDetails}
-        connectedPlatforms={connectedPlatforms}
-        xPremium={xPremium}
-        onGenerateVariant={onGenerateVariant}
-        onSave={onSaveDetails}
-      />
     </Card>
   )
 })
