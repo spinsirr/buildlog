@@ -332,6 +332,27 @@ export function PostsClient() {
     }
   }, [searchParams])
 
+  // Preload the three modal chunks after initial paint so the *first* click
+  // on Edit / Publish / Recap doesn't block on a network fetch. Lazy-loading
+  // keeps them out of the initial /posts chunk; preloading on idle buys us
+  // both smaller first-paint *and* snappy first-open.
+  useEffect(() => {
+    const idle =
+      typeof window !== 'undefined' && 'requestIdleCallback' in window
+        ? (window as Window & typeof globalThis).requestIdleCallback
+        : (cb: () => void) => setTimeout(cb, 200)
+    const handle = idle(() => {
+      void import('@/components/post-detail-modal')
+      void import('@/components/post-preview-modal')
+      void import('@/components/recap-branch-picker')
+    })
+    return () => {
+      if ('cancelIdleCallback' in window && typeof handle === 'number') {
+        ;(window as Window & typeof globalThis).cancelIdleCallback(handle)
+      }
+    }
+  }, [])
+
   // Handlers are memoized so that PostCard (wrapped in React.memo) gets stable
   // prop references across parent re-renders (search typing, tab switches).
   // Without this, every keystroke would recreate all handlers, break memo

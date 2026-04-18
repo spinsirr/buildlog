@@ -27,7 +27,12 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        'fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0',
+        // No backdrop-blur here. Blurring the full viewport over a long list
+        // (e.g. dashboard posts) forces the browser to rasterize every card
+        // behind the overlay on every frame of the open animation, which
+        // manifests as an obvious hitch on low-power machines. A plain alpha
+        // overlay is cheap to composite and looks fine.
+        'fixed inset-0 z-50 bg-black/50 duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0',
         className
       )}
       {...props}
