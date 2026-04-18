@@ -177,11 +177,15 @@ type LowSignalDisclosureProps = {
   onUpdate: (id: string, updates: Record<string, unknown>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
-  onGenerateXhs: (id: string, lang: 'en' | 'zh') => Promise<string>
-  onGenerateLinkedIn: (id: string) => Promise<string>
+  onGenerateVariant: (id: string, platform: string) => Promise<Post>
+  onSaveDetails: (
+    id: string,
+    updates: { content?: string; platform_variants?: Record<string, string> }
+  ) => Promise<void>
   onSchedule: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit: number
+  xPremium: boolean
 }
 
 function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) {
@@ -223,11 +227,12 @@ function LowSignalDisclosure({ drafts, ...handlers }: LowSignalDisclosureProps) 
                 onUpdate={handlers.onUpdate}
                 onDelete={handlers.onDelete}
                 onRegenerate={handlers.onRegenerate}
-                onGenerateXhs={handlers.onGenerateXhs}
-                onGenerateLinkedIn={handlers.onGenerateLinkedIn}
+                onGenerateVariant={handlers.onGenerateVariant}
+                onSaveDetails={handlers.onSaveDetails}
                 onSchedule={handlers.onSchedule}
                 connectedPlatforms={handlers.connectedPlatforms}
                 charLimit={handlers.charLimit}
+                xPremium={handlers.xPremium}
               />
             </div>
           ))}
@@ -396,23 +401,50 @@ export function PostsClient() {
     [mutate]
   )
 
-  const handleGenerateXhs = useCallback(async (id: string, lang: 'en' | 'zh'): Promise<string> => {
-    const result = await callEdgeFunction<{ content: string }>('generate-post', {
-      path: 'xhs-copy',
-      body: { id, lang },
-    })
-    if (!result.ok) throw new Error(result.error || 'Generation failed')
-    return result.data.content
-  }, [])
+  // Generate a persistent per-platform variant. Unlike the legacy XHS/LinkedIn
+  // copy flows (which return ephemeral text for the user to paste elsewhere),
+  // this writes the result into posts.platform_variants[platform] so it is
+  // used automatically when publishing to that platform.
+  const handleGenerateVariant = useCallback(
+    async (id: string, platform: string): Promise<Post> => {
+      const result = await callEdgeFunction<{ post: Post }>('generate-post', {
+        path: 'variant',
+        body: { id, platform },
+      })
+      if (!result.ok) throw new Error(result.error || 'Generation failed')
+      mutate(
+        (current: PostsData | undefined) => ({
+          ...current!,
+          posts: current!.posts.map((p: Post) => (p.id === id ? { ...p, ...result.data.post } : p)),
+        }),
+        { revalidate: false }
+      )
+      return result.data.post
+    },
+    [mutate]
+  )
 
-  const handleGenerateLinkedIn = useCallback(async (id: string): Promise<string> => {
-    const result = await callEdgeFunction<{ content: string }>('generate-post', {
-      path: 'linkedin-copy',
-      body: { id },
-    })
-    if (!result.ok) throw new Error(result.error || 'Generation failed')
-    return result.data.content
-  }, [])
+  // Save both default content and platform variants in one round-trip from
+  // the PostDetailModal. Uses a direct supabase update since we only touch
+  // editable fields (no publish-side effects).
+  const handleSaveDetails = useCallback(
+    async (
+      id: string,
+      updates: { content?: string; platform_variants?: Record<string, string> }
+    ) => {
+      const payload: Record<string, unknown> = {}
+      if (typeof updates.content === 'string') payload.content = updates.content
+      if (updates.platform_variants) payload.platform_variants = updates.platform_variants
+      if (Object.keys(payload).length === 0) return
+      const { error } = await supabase.from('posts').update(payload).eq('id', id)
+      if (error) {
+        mutate()
+        throw new Error(error.message)
+      }
+      mutate()
+    },
+    [supabase, mutate]
+  )
 
   const handleSchedule = useCallback(
     async (id: string, scheduledAt: string | null) => {
@@ -451,11 +483,12 @@ export function PostsClient() {
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
-            onGenerateXhs={handleGenerateXhs}
-            onGenerateLinkedIn={handleGenerateLinkedIn}
+            onGenerateVariant={handleGenerateVariant}
+            onSaveDetails={handleSaveDetails}
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
+            xPremium={xPremium}
           />
         ))}
       </div>
@@ -492,11 +525,12 @@ export function PostsClient() {
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               onRegenerate={handleRegenerate}
-              onGenerateXhs={handleGenerateXhs}
-              onGenerateLinkedIn={handleGenerateLinkedIn}
+              onGenerateVariant={handleGenerateVariant}
+              onSaveDetails={handleSaveDetails}
               onSchedule={handleSchedule}
               connectedPlatforms={connectedPlatforms}
               charLimit={charLimit}
+              xPremium={xPremium}
             />
           ))
         )}
@@ -507,11 +541,12 @@ export function PostsClient() {
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onRegenerate={handleRegenerate}
-            onGenerateXhs={handleGenerateXhs}
-            onGenerateLinkedIn={handleGenerateLinkedIn}
+            onGenerateVariant={handleGenerateVariant}
+            onSaveDetails={handleSaveDetails}
             onSchedule={handleSchedule}
             connectedPlatforms={connectedPlatforms}
             charLimit={charLimit}
+            xPremium={xPremium}
           />
         )}
       </div>

@@ -48,14 +48,20 @@ function isComplete(text: string): boolean {
 /**
  * Generate a post with the supplied angle + highlights.
  * Used by the ranker pipeline and by manual regenerate requests.
+ *
+ * `platform` controls the character budget via getContentLimit(). Defaults to
+ * 'twitter' so the ranker pipeline and legacy callers stay unchanged. Pass
+ * 'bluesky' (300 chars) when generating a Bluesky-specific variant — the
+ * short-form prompt works for both since tone and structure are near-identical.
  */
 export async function generateContent(
   event: AgentEvent,
   angle: string,
   highlights: string,
-  model: LanguageModel = defaultModel()
+  model: LanguageModel = defaultModel(),
+  platform: 'twitter' | 'bluesky' = 'twitter'
 ): Promise<string | null> {
-  const contentBudget = getContentLimit('twitter', event.xPremium)
+  const contentBudget = getContentLimit(platform, event.xPremium)
   const systemPrompt = buildContentSystemPrompt(event.tone, contentBudget)
   const userPrompt = buildContentPrompt(event, angle, highlights)
 
@@ -238,6 +244,29 @@ export async function generateLinkedInPost(
   /* eslint-enable vercel-ai-security/require-validated-prompt, vercel-ai-security/no-dynamic-system-prompt */
 
   return result
+}
+
+/**
+ * Generate a per-platform post variant. Dispatches to the platform-specific
+ * generator — LinkedIn gets long-form, Twitter/Bluesky get short-form with
+ * platform-appropriate character budgets.
+ *
+ * Called only when a user explicitly clicks "Generate variant" for a platform
+ * in the PostDetailModal; not part of the auto-publish flow.
+ */
+export type VariantPlatform = 'twitter' | 'linkedin' | 'bluesky'
+
+export async function generatePlatformVariant(
+  event: AgentEvent,
+  platform: VariantPlatform,
+  angle: string,
+  highlights: string,
+  model: LanguageModel = defaultModel()
+): Promise<string | null> {
+  if (platform === 'linkedin') {
+    return generateLinkedInPost(event, angle, highlights, model)
+  }
+  return generateContent(event, angle, highlights, model, platform)
 }
 
 /**

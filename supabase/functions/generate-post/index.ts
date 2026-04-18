@@ -27,8 +27,10 @@ Deno.serve(async (req) => {
   const isRegenerate = parts[0] === "regenerate"
   const isXhsCopy = parts[0] === "xhs-copy"
   const isLinkedInCopy = parts[0] === "linkedin-copy"
+  const isVariant = parts[0] === "variant"
 
   try {
+    if (isVariant) return await handleGenerateVariant(req, user.id, supabase)
     if (isLinkedInCopy) return await handleLinkedInCopy(req, user.id, supabase)
     if (isXhsCopy) return await handleXhsCopy(req, user.id, supabase)
     if (isRegenerate) return await handleRegenerate(req, user.id, supabase)
@@ -406,6 +408,136 @@ async function handleXhsCopy(
   if (!result?.content) return errorResponse("AI generation failed", 500, req)
 
   return jsonResponse({ content: result.content }, req, { status: 200 })
+}
+
+const VALID_VARIANT_PLATFORMS = ["twitter", "linkedin", "bluesky"] as const
+
+async function handleGenerateVariant(
+  req: Request,
+  userId: string,
+  supabase: SupabaseClient,
+): Promise<Response> {
+  const body = await safeJson<{ id: string; platform: string }>(req)
+  if (!body?.id || !body?.platform) {
+    return errorResponse("Missing required fields: id, platform", 400, req)
+  }
+  if (
+    !VALID_VARIANT_PLATFORMS.includes(body.platform as (typeof VALID_VARIANT_PLATFORMS)[number])
+  ) {
+    return errorResponse(
+      `platform must be one of: ${VALID_VARIANT_PLATFORMS.join(", ")}`,
+      400,
+      req,
+    )
+  }
+
+  const { data: post, error: fetchError } = await supabase
+    .from("posts")
+    .select(
+      "id, user_id, source_type, source_data, repo_id, angle, content, platform_variants",
+    )
+    .eq("id", body.id)
+    .single()
+
+  if (fetchError || !post || post.user_id !== userId) {
+    return errorResponse("Post not found", 404, req)
+  }
+  if (post.source_type === "manual") {
+    return errorResponse(
+      "Cannot generate variants for manual posts",
+      400,
+      req,
+    )
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("github_installation_id, tone, x_premium")
+    .eq("id", userId)
+    .single()
+
+  let repoName = "unknown/repo"
+  let projectContext: string | null = null
+  if (post.repo_id) {
+    const { data: repo } = await supabase
+      .from("connected_repos")
+      .select("full_name, project_context")
+      .eq("id", post.repo_id)
+      .single()
+    if (repo?.full_name) repoName = repo.full_name
+    projectContext = repo?.project_context ?? null
+  }
+
+  const sourceData = (post.source_data ?? {}) as Record<string, unknown>
+  let diffs: FileDiff[] = []
+
+  if (
+    post.source_type === "pr" &&
+    profile?.github_installation_id &&
+    sourceData.repo &&
+    sourceData.pr_number
+  ) {
+    try {
+      const prCtx = await fetchPrContext(
+        profile.github_installation_id,
+        sourceData.repo as string,
+        sourceData.pr_number as number,
+      )
+      diffs = prCtx.diffs
+    } catch (err) {
+      log.warn("variant: failed to fetch PR diffs: {error}", {
+        error: String(err),
+      })
+    }
+  }
+
+  const event = buildEvent({
+    sourceType: post.source_type as VercelEvent["sourceType"],
+    repoName,
+    repoId: post.repo_id ?? "",
+    userId,
+    projectContext,
+    tone: profile?.tone ?? "casual",
+    xPremium: profile?.x_premium === true,
+    data: { ...(sourceData as EventData), diffs },
+  })
+
+  // Use the original ranker angle if available; riff off the current content
+  // as highlights so the variant echoes the same substance as the default.
+  const angle = (post.angle as string) || "shipping update"
+  const highlights = (post.content as string) || ""
+
+  const result = await callVercelAi<{ content: string }>("variant", {
+    event,
+    platform: body.platform,
+    angle,
+    highlights,
+  })
+  if (!result?.content) {
+    return errorResponse("AI generation failed — please try again", 500, req)
+  }
+
+  const currentVariants = (post.platform_variants as Record<string, string> | null) ?? {}
+  const nextVariants = { ...currentVariants, [body.platform]: result.content }
+
+  const { data: updatedPost, error: updateError } = await supabase
+    .from("posts")
+    .update({
+      platform_variants: nextVariants,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", post.id)
+    .select()
+    .single()
+
+  if (updateError) {
+    log.error("variant: update error: {error}", {
+      error: String(updateError),
+    })
+    return errorResponse("Failed to save variant", 500, req)
+  }
+
+  return jsonResponse({ post: updatedPost }, req, { status: 200 })
 }
 
 async function handleLinkedInCopy(
