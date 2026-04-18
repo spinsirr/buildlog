@@ -45,6 +45,13 @@ export function PostDetailModal({
 }) {
   const [content, setContent] = useState(post.content)
   const [variants, setVariants] = useState<Record<string, string>>(post.platform_variants ?? {})
+  // Baselines track what's already persisted server-side. Generating a variant
+  // writes through to the server, so the baseline advances without going via
+  // Save — otherwise the modal would still look dirty after a fresh generate.
+  const [savedContent, setSavedContent] = useState(post.content)
+  const [savedVariants, setSavedVariants] = useState<Record<string, string>>(
+    post.platform_variants ?? {}
+  )
   const [activeTab, setActiveTab] = useState<string>(DEFAULT_TAB)
   const [generating, setGenerating] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -59,12 +66,14 @@ export function PostDetailModal({
     if (open) {
       setContent(post.content)
       setVariants(post.platform_variants ?? {})
+      setSavedContent(post.content)
+      setSavedVariants(post.platform_variants ?? {})
       setActiveTab(DEFAULT_TAB)
     }
   }
 
-  const defaultDirty = content !== post.content
-  const variantsDirty = JSON.stringify(variants) !== JSON.stringify(post.platform_variants ?? {})
+  const defaultDirty = content !== savedContent
+  const variantsDirty = JSON.stringify(variants) !== JSON.stringify(savedVariants)
   const dirty = defaultDirty || variantsDirty
 
   const handleGenerate = async (platform: string) => {
@@ -74,6 +83,7 @@ export function PostDetailModal({
       // generator riffs on the user's latest text, not the stale row.
       if (defaultDirty) {
         await onSave(post.id, { content })
+        setSavedContent(content)
       }
       const updated = await onGenerateVariant(post.id, platform)
       // Only merge the just-generated platform into local state. Preserves
@@ -81,10 +91,12 @@ export function PostDetailModal({
       const serverVariant = updated.platform_variants?.[platform]
       if (typeof serverVariant === 'string') {
         setVariants((prev) => ({ ...prev, [platform]: serverVariant }))
+        setSavedVariants((prev) => ({ ...prev, [platform]: serverVariant }))
       }
       // Default content may have just been persisted above; updated.content
       // reflects the source of truth either way.
       setContent(updated.content)
+      setSavedContent(updated.content)
       toast.success(`${platformConfig[platform]?.label ?? platform} variant generated`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Generation failed')
@@ -145,7 +157,11 @@ export function PostDetailModal({
           </p>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v)}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v: string) => setActiveTab(v)}
+          className="min-h-[380px]"
+        >
           <TabsList className="bg-zinc-950 border border-zinc-800 w-full justify-start">
             <TabsTrigger value={DEFAULT_TAB} className="data-[state=active]:bg-zinc-800">
               Default
@@ -241,7 +257,7 @@ export function PostDetailModal({
                     </div>
                   </>
                 ) : (
-                  <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center space-y-3">
+                  <div className="flex min-h-[300px] flex-col items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center space-y-3">
                     <p className="text-sm text-zinc-400">
                       No {cfg?.label ?? platform} variant. Publishing will use the default content
                       (up to {limit} chars).
