@@ -1,6 +1,6 @@
 'use client'
 
-import { Crown, Loader2, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -23,7 +23,6 @@ export function PostCardActions({
   onRegenerate,
   onShowPreview,
   onDelete,
-  onOpenVariants,
 }: {
   post: Post
   editing: boolean
@@ -35,7 +34,6 @@ export function PostCardActions({
   onRegenerate: () => void
   onShowPreview: () => void
   onDelete: () => void
-  onOpenVariants?: () => void
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -95,12 +93,6 @@ export function PostCardActions({
                 <RefreshCw className="mr-2 h-3.5 w-3.5" />
               )}
               Regenerate draft
-            </DropdownMenuItem>
-          )}
-          {post.status === 'draft' && onOpenVariants && (
-            <DropdownMenuItem onClick={onOpenVariants} className="focus:bg-zinc-800">
-              <Crown className="mr-2 h-3.5 w-3.5" />
-              Platform variants
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator className="bg-zinc-800" />

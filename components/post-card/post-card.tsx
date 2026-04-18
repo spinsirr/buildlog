@@ -2,14 +2,13 @@
 
 import { memo, useCallback, useState } from 'react'
 import { toast } from 'sonner'
-import { LinkedInCopyModal } from '@/components/linkedin-copy-modal'
+import { PostDetailModal } from '@/components/post-detail-modal'
 import { PostPreviewModal } from '@/components/post-preview-modal'
 import { Card, CardContent } from '@/components/ui/card'
-import { XhsCopyModal, type XhsLang } from '@/components/xhs-copy-modal'
 import { platformConfig } from '@/lib/platforms'
+import { anyPlatformOverLimit } from '@/lib/posts'
 import type { Post } from '@/lib/types'
 import { PostCardActions } from './post-card-actions'
-import { PostCardEditor } from './post-card-editor'
 import { PostCardBadges, PostCardMeta } from './post-card-header'
 
 // Memoized so that parent re-renders (search typing, tab switches, sibling
@@ -21,48 +20,39 @@ export const PostCard = memo(function PostCard({
   onUpdate,
   onDelete,
   onRegenerate,
-  onGenerateXhs,
-  onGenerateLinkedIn,
+  onGenerateVariant,
+  onSaveDetails,
   onSchedule,
   connectedPlatforms,
   charLimit = 280,
+  xPremium,
 }: {
   post: Post
   onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onRegenerate: (id: string) => Promise<void>
-  onGenerateXhs: (id: string, lang: XhsLang) => Promise<string>
-  onGenerateLinkedIn: (id: string) => Promise<string>
+  onGenerateVariant: (id: string, platform: string) => Promise<Post>
+  onSaveDetails: (
+    id: string,
+    updates: { content?: string; platform_variants?: Record<string, string> }
+  ) => Promise<void>
   onSchedule?: (id: string, scheduledAt: string | null) => Promise<void>
   connectedPlatforms: string[]
   charLimit?: number
+  xPremium: boolean
 }) {
-  const [editing, setEditing] = useState(false)
-  const [editContent, setEditContent] = useState(post.content)
   const [busy, setBusy] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const [showXhs, setShowXhs] = useState(false)
-  const [xhsContent, setXhsContent] = useState<string | null>(null)
-  const [xhsLoading, setXhsLoading] = useState(false)
-  const [xhsLang, setXhsLang] = useState<XhsLang | null>(null)
-  const [showLinkedIn, setShowLinkedIn] = useState(false)
-  const [linkedInContent, setLinkedInContent] = useState<string | null>(null)
-  const [linkedInLoading, setLinkedInLoading] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
-  const charCount = (editing ? editContent : post.content).length
-  const overLimit = charCount > charLimit
-
-  const handleSave = useCallback(async () => {
-    setBusy(true)
-    try {
-      await onUpdate(post.id, { content: editContent })
-      setEditing(false)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save')
-    }
-    setBusy(false)
-  }, [onUpdate, post.id, editContent])
+  const charCount = post.content.length
+  // Publish is only blocked when a platform's effective content (variant or
+  // default) exceeds that platform's own limit. A long default used by
+  // LinkedIn doesn't block publish when Twitter has its own short variant.
+  const publishBlocked = anyPlatformOverLimit(post, connectedPlatforms, xPremium)
+  // Default-vs-min-limit is still useful for the meta row ballpark counter.
+  const defaultOverMinLimit = charCount > charLimit
 
   const handleConfirmPublish = useCallback(async () => {
     setBusy(true)
@@ -105,73 +95,9 @@ export const PostCard = memo(function PostCard({
     setRegenerating(false)
   }, [onRegenerate, post.id])
 
-  const handleOpenXhs = useCallback(() => {
-    setXhsContent(null)
-    setXhsLang(null)
-    setShowXhs(true)
+  const handleOpenDetails = useCallback(() => {
+    setShowDetails(true)
   }, [])
-
-  const handleXhsGenerate = useCallback(
-    async (lang: XhsLang) => {
-      setXhsLang(lang)
-      setXhsLoading(true)
-      try {
-        const content = await onGenerateXhs(post.id, lang)
-        setXhsContent(content)
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : lang === 'zh' ? '生成失败' : 'Generation failed'
-        )
-        setShowXhs(false)
-      }
-      setXhsLoading(false)
-    },
-    [onGenerateXhs, post.id]
-  )
-
-  const handleXhsOpenChange = useCallback((open: boolean) => {
-    setShowXhs(open)
-    if (!open) {
-      setXhsContent(null)
-      setXhsLang(null)
-      setXhsLoading(false)
-    }
-  }, [])
-
-  const handleOpenLinkedIn = useCallback(() => {
-    setLinkedInContent(null)
-    setShowLinkedIn(true)
-  }, [])
-
-  const handleLinkedInGenerate = useCallback(async () => {
-    setLinkedInLoading(true)
-    try {
-      const content = await onGenerateLinkedIn(post.id)
-      setLinkedInContent(content)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Generation failed')
-      setShowLinkedIn(false)
-    }
-    setLinkedInLoading(false)
-  }, [onGenerateLinkedIn, post.id])
-
-  const handleLinkedInOpenChange = useCallback((open: boolean) => {
-    setShowLinkedIn(open)
-    if (!open) {
-      setLinkedInContent(null)
-      setLinkedInLoading(false)
-    }
-  }, [])
-
-  const handleEdit = useCallback(() => {
-    setEditContent(post.content)
-    setEditing(true)
-  }, [post.content])
-
-  const handleCancelEdit = useCallback(() => {
-    setEditing(false)
-    setEditContent(post.content)
-  }, [post.content])
 
   const handleShowPreview = useCallback(() => {
     setShowPreview(true)
@@ -182,40 +108,25 @@ export const PostCard = memo(function PostCard({
       <CardContent className="pt-1 space-y-4">
         <PostCardBadges post={post} />
 
-        {editing ? (
-          <PostCardEditor
-            editContent={editContent}
-            onEditContentChange={setEditContent}
-            charCount={charCount}
-            charLimit={charLimit}
-            overLimit={overLimit}
-            busy={busy}
-            onSave={handleSave}
-            onCancel={handleCancelEdit}
-          />
-        ) : (
-          <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-            {post.content}
-          </p>
-        )}
+        <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
         <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
           <PostCardMeta
             post={post}
             charCount={charCount}
             charLimit={charLimit}
-            overLimit={overLimit}
-            editing={editing}
+            overLimit={defaultOverMinLimit}
+            editing={false}
           />
 
           <PostCardActions
             post={post}
-            editing={editing}
+            editing={false}
             busy={busy}
             regenerating={regenerating}
-            overLimit={overLimit}
+            overLimit={publishBlocked}
             connectedPlatforms={connectedPlatforms}
-            onEdit={handleEdit}
+            onEdit={handleOpenDetails}
             onRegenerate={handleRegenerate}
             onShowPreview={handleShowPreview}
             onDelete={handleDelete}
@@ -224,30 +135,24 @@ export const PostCard = memo(function PostCard({
       </CardContent>
 
       <PostPreviewModal
-        content={editing ? editContent : post.content}
+        content={post.content}
         open={showPreview}
         onOpenChange={setShowPreview}
         onConfirmPublish={handleConfirmPublish}
         busy={busy}
         connectedPlatforms={connectedPlatforms}
         charLimit={charLimit}
+        publishBlocked={publishBlocked}
       />
 
-      <XhsCopyModal
-        open={showXhs}
-        onOpenChange={handleXhsOpenChange}
-        content={xhsContent}
-        loading={xhsLoading}
-        lang={xhsLang}
-        onGenerate={handleXhsGenerate}
-      />
-
-      <LinkedInCopyModal
-        open={showLinkedIn}
-        onOpenChange={handleLinkedInOpenChange}
-        content={linkedInContent}
-        loading={linkedInLoading}
-        onGenerate={handleLinkedInGenerate}
+      <PostDetailModal
+        post={post}
+        open={showDetails}
+        onOpenChange={setShowDetails}
+        connectedPlatforms={connectedPlatforms}
+        xPremium={xPremium}
+        onGenerateVariant={onGenerateVariant}
+        onSave={onSaveDetails}
       />
     </Card>
   )

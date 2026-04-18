@@ -46,6 +46,7 @@ export function PostPreviewModal({
   busy,
   connectedPlatforms,
   charLimit = 280,
+  publishBlocked,
 }: {
   content: string
   open: boolean
@@ -54,9 +55,16 @@ export function PostPreviewModal({
   busy: boolean
   connectedPlatforms: string[]
   charLimit?: number
+  /**
+   * True when at least one platform's effective content (variant or default)
+   * exceeds that platform's own character limit. Parent computes this across
+   * all connected platforms — the preview modal only sees default content.
+   */
+  publishBlocked?: boolean
 }) {
   const charCount = content.length
-  const overLimit = charCount > charLimit
+  const defaultOver = charCount > charLimit
+  const overLimit = publishBlocked ?? defaultOver
   const remaining = charLimit - charCount
 
   const pct = Math.min(charCount / charLimit, 1)
@@ -157,8 +165,9 @@ export function PostPreviewModal({
 
         {overLimit && (
           <div className="text-xs text-red-400 bg-red-500/10 rounded-md px-3 py-2">
-            Post exceeds the {charLimit} character limit by {charCount - charLimit} characters. Edit
-            the post before publishing.
+            {defaultOver
+              ? `Default content exceeds the ${charLimit} character limit by ${charCount - charLimit} characters. Edit before publishing.`
+              : 'A platform variant exceeds its character limit. Open Edit to fix it before publishing.'}
           </div>
         )}
 
