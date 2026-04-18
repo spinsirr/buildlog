@@ -113,6 +113,10 @@ Deno.serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "subscription",
+        // Force English. Stripe's "auto" locale combines Accept-Language with
+        // IP geolocation, which served a zh checkout even on English browsers.
+        // Our UI is English-only, so the checkout should match.
+        locale: "en",
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${frontendUrl}/settings?checkout=success`,
         cancel_url: `${frontendUrl}/settings?checkout=canceled`,
@@ -137,6 +141,10 @@ Deno.serve(async (req) => {
       const session = await stripe.billingPortal.sessions.create({
         customer: profile.stripe_customer_id,
         return_url: `${frontendUrl}/settings`,
+        // Same reason as checkout above. Note this also overrides the
+        // Billing Portal configuration's default language set in the Stripe
+        // Dashboard, which would otherwise win over Accept-Language.
+        locale: "en",
       })
 
       return jsonResponse({ url: session.url }, req, { status: 200 })
