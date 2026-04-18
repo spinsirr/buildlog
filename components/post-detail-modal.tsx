@@ -146,7 +146,7 @@ export function PostDetailModal({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v)}>
-          <TabsList className="bg-zinc-950 border border-zinc-800 w-full justify-start overflow-x-auto">
+          <TabsList className="bg-zinc-950 border border-zinc-800 w-full justify-start">
             <TabsTrigger value={DEFAULT_TAB} className="data-[state=active]:bg-zinc-800">
               Default
             </TabsTrigger>
