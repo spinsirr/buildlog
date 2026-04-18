@@ -1,15 +1,13 @@
 'use client'
 
 import { ChevronDown, FileText, GitBranch, Loader2, Plus, Search, Sparkles } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useSWRConfig } from 'swr'
 import { PostCard } from '@/components/post-card'
-import { PostDetailModal } from '@/components/post-detail-modal'
-import { PostPreviewModal } from '@/components/post-preview-modal'
-import { RecapBranchPicker } from '@/components/recap-branch-picker'
 import { Button, buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,6 +24,22 @@ import { anyPlatformOverLimit } from '@/lib/posts'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/lib/types'
 import { cn } from '@/lib/utils'
+
+// Heavy modals used only on user interaction — split out of the initial
+// /posts chunk so typing in the search box or switching tabs doesn't wait
+// on their Radix/Tabs/Dialog trees. Each of these is >15 KB minified.
+const PostDetailModal = dynamic(
+  () => import('@/components/post-detail-modal').then((m) => m.PostDetailModal),
+  { ssr: false }
+)
+const PostPreviewModal = dynamic(
+  () => import('@/components/post-preview-modal').then((m) => m.PostPreviewModal),
+  { ssr: false }
+)
+const RecapBranchPicker = dynamic(
+  () => import('@/components/recap-branch-picker').then((m) => m.RecapBranchPicker),
+  { ssr: false }
+)
 
 function NewPostForm({ onCreated, charLimit }: { onCreated: () => void; charLimit: number }) {
   const [content, setContent] = useState('')
@@ -615,15 +629,17 @@ export function PostsClient() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <RecapBranchPicker
-            open={branchPickerOpen}
-            onOpenChange={setBranchPickerOpen}
-            onGenerate={(repo, branch) => {
-              setBranchPickerOpen(false)
-              handleGenerateRecap({ mode: 'branch', repo, branch })
-            }}
-            loading={recapLoading}
-          />
+          {branchPickerOpen && (
+            <RecapBranchPicker
+              open={branchPickerOpen}
+              onOpenChange={setBranchPickerOpen}
+              onGenerate={(repo, branch) => {
+                setBranchPickerOpen(false)
+                handleGenerateRecap({ mode: 'branch', repo, branch })
+              }}
+              loading={recapLoading}
+            />
+          )}
           <Button
             size="sm"
             onClick={() => setShowNewPost((v) => !v)}
