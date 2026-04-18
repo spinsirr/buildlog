@@ -14,6 +14,8 @@ export type Post = {
   signal: 'high' | 'low' | null
   signal_reason: string | null
   angle: string | null
+  /** Per-platform content overrides. Absent key → falls back to `content`. */
+  platform_variants: Record<string, string> | null
 }
 
 export type Profile = {

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1
 import { publishToBluesky } from "./bluesky.ts"
 import { publishToLinkedIn } from "./linkedin.ts"
 import { getLog } from "./logger.ts"
+import { contentForPlatform } from "./posts.ts"
 import { publishToTwitter } from "./twitter.ts"
 
 const log = getLog("publish")
@@ -13,9 +14,14 @@ export interface PublishResult {
   primaryPostUrl: string | null
 }
 
+/**
+ * Publish a post to every connected platform, picking the per-platform
+ * content variant when present and falling back to `defaultContent` otherwise.
+ */
 export async function publishToAllPlatforms(
   userId: string,
-  content: string,
+  defaultContent: string,
+  variants: Record<string, string> | null | undefined,
   connectedPlatforms: Set<string>,
 ): Promise<PublishResult> {
   const publishedPlatforms: string[] = []
@@ -26,6 +32,7 @@ export async function publishToAllPlatforms(
   const tasks: Promise<void>[] = []
 
   if (connectedPlatforms.has("twitter")) {
+    const content = contentForPlatform(defaultContent, variants, "twitter")
     tasks.push(
       publishToTwitter(userId, content)
         .then(({ tweetId, tweetUrl }) => {
@@ -44,6 +51,7 @@ export async function publishToAllPlatforms(
   }
 
   if (connectedPlatforms.has("linkedin")) {
+    const content = contentForPlatform(defaultContent, variants, "linkedin")
     tasks.push(
       publishToLinkedIn(userId, content)
         .then(({ postId, postUrl }) => {
@@ -62,6 +70,7 @@ export async function publishToAllPlatforms(
   }
 
   if (connectedPlatforms.has("bluesky")) {
+    const content = contentForPlatform(defaultContent, variants, "bluesky")
     tasks.push(
       publishToBluesky(userId, content)
         .then(({ postUri, postUrl }) => {
@@ -95,6 +104,7 @@ export async function fetchPlatformsAndPublish(
   userId: string,
   postId: string,
   content: string,
+  variants: Record<string, string> | null | undefined,
   extraUpdates?: Record<string, unknown>,
 ): Promise<PublishResult> {
   const { data: connections } = await supabase
@@ -109,6 +119,7 @@ export async function fetchPlatformsAndPublish(
   const result = await publishToAllPlatforms(
     userId,
     content,
+    variants,
     connectedPlatforms,
   )
   const hasFailures = Object.keys(result.errors).length > 0
