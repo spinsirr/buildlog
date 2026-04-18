@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   // Fetch and verify post ownership
   const { data: currentPost } = await supabase
     .from("posts")
-    .select("content, status")
+    .select("content, status, platform_variants")
     .eq("id", body.id)
     .eq("user_id", user.id)
     .single()
@@ -32,6 +32,9 @@ Deno.serve(async (req) => {
 
   const content = body.content ?? currentPost.content
   if (!content) return errorResponse("Post has no content", 400, req)
+  const variants = (currentPost.platform_variants ?? null) as
+    | Record<string, string>
+    | null
 
   // Check the user has at least one platform connected
   const { count: platformCount } = await supabase
@@ -53,6 +56,7 @@ Deno.serve(async (req) => {
     user.id,
     body.id,
     content,
+    variants,
     extraUpdates,
   )
 

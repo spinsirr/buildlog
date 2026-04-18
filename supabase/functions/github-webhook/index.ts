@@ -752,6 +752,7 @@ async function handleWebhook(
       profile.id,
       post.id,
       content,
+      null,
     )
     const hasFailures = Object.keys(result.errors).length > 0
 
